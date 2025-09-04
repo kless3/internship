@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="6bd1e197-7793-4805-aede-09554a1db5f5" name="Changes" comment="" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Class" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="MavenImportPreferences">
+    <option name="generalSettings">
+      <MavenGeneralSettings>
+        <option name="mavenHome" value="Use Maven wrapper" />
+        <option name="useMavenConfig" value="true" />
+      </MavenGeneralSettings>
+    </option>
+  </component>
+  <component name="ProjectId" id="32ErjUuhJIf96uBmXiM8qgfICjY" />
+  <component name="ProjectViewState">
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "WebServerToolWindowFactoryState": "false",
+    "git-widget-placeholder": "java-core",
+    "last_opened_file_path": "C:/Users/Maksim/Desktop/innowise/src/test/java/com/internship/innowise",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\Maksim\Desktop\innowise\src\test\java\com\internship\innowise" />
+      <recent name="C:\Users\Maksim\Desktop\innowise\src\main\java\com\internship\innowise" />
+    </key>
+    <key name="MoveClassesOrPackagesDialog.RECENTS_KEY">
+      <recent name="com.internship.innowise.task2" />
+    </key>
+  </component>
+  <component name="RunManager">
+    <configuration name="All in innowise" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
+      <module name="innowise" />
+      <option name="PACKAGE_NAME" value="" />
+      <option name="TEST_OBJECT" value="package" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="com.internship.innowise.task1 in innowise" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
+      <module name="innowise" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.internship.innowise.task1.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <option name="PACKAGE_NAME" value="com.internship.innowise.task1" />
+      <option name="TEST_OBJECT" value="package" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="com.internship.innowise.task2 in innowise" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
+      <module name="innowise" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.internship.innowise.task2.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <option name="PACKAGE_NAME" value="com.internship.innowise.task2" />
+      <option name="TEST_OBJECT" value="package" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="com.internship.innowise.task3 in innowise" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
+      <module name="innowise" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="com.internship.innowise.task3.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <option name="PACKAGE_NAME" value="com.internship.innowise.task3" />
+      <option name="TEST_OBJECT" value="package" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="JUnit.All in innowise" />
+        <item itemvalue="JUnit.com.internship.innowise.task1 in innowise" />
+        <item itemvalue="JUnit.com.internship.innowise.task2 in innowise" />
+        <item itemvalue="JUnit.com.internship.innowise.task3 in innowise" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="6bd1e197-7793-4805-aede-09554a1db5f5" name="Changes" comment="" />
+      <created>1756996710967</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1756996710967</updated>
+      <workItem from="1756996711972" duration="667000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+</project>
