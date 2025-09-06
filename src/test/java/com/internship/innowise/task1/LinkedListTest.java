@@ -3,6 +3,8 @@ package com.internship.innowise.task1;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.NoSuchElementException;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class LinkedListTest {
@@ -17,8 +19,9 @@ class LinkedListTest {
     @Test
     void testEmptyList() {
         assertEquals(0, list.size());
-        assertNull(list.getFirst());
-        assertNull(list.getLast());
+        assertTrue(list.isEmpty());
+        assertThrows(NoSuchElementException.class, () -> list.getFirst());
+        assertThrows(NoSuchElementException.class, () -> list.getLast());
     }
 
     @Test
@@ -77,8 +80,8 @@ class LinkedListTest {
         assertEquals(1, list.get(0));
         assertEquals(2, list.get(1));
         assertEquals(3, list.get(2));
-        assertNull(list.get(3));
-        assertNull(list.get(-1));
+        assertThrows(IndexOutOfBoundsException.class, () -> list.get(3));
+        assertThrows(IndexOutOfBoundsException.class, () -> list.get(-1));
     }
 
     @Test
@@ -86,17 +89,20 @@ class LinkedListTest {
         list.addLast(1);
         list.addLast(2);
 
-        list.removeFirst();
+        Integer removed = list.removeFirst();
+        assertEquals(1, removed);
         assertEquals(1, list.size());
         assertEquals(2, list.getFirst());
 
-        list.removeFirst();
-        assertNull(list.getFirst());
+        removed = list.removeFirst();
+        assertEquals(2, removed);
+        assertEquals(0, list.size());
+        assertThrows(NoSuchElementException.class, () -> list.getFirst());
     }
 
     @Test
     void testRemoveFirstEmptyList() {
-        assertDoesNotThrow(() -> list.removeFirst());
+        assertThrows(NoSuchElementException.class, () -> list.removeFirst());
     }
 
     @Test
@@ -105,21 +111,25 @@ class LinkedListTest {
         list.addLast(2);
         list.addLast(3);
 
-        list.removeLast();
+        Integer removed = list.removeLast();
+        assertEquals(3, removed);
         assertEquals(2, list.size());
         assertEquals(2, list.getLast());
 
-        list.removeLast();
+        removed = list.removeLast();
+        assertEquals(2, removed);
         assertEquals(1, list.size());
         assertEquals(1, list.getLast());
 
+        removed = list.removeLast();
+        assertEquals(1, removed);
+        assertEquals(0, list.size());
+        assertThrows(NoSuchElementException.class, () -> list.getLast());
     }
 
     @Test
-    void testRemoveLastSingleElement() {
-        list.addLast(1);
-        list.removeLast();
-        assertNull(list.getFirst());
+    void testRemoveLastEmptyList() {
+        assertThrows(NoSuchElementException.class, () -> list.removeLast());
     }
 
     @Test
@@ -129,15 +139,18 @@ class LinkedListTest {
         list.addLast(3);
         list.addLast(4);
 
-        list.remove(1);
+        Integer removed = list.remove(1);
+        assertEquals(2, removed);
         assertEquals(3, list.size());
         assertEquals(3, list.get(1));
 
-        list.remove(0);
+        removed = list.remove(0);
+        assertEquals(1, removed);
         assertEquals(2, list.size());
         assertEquals(3, list.getFirst());
 
-        list.remove(1);
+        removed = list.remove(1);
+        assertEquals(4, removed);
         assertEquals(1, list.size());
         assertEquals(3, list.getLast());
     }
@@ -147,6 +160,7 @@ class LinkedListTest {
         list.addLast(1);
         assertThrows(IndexOutOfBoundsException.class, () -> list.remove(-1));
         assertThrows(IndexOutOfBoundsException.class, () -> list.remove(1));
+        assertThrows(IndexOutOfBoundsException.class, () -> list.remove(2));
     }
 
     @Test
@@ -163,7 +177,6 @@ class LinkedListTest {
 
     @Test
     void testComplexScenario() {
-
         list.addFirst(10);
         assertEquals(1, list.size());
         assertEquals(10, list.getFirst());
@@ -176,14 +189,20 @@ class LinkedListTest {
         assertEquals(3, list.size());
         assertEquals(15, list.get(1));
 
-        list.remove(1);
+        Integer removed = list.remove(1);
+        assertEquals(15, removed);
         assertEquals(2, list.size());
         assertEquals(20, list.get(1));
 
-        list.removeFirst();
+        removed = list.removeFirst();
+        assertEquals(10, removed);
         assertEquals(1, list.size());
         assertEquals(20, list.getFirst());
 
+        removed = list.removeLast();
+        assertEquals(20, removed);
+        assertEquals(0, list.size());
+        assertTrue(list.isEmpty());
     }
 
     @Test
@@ -195,6 +214,10 @@ class LinkedListTest {
         assertEquals(2, stringList.size());
         assertEquals("Hello", stringList.getFirst());
         assertEquals("World", stringList.getLast());
+
+        String removed = stringList.removeFirst();
+        assertEquals("Hello", removed);
+        assertEquals("World", stringList.getFirst());
     }
 
     @Test
@@ -203,12 +226,51 @@ class LinkedListTest {
         assertEquals(1, list.size());
         assertNull(list.getFirst());
         assertNull(list.get(0));
+
+        Integer removed = list.removeFirst();
+        assertNull(removed);
+        assertEquals(0, list.size());
     }
 
     @Test
     void testGetFromEmptyList() {
-        assertNull(list.get(0));
-        assertNull(list.get(5));
-        assertNull(list.get(-1));
+        assertThrows(IndexOutOfBoundsException.class, () -> list.get(0));
+        assertThrows(IndexOutOfBoundsException.class, () -> list.get(5));
+        assertThrows(IndexOutOfBoundsException.class, () -> list.get(-1));
+    }
+
+    @Test
+    void testIterable() {
+        list.addLast(1);
+        list.addLast(2);
+        list.addLast(3);
+
+        int sum = 0;
+        int count = 0;
+        for (Integer value : list) {
+            sum += value;
+            count++;
+        }
+
+        assertEquals(6, sum);
+        assertEquals(3, count);
+    }
+
+    @Test
+    void testIteratorOnEmptyList() {
+        int count = 0;
+        for (Integer value : list) {
+            count++;
+        }
+        assertEquals(0, count);
+    }
+
+    @Test
+    void testIteratorThrowsException() {
+        list.addLast(1);
+        var iterator = list.iterator();
+
+        assertEquals(1, iterator.next());
+        assertThrows(NoSuchElementException.class, iterator::next);
     }
 }

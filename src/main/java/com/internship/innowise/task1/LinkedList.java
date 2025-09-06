@@ -1,12 +1,17 @@
 package com.internship.innowise.task1;
 
-public class LinkedList<T> {
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+
+public class LinkedList<T> implements Iterable<T> {
 
     private Node<T> head;
+    private Node<T> tail;
     private int size;
 
     public LinkedList() {
         this.head = null;
+        this.tail = null;
         this.size = 0;
     }
 
@@ -14,24 +19,31 @@ public class LinkedList<T> {
         return size;
     }
 
+    public boolean isEmpty() {
+        return size == 0;
+    }
+
     public void addFirst(T t) {
-        Node<T> firstNode = new Node<>(t);
-        firstNode.next = head;
-        head = firstNode;
+        Node<T> newNode = new Node<>(t);
+        if (isEmpty()) {
+            head = newNode;
+            tail = newNode;
+        } else {
+            newNode.next = head;
+            head = newNode;
+        }
         size++;
     }
 
     public void addLast(T t) {
-        if (head == null) {
-            addFirst(t);
-            return;
+        Node<T> newNode = new Node<>(t);
+        if (isEmpty()) {
+            head = newNode;
+            tail = newNode;
+        } else {
+            tail.next = newNode;
+            tail = newNode;
         }
-
-        Node<T> currentNode = head;
-        while (currentNode.next != null) {
-            currentNode = currentNode.next;
-        }
-        currentNode.next = new Node<>(t);
         size++;
     }
 
@@ -62,27 +74,22 @@ public class LinkedList<T> {
     }
 
     public T getFirst() {
-        if (head == null) {
-            return null;
+        if (isEmpty()) {
+            throw new NoSuchElementException("List is empty");
         }
         return head.value;
     }
 
     public T getLast() {
-        if (head == null) {
-            return null;
+        if (isEmpty()) {
+            throw new NoSuchElementException("List is empty");
         }
-
-        Node<T> currentNode = head;
-        while (currentNode.next != null) {
-            currentNode = currentNode.next;
-        }
-        return currentNode.value;
+        return tail.value;
     }
 
     public T get(int index) {
         if (index < 0 || index >= size) {
-            return null;
+            throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + size);
         }
 
         Node<T> currentNode = head;
@@ -92,54 +99,75 @@ public class LinkedList<T> {
         return currentNode.value;
     }
 
-    public void removeFirst() {
-        if (head == null) {
-            return;
-        }
-        head = head.next;
-        size--;
-    }
-
-    public void removeLast() {
-        if (head == null) {
-            return;
+    public T removeFirst() {
+        if (isEmpty()) {
+            throw new NoSuchElementException("List is empty");
         }
 
+        T removedValue = head.value;
         if (size == 1) {
             head = null;
-            size = 0;
-            return;
+            tail = null;
+        } else {
+            head = head.next;
         }
-
-        Node<T> currentNode = head;
-        for (int i = 0; i < size - 2; i++) {
-            currentNode = currentNode.next;
-        }
-        currentNode.next = null;
         size--;
+        return removedValue;
     }
 
-    public void remove(int index) {
+    public T removeLast() {
+        if (isEmpty()) {
+            throw new NoSuchElementException("List is empty");
+        }
+
+        T removedValue = tail.value;
+        if (size == 1) {
+            head = null;
+            tail = null;
+        } else {
+            Node<T> currentNode = head;
+            while (currentNode.next != tail) {
+                currentNode = currentNode.next;
+            }
+            currentNode.next = null;
+            tail = currentNode;
+        }
+        size--;
+        return removedValue;
+    }
+
+    public T remove(int index) {
         if (index < 0 || index >= size) {
             throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + size);
         }
 
         if (index == 0) {
-            removeFirst();
-            return;
+            return removeFirst();
+        }
+
+        if (index == size - 1) {
+            return removeLast();
         }
 
         Node<T> currentNode = head;
         for (int i = 0; i < index - 1; i++) {
             currentNode = currentNode.next;
         }
+
+        T removedValue = currentNode.next.value;
         currentNode.next = currentNode.next.next;
         size--;
+        return removedValue;
+    }
+
+    @Override
+    public Iterator<T> iterator() {
+        return new LinkedListIterator();
     }
 
     @Override
     public String toString() {
-        if (head == null) {
+        if (isEmpty()) {
             return "[]";
         }
 
@@ -163,6 +191,25 @@ public class LinkedList<T> {
         private Node(T value) {
             this.value = value;
             this.next = null;
+        }
+    }
+
+    private class LinkedListIterator implements Iterator<T> {
+        private Node<T> current = head;
+
+        @Override
+        public boolean hasNext() {
+            return current != null;
+        }
+
+        @Override
+        public T next() {
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
+            T value = current.value;
+            current = current.next;
+            return value;
         }
     }
 }
