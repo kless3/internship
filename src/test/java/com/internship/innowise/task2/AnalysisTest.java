@@ -4,6 +4,8 @@ package com.internship.innowise.task2;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -24,7 +26,7 @@ class AnalysisTest {
 
         List<Order> orders = List.of(order1, order2, order3);
 
-        List<String> result = analysis.getUniqueCities(orders);
+        Set<String> result = analysis.getUniqueCities(orders);
 
         assertEquals(2, result.size());
         assertTrue(result.contains("Moscow"));
@@ -36,7 +38,7 @@ class AnalysisTest {
         Analysis analysis = new Analysis();
         List<Order> orders = List.of();
 
-        List<String> result = analysis.getUniqueCities(orders);
+        Set<String> result = analysis.getUniqueCities(orders);
 
         assertTrue(result.isEmpty());
     }
@@ -74,7 +76,7 @@ class AnalysisTest {
     }
 
     @Test
-    void testGetMostPopularItems() {
+    void testGetMostPopularItem() {
         Analysis analysis = new Analysis();
 
         OrderItem popularItem = createOrderItem("Book", 5, 20.0);
@@ -86,12 +88,10 @@ class AnalysisTest {
 
         List<Order> orders = List.of(order1, order2);
 
-        List<OrderItem> result = analysis.getMostPopularItems(orders);
+        Optional<OrderItem> result = analysis.getMostPopularItem(orders);
 
-        assertEquals(2, result.size());
-        assertEquals("Book", result.get(0).getProductName());
-        assertEquals(8, result.get(0).getQuantity());
-        assertEquals("Pen", result.get(1).getProductName());
+        assertEquals("Book", result.get().getProductName());
+        assertEquals(8, result.get().getQuantity());
     }
 
     @Test
