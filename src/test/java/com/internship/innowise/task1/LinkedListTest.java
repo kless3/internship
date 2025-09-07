@@ -1,12 +1,14 @@
 package com.internship.innowise.task1;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.NoSuchElementException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@DisplayName("Test class for LinkedList")
 class LinkedListTest {
 
     private LinkedList<Integer> list;
@@ -17,6 +19,7 @@ class LinkedListTest {
     }
 
     @Test
+    @DisplayName("Check list for empty")
     void testEmptyList() {
         assertEquals(0, list.size());
         assertTrue(list.isEmpty());
@@ -25,6 +28,7 @@ class LinkedListTest {
     }
 
     @Test
+    @DisplayName("Test adding element at the beginning of the list")
     void testAddFirst() {
         list.addFirst(1);
         assertEquals(1, list.size());
@@ -38,6 +42,7 @@ class LinkedListTest {
     }
 
     @Test
+    @DisplayName("Test adding element at the end of the list")
     void testAddLast() {
         list.addLast(1);
         assertEquals(1, list.size());
@@ -51,6 +56,7 @@ class LinkedListTest {
     }
 
     @Test
+    @DisplayName("Test adding element at specific index")
     void testAddAtIndex() {
         list.add(1, 0);
         assertEquals(1, list.getFirst());
@@ -66,12 +72,14 @@ class LinkedListTest {
     }
 
     @Test
+    @DisplayName("Test adding element at invalid index should throw exception")
     void testAddAtIndexOutOfBounds() {
         assertThrows(IndexOutOfBoundsException.class, () -> list.add(1, -1));
         assertThrows(IndexOutOfBoundsException.class, () -> list.add(1, 1));
     }
 
     @Test
+    @DisplayName("Test getting element by index")
     void testGet() {
         list.addLast(1);
         list.addLast(2);
@@ -85,6 +93,7 @@ class LinkedListTest {
     }
 
     @Test
+    @DisplayName("Test removing first element from the list")
     void testRemoveFirst() {
         list.addLast(1);
         list.addLast(2);
@@ -101,11 +110,13 @@ class LinkedListTest {
     }
 
     @Test
+    @DisplayName("Test removing first element from empty list should throw exception")
     void testRemoveFirstEmptyList() {
         assertThrows(NoSuchElementException.class, () -> list.removeFirst());
     }
 
     @Test
+    @DisplayName("Test removing last element from the list")
     void testRemoveLast() {
         list.addLast(1);
         list.addLast(2);
@@ -128,11 +139,13 @@ class LinkedListTest {
     }
 
     @Test
+    @DisplayName("Test removing last element from empty list should throw exception")
     void testRemoveLastEmptyList() {
         assertThrows(NoSuchElementException.class, () -> list.removeLast());
     }
 
     @Test
+    @DisplayName("Test removing element at specific index")
     void testRemoveAtIndex() {
         list.addLast(1);
         list.addLast(2);
@@ -156,6 +169,7 @@ class LinkedListTest {
     }
 
     @Test
+    @DisplayName("Test removing element at invalid index should throw exception")
     void testRemoveAtIndexOutOfBounds() {
         list.addLast(1);
         assertThrows(IndexOutOfBoundsException.class, () -> list.remove(-1));
@@ -164,6 +178,7 @@ class LinkedListTest {
     }
 
     @Test
+    @DisplayName("Test string representation of the list")
     void testToString() {
         assertEquals("[]", list.toString());
 
@@ -176,6 +191,7 @@ class LinkedListTest {
     }
 
     @Test
+    @DisplayName("Test complex scenario with multiple operations")
     void testComplexScenario() {
         list.addFirst(10);
         assertEquals(1, list.size());
@@ -206,6 +222,7 @@ class LinkedListTest {
     }
 
     @Test
+    @DisplayName("Test LinkedList with String elements")
     void testStringList() {
         LinkedList<String> stringList = new LinkedList<>();
         stringList.addLast("Hello");
@@ -221,6 +238,7 @@ class LinkedListTest {
     }
 
     @Test
+    @DisplayName("Test handling null values in the list")
     void testNullValues() {
         list.addLast(null);
         assertEquals(1, list.size());
@@ -233,6 +251,7 @@ class LinkedListTest {
     }
 
     @Test
+    @DisplayName("Test getting elements from empty list should throw exception")
     void testGetFromEmptyList() {
         assertThrows(IndexOutOfBoundsException.class, () -> list.get(0));
         assertThrows(IndexOutOfBoundsException.class, () -> list.get(5));
@@ -240,6 +259,7 @@ class LinkedListTest {
     }
 
     @Test
+    @DisplayName("Test iterable functionality of the list")
     void testIterable() {
         list.addLast(1);
         list.addLast(2);
@@ -257,6 +277,7 @@ class LinkedListTest {
     }
 
     @Test
+    @DisplayName("Test iterator on empty list")
     void testIteratorOnEmptyList() {
         int count = 0;
         for (Integer value : list) {
@@ -266,6 +287,7 @@ class LinkedListTest {
     }
 
     @Test
+    @DisplayName("Test iterator throws exception when no more elements")
     void testIteratorThrowsException() {
         list.addLast(1);
         var iterator = list.iterator();

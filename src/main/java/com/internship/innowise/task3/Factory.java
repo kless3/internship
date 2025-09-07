@@ -1,44 +1,58 @@
 package com.internship.innowise.task3;
 
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.Random;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.AtomicInteger;
 
-class Factory implements Runnable {
-    private final BlockingQueue<PartType> productionLine = new LinkedBlockingQueue<>();
+class Factory {
+    private final Map<PartType, Integer> parts = new EnumMap<>(PartType.class);
     private final Random random = new Random();
-    private volatile boolean running = true;
-    private final AtomicInteger daysPassed = new AtomicInteger(0);
+    private final Object lock = new Object();
 
-    public void stop() {
-        running = false;
-    }
-
-    public PartType takePart() throws InterruptedException {
-        return productionLine.take();
-    }
-
-    public int getDaysPassed() {
-        return daysPassed.get();
-    }
-
-    @Override
-    public void run() {
-        try {
-            while (running && daysPassed.get() < 100) {
-                int partsToProduce = random.nextInt(11);
-                for (int i = 0; i < partsToProduce; i++) {
-                    PartType[] allTypes = PartType.values();
-                    PartType randomPart = allTypes[random.nextInt(allTypes.length)];
-                    productionLine.put(randomPart);
-                }
-
-                daysPassed.incrementAndGet();
-                Thread.sleep(10);
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+    public Factory() {
+        for (PartType type : PartType.values()) {
+            parts.put(type, 0);
         }
+    }
+
+    public void produceParts() {
+        synchronized (lock) {
+            for (PartType type : PartType.values()) {
+                parts.put(type, 0);
+            }
+
+            for (int i = 0; i < 10; i++) {
+                PartType part = PartType.values()[random.nextInt(PartType.values().length)];
+                parts.put(part, parts.get(part) + 1);
+            }
+            System.out.println("Factory produced: " + parts);
+        }
+    }
+
+    public Map<PartType, Integer> takeParts(Map<PartType, Integer> needed, int maxTake) {
+        synchronized (lock) {
+            Map<PartType, Integer> taken = new EnumMap<>(PartType.class);
+            int takenCount = 0;
+
+            for (PartType type : PartType.values()) {
+                if (takenCount >= maxTake) break;
+
+                int need = needed.getOrDefault(type, 0);
+                int available = parts.get(type);
+
+                if (need > 0 && available > 0) {
+                    int toTake = Math.min(Math.min(need, available), maxTake - takenCount);
+                    parts.put(type, available - toTake);
+                    taken.put(type, toTake);
+                    takenCount += toTake;
+                }
+            }
+
+            return taken;
+        }
+    }
+
+    public Map<PartType, Integer> getParts() {
+        return parts;
     }
 }

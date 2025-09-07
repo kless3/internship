@@ -1,6 +1,7 @@
 package com.internship.innowise.task2;
 
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -13,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class AnalysisTest {
 
     @Test
+    @DisplayName("Should return unique cities from orders")
     void testGetUniqueCities() {
         Analysis analysis = new Analysis();
 
@@ -34,6 +36,7 @@ class AnalysisTest {
     }
 
     @Test
+    @DisplayName("Should return empty set when no orders provided")
     void testGetUniqueCitiesEmptyList() {
         Analysis analysis = new Analysis();
         List<Order> orders = List.of();
@@ -44,6 +47,7 @@ class AnalysisTest {
     }
 
     @Test
+    @DisplayName("Should calculate total income from delivered orders only")
     void testGetIncome() {
         Analysis analysis = new Analysis();
 
@@ -62,6 +66,7 @@ class AnalysisTest {
     }
 
     @Test
+    @DisplayName("Should return zero income when no delivered orders")
     void testGetIncomeNoDeliveredOrders() {
         Analysis analysis = new Analysis();
 
@@ -76,6 +81,7 @@ class AnalysisTest {
     }
 
     @Test
+    @DisplayName("Should find the most popular item by total quantity")
     void testGetMostPopularItem() {
         Analysis analysis = new Analysis();
 
@@ -95,6 +101,7 @@ class AnalysisTest {
     }
 
     @Test
+    @DisplayName("Should calculate average check from delivered orders only")
     void testGetAvgCheck() {
         Analysis analysis = new Analysis();
 
@@ -114,6 +121,7 @@ class AnalysisTest {
     }
 
     @Test
+    @DisplayName("Should return zero average check when no delivered orders")
     void testGetAvgCheckNoDeliveredOrders() {
         Analysis analysis = new Analysis();
 
@@ -128,6 +136,7 @@ class AnalysisTest {
     }
 
     @Test
+    @DisplayName("Should identify loyal customers with 5+ delivered orders")
     void testGetLoyalCustomers() {
         Analysis analysis = new Analysis();
 
@@ -151,6 +160,7 @@ class AnalysisTest {
     }
 
     @Test
+    @DisplayName("Should return empty list when no loyal customers found")
     void testGetLoyalCustomersNoLoyal() {
         Analysis analysis = new Analysis();
 
