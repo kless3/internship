@@ -40,7 +40,6 @@ databaseChangeLog:
             columns:
               - column:
                   name: email
-
         - createIndex:
             tableName: users
             indexName: idx_user_birth_date
