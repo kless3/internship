@@ -8,13 +8,17 @@ import com.internship.user_service.repository.UserRepository;
 import com.internship.user_service.service.UserService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheConfig;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
-//@CacheConfig(cacheNames = "users")
+@CacheConfig(cacheNames = "users")
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
@@ -23,7 +27,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-//    @CacheEvict(allEntries = true)
+    @CacheEvict(allEntries = true)
     public UserResponseDTO createUser(UserRequestDTO userRequestDTO) {
 
         if (userRepository.existsByEmail(userRequestDTO.getEmail())) {
@@ -38,7 +42,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-//    @Cacheable(key = "#id", unless = "#result == null")
+    @Cacheable(key = "#id", unless = "#result == null")
     public UserResponseDTO getUserById(Long id) {
 
         User user = userRepository.findById(id)
@@ -49,7 +53,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-//    @Cacheable(key = "#email", unless = "#result == null")
+    @Cacheable(key = "#email", unless = "#result == null")
     public UserResponseDTO getUserByEmail(String email) {
 
         User user = userRepository.findByEmail(email)
@@ -60,7 +64,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-//    @Cacheable(key = "'ids_' + #ids.hashCode()", unless = "#result.isEmpty()")
+    @Cacheable(key = "'ids_' + #ids.hashCode()", unless = "#result.isEmpty()")
     public List<UserResponseDTO> getUsersByIds(List<Long> ids) {
 
         List<User> users = userRepository.findByIdIn(ids);
@@ -71,7 +75,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-//    @Cacheable(key = "'all'", unless = "#result.isEmpty()")
+    @Cacheable(key = "'all'", unless = "#result.isEmpty()")
     public List<UserResponseDTO> getAllUsers() {
 
         List<User> users = userRepository.findAll();
@@ -82,8 +86,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-//    @CachePut(key = "#id")
-//    @CacheEvict(key = "'all'")
+    @CachePut(key = "#id")
+    @CacheEvict(key = "'all'")
     public UserResponseDTO updateUser(Long id, UserRequestDTO userRequestDTO) {
 
         User user = userRepository.findById(id)
@@ -102,7 +106,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-//    @CacheEvict(key = "{'all', #id}")
+    @CacheEvict(key = "{'all', #id}")
     public void deleteUser(Long id) {
 
         if (!userRepository.existsById(id)) {
