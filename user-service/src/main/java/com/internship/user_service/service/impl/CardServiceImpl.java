@@ -10,12 +10,17 @@ import com.internship.user_service.repository.UserRepository;
 import com.internship.user_service.service.CardInfoService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheConfig;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
+//@CacheConfig(cacheNames = "cards")
 @RequiredArgsConstructor
 public class CardServiceImpl implements CardInfoService {
 
@@ -25,6 +30,7 @@ public class CardServiceImpl implements CardInfoService {
 
     @Override
     @Transactional
+//    @CacheEvict(allEntries = true)
     public CardInfoResponseDTO createCard(Long userId, CardInfoRequestDTO cardInfoRequestDTO) {
 
         User user = userRepository.findById(userId)
@@ -44,6 +50,7 @@ public class CardServiceImpl implements CardInfoService {
 
     @Override
     @Transactional(readOnly = true)
+//    @Cacheable(cacheNames = "#id")
     public CardInfoResponseDTO getCardById(Long id) {
 
         CardInfo cardInfo = cardInfoRepository.findById(id)
@@ -54,6 +61,7 @@ public class CardServiceImpl implements CardInfoService {
 
     @Override
     @Transactional(readOnly = true)
+//    @Cacheable(cacheNames = "#number")
     public CardInfoResponseDTO getCardByNumber(String number) {
 
         CardInfo cardInfo = cardInfoRepository.findByNumber(number)
@@ -64,6 +72,7 @@ public class CardServiceImpl implements CardInfoService {
 
     @Override
     @Transactional(readOnly = true)
+//    @Cacheable(key = "'ids_' + #ids.hashCode()")
     public List<CardInfoResponseDTO> getCardsByIds(List<Long> ids) {
 
         List<CardInfo> cards = cardInfoRepository.findByIdIn(ids);
@@ -74,6 +83,7 @@ public class CardServiceImpl implements CardInfoService {
 
     @Override
     @Transactional(readOnly = true)
+//    @Cacheable(key = "'user_' + #userId")
     public List<CardInfoResponseDTO> getCardsByUserId(Long userId) {
 
         List<CardInfo> cards = cardInfoRepository.findByUserId(userId);
@@ -84,6 +94,7 @@ public class CardServiceImpl implements CardInfoService {
 
     @Override
     @Transactional(readOnly = true)
+//    @Cacheable(cacheNames = "'all")
     public List<CardInfoResponseDTO> getAllCards() {
 
         List<CardInfo> cards = cardInfoRepository.findAll();
@@ -94,6 +105,8 @@ public class CardServiceImpl implements CardInfoService {
 
     @Override
     @Transactional
+//    @CachePut(key = "#id")
+//    @CacheEvict(key = "'all'")
     public CardInfoResponseDTO updateCard(Long id, CardInfoRequestDTO cardInfoRequestDTO) {
 
         CardInfo cardInfo = cardInfoRepository.findById(id)
@@ -113,6 +126,7 @@ public class CardServiceImpl implements CardInfoService {
 
     @Override
     @Transactional
+//    @CacheEvict(key = "{'all', #id}")
     public void deleteCard(Long id) {
 
         if (!cardInfoRepository.existsById(id)) {

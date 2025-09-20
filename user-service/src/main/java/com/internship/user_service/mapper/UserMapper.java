@@ -7,13 +7,14 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = CardInfoMapper.class)
 public interface UserMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "cards", ignore = true)
     User toEntity(UserRequestDTO userRequestDTO);
 
+    @Mapping(target = "cards", source = "cards")
     UserResponseDTO toDTO(User user);
 
     @Mapping(target = "id", ignore = true)

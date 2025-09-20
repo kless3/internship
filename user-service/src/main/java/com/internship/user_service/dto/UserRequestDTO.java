@@ -16,7 +16,7 @@ public class UserRequestDTO {
     @Size(min = 2, max = 50, message = "Surname must be between 2 and 50 characters")
     private String surname;
 
-    @NotBlank(message = "Birth date is mandatory")
+    @NotNull(message = "Birth date is mandatory")
     @Past(message = "Birth date must be in the past")
     private LocalDate birthDate;
 
