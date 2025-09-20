@@ -1,10 +1,11 @@
-package com.internship.user_service.service.impl;
+package com.internship.user_service.unit.service.impl;
 
 import com.internship.user_service.dto.UserRequestDTO;
 import com.internship.user_service.dto.UserResponseDTO;
 import com.internship.user_service.mapper.UserMapper;
 import com.internship.user_service.model.User;
 import com.internship.user_service.repository.UserRepository;
+import com.internship.user_service.service.impl.UserServiceImpl;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

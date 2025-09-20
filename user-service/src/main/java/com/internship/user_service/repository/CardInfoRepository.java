@@ -14,18 +14,11 @@ public interface CardInfoRepository extends JpaRepository<CardInfo, Long> {
     @Query(value = "SELECT * FROM card_info WHERE number = :number", nativeQuery = true)
     Optional<CardInfo> findByNumber(@Param("number") String number);
 
+    @Query("SELECT CASE WHEN COUNT(c) > 0 THEN true ELSE false END FROM CardInfo c WHERE c.number = :number")
     boolean existsByNumber(String number);
 
     List<CardInfo> findByIdIn(List<Long> ids);
 
     List<CardInfo> findByUserId(Long userId);
 
-    @Query("SELECT c FROM CardInfo c WHERE c.user.id IN :userIds")
-    List<CardInfo> findByUserIds(@Param("userIds") List<Long> userIds);
-
-    @Query("SELECT c FROM CardInfo c JOIN FETCH c.user WHERE c.id = :id")
-    Optional<CardInfo> findByIdWithUser(@Param("id") Long id);
-
-    @Query("SELECT c FROM CardInfo c JOIN FETCH c.user WHERE c.id IN :ids")
-    List<CardInfo> findByIdInWithUser(@Param("ids") List<Long> ids);
 }

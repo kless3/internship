@@ -14,19 +14,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query(value = "SELECT * FROM users WHERE email = :email", nativeQuery = true)
     Optional<User> findByEmail(@Param("email") String email);
 
+    @Query("SELECT CASE WHEN COUNT(u) > 0 THEN true ELSE false END FROM User u WHERE u.email = :email")
     boolean existsByEmail(String email);
-
-    @Query("SELECT u FROM User u LEFT JOIN FETCH u.cards")
-    List<User> findAllWithCards();
 
     List<User> findByIdIn(List<Long> ids);
 
-    @Query("SELECT u FROM User u LEFT JOIN FETCH u.cards WHERE u.id = :id")
-    Optional<User> findByIdWithCards(@Param("id") Long id);
-
-    @Query("SELECT u FROM User u LEFT JOIN FETCH u.cards WHERE u.email = :email")
-    Optional<User> findByEmailWithCards(@Param("email") String email);
-
-    @Query("SELECT u FROM User u LEFT JOIN FETCH u.cards WHERE u.id IN :ids")
-    List<User> findByIdInWithCards(@Param("ids") List<Long> ids);
 }

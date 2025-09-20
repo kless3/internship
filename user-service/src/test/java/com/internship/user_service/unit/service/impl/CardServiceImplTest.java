@@ -1,4 +1,4 @@
-package com.internship.user_service.service.impl;
+package com.internship.user_service.unit.service.impl;
 
 import com.internship.user_service.dto.CardInfoRequestDTO;
 import com.internship.user_service.dto.CardInfoResponseDTO;
@@ -7,6 +7,7 @@ import com.internship.user_service.model.CardInfo;
 import com.internship.user_service.model.User;
 import com.internship.user_service.repository.CardInfoRepository;
 import com.internship.user_service.repository.UserRepository;
+import com.internship.user_service.service.impl.CardServiceImpl;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
