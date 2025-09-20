@@ -7,6 +7,7 @@ import com.internship.user_service.model.User;
 import com.internship.user_service.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -58,6 +59,7 @@ class UserServiceImplTest {
     }
 
     @Test
+    @DisplayName("Create user - success")
     void createUser_Success() {
         when(userRepository.existsByEmail(userRequestDTO.getEmail())).thenReturn(false);
         when(userMapper.toEntity(userRequestDTO)).thenReturn(user);
@@ -73,6 +75,7 @@ class UserServiceImplTest {
     }
 
     @Test
+    @DisplayName("Create user - email exists, should throw exception")
     void createUser_EmailExists_ThrowsException() {
         when(userRepository.existsByEmail(userRequestDTO.getEmail())).thenReturn(true);
 
@@ -81,6 +84,7 @@ class UserServiceImplTest {
     }
 
     @Test
+    @DisplayName("Get user by ID - success")
     void getUserById_Success() {
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(userMapper.toDTO(user)).thenReturn(userResponseDTO);
@@ -92,6 +96,7 @@ class UserServiceImplTest {
     }
 
     @Test
+    @DisplayName("Get user by ID - not found, should throw exception")
     void getUserById_NotFound_ThrowsException() {
         when(userRepository.findById(1L)).thenReturn(Optional.empty());
 
@@ -100,6 +105,7 @@ class UserServiceImplTest {
     }
 
     @Test
+    @DisplayName("Get user by email - success")
     void getUserByEmail_Success() {
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(user));
         when(userMapper.toDTO(user)).thenReturn(userResponseDTO);
@@ -111,6 +117,7 @@ class UserServiceImplTest {
     }
 
     @Test
+    @DisplayName("Update user - success")
     void updateUser_Success() {
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(userRepository.save(user)).thenReturn(user);
@@ -124,9 +131,10 @@ class UserServiceImplTest {
     }
 
     @Test
+    @DisplayName("Update user - email exists, should throw exception")
     void updateUser_EmailExists_ThrowsException() {
         UserRequestDTO updateRequest = new UserRequestDTO();
-        updateRequest.setEmail("different@example.com"); // Different email
+        updateRequest.setEmail("different@example.com");
         updateRequest.setName("John");
         updateRequest.setSurname("Doe");
 
@@ -138,6 +146,7 @@ class UserServiceImplTest {
     }
 
     @Test
+    @DisplayName("Update user - same email, success")
     void updateUser_SameEmail_Success() {
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(userRepository.save(user)).thenReturn(user);
@@ -150,6 +159,7 @@ class UserServiceImplTest {
     }
 
     @Test
+    @DisplayName("Delete user - success")
     void deleteUser_Success() {
         when(userRepository.existsById(1L)).thenReturn(true);
         doNothing().when(userRepository).deleteById(1L);
@@ -159,6 +169,7 @@ class UserServiceImplTest {
     }
 
     @Test
+    @DisplayName("Delete user - not found, should throw exception")
     void deleteUser_NotFound_ThrowsException() {
         when(userRepository.existsById(1L)).thenReturn(false);
 
@@ -167,6 +178,7 @@ class UserServiceImplTest {
     }
 
     @Test
+    @DisplayName("Get users by IDs - success")
     void getUsersByIds_Success() {
         List<Long> ids = Arrays.asList(1L, 2L);
         List<User> users = Arrays.asList(user, new User());
@@ -179,6 +191,7 @@ class UserServiceImplTest {
     }
 
     @Test
+    @DisplayName("Get all users - success")
     void getAllUsers_Success() {
         List<User> users = Arrays.asList(user);
         when(userRepository.findAll()).thenReturn(users);
@@ -190,6 +203,7 @@ class UserServiceImplTest {
     }
 
     @Test
+    @DisplayName("User exists - returns true")
     void userExists_ReturnsTrue() {
         when(userRepository.existsById(1L)).thenReturn(true);
 
@@ -197,6 +211,7 @@ class UserServiceImplTest {
     }
 
     @Test
+    @DisplayName("User exists - returns false")
     void userExists_ReturnsFalse() {
         when(userRepository.existsById(1L)).thenReturn(false);
 
@@ -204,6 +219,7 @@ class UserServiceImplTest {
     }
 
     @Test
+    @DisplayName("Email exists - returns true")
     void emailExists_ReturnsTrue() {
         when(userRepository.existsByEmail("test@example.com")).thenReturn(true);
 

@@ -9,6 +9,7 @@ import com.internship.user_service.repository.CardInfoRepository;
 import com.internship.user_service.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -63,6 +64,7 @@ class CardServiceImplTest {
     }
 
     @Test
+    @DisplayName("Create card - success")
     void createCard_Success() {
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(cardInfoRepository.existsByNumber(cardInfoRequestDTO.getNumber())).thenReturn(false);
@@ -78,6 +80,7 @@ class CardServiceImplTest {
     }
 
     @Test
+    @DisplayName("Create card - user not found, should throw exception")
     void createCard_UserNotFound_ThrowsException() {
         when(userRepository.findById(1L)).thenReturn(Optional.empty());
 
@@ -86,6 +89,7 @@ class CardServiceImplTest {
     }
 
     @Test
+    @DisplayName("Create card - card number exists, should throw exception")
     void createCard_CardNumberExists_ThrowsException() {
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(cardInfoRepository.existsByNumber(cardInfoRequestDTO.getNumber())).thenReturn(true);
@@ -95,6 +99,7 @@ class CardServiceImplTest {
     }
 
     @Test
+    @DisplayName("Get card by ID - success")
     void getCardById_Success() {
         when(cardInfoRepository.findById(1L)).thenReturn(Optional.of(cardInfo));
         when(cardInfoMapper.toDTO(cardInfo)).thenReturn(cardInfoResponseDTO);
@@ -106,6 +111,7 @@ class CardServiceImplTest {
     }
 
     @Test
+    @DisplayName("Get card by ID - not found, should throw exception")
     void getCardById_NotFound_ThrowsException() {
         when(cardInfoRepository.findById(1L)).thenReturn(Optional.empty());
 
@@ -114,6 +120,7 @@ class CardServiceImplTest {
     }
 
     @Test
+    @DisplayName("Get card by number - success")
     void getCardByNumber_Success() {
         when(cardInfoRepository.findByNumber("1234567890123456")).thenReturn(Optional.of(cardInfo));
         when(cardInfoMapper.toDTO(cardInfo)).thenReturn(cardInfoResponseDTO);
@@ -125,6 +132,7 @@ class CardServiceImplTest {
     }
 
     @Test
+    @DisplayName("Get cards by user ID - success")
     void getCardsByUserId_Success() {
         when(cardInfoRepository.findByUserId(1L)).thenReturn(Arrays.asList(cardInfo));
         when(cardInfoMapper.toDTO(cardInfo)).thenReturn(cardInfoResponseDTO);
@@ -136,6 +144,7 @@ class CardServiceImplTest {
     }
 
     @Test
+    @DisplayName("Get cards by IDs - success")
     void getCardsByIds_Success() {
         List<Long> ids = Arrays.asList(1L, 2L);
         List<CardInfo> cards = Arrays.asList(cardInfo);
@@ -148,6 +157,7 @@ class CardServiceImplTest {
     }
 
     @Test
+    @DisplayName("Get all cards - success")
     void getAllCards_Success() {
         List<CardInfo> cards = Arrays.asList(cardInfo);
         when(cardInfoRepository.findAll()).thenReturn(cards);
@@ -159,9 +169,9 @@ class CardServiceImplTest {
     }
 
     @Test
+    @DisplayName("Update card - success")
     void updateCard_Success() {
         when(cardInfoRepository.findById(1L)).thenReturn(Optional.of(cardInfo));
-        // Same number - should not check for existence
         when(cardInfoRepository.save(cardInfo)).thenReturn(cardInfo);
         when(cardInfoMapper.toDTO(cardInfo)).thenReturn(cardInfoResponseDTO);
 
@@ -169,14 +179,14 @@ class CardServiceImplTest {
 
         assertNotNull(result);
         verify(cardInfoMapper, times(1)).updateEntityFromDTO(cardInfoRequestDTO, cardInfo);
-        // Should NOT check for number existence when number hasn't changed
         verify(cardInfoRepository, never()).existsByNumber(any());
     }
 
     @Test
+    @DisplayName("Update card - number exists, should throw exception")
     void updateCard_NumberExists_ThrowsException() {
         CardInfoRequestDTO updateRequest = new CardInfoRequestDTO();
-        updateRequest.setNumber("9999999999999999"); // Different number
+        updateRequest.setNumber("9999999999999999");
 
         when(cardInfoRepository.findById(1L)).thenReturn(Optional.of(cardInfo));
         when(cardInfoRepository.existsByNumber("9999999999999999")).thenReturn(true);
@@ -186,8 +196,8 @@ class CardServiceImplTest {
     }
 
     @Test
+    @DisplayName("Update card - same number, success")
     void updateCard_SameNumber_Success() {
-        // Same number as current card - should not throw exception
         when(cardInfoRepository.findById(1L)).thenReturn(Optional.of(cardInfo));
         when(cardInfoRepository.save(cardInfo)).thenReturn(cardInfo);
         when(cardInfoMapper.toDTO(cardInfo)).thenReturn(cardInfoResponseDTO);
@@ -195,11 +205,11 @@ class CardServiceImplTest {
         CardInfoResponseDTO result = cardService.updateCard(1L, cardInfoRequestDTO);
 
         assertNotNull(result);
-        // Should NOT check for number existence when number is the same
         verify(cardInfoRepository, never()).existsByNumber(any());
     }
 
     @Test
+    @DisplayName("Delete card - success")
     void deleteCard_Success() {
         when(cardInfoRepository.existsById(1L)).thenReturn(true);
         doNothing().when(cardInfoRepository).deleteById(1L);
@@ -209,6 +219,7 @@ class CardServiceImplTest {
     }
 
     @Test
+    @DisplayName("Delete card - not found, should throw exception")
     void deleteCard_NotFound_ThrowsException() {
         when(cardInfoRepository.existsById(1L)).thenReturn(false);
 
@@ -217,6 +228,7 @@ class CardServiceImplTest {
     }
 
     @Test
+    @DisplayName("Card exists - returns true")
     void cardExists_ReturnsTrue() {
         when(cardInfoRepository.existsById(1L)).thenReturn(true);
 
@@ -224,6 +236,7 @@ class CardServiceImplTest {
     }
 
     @Test
+    @DisplayName("Card exists - returns false")
     void cardExists_ReturnsFalse() {
         when(cardInfoRepository.existsById(1L)).thenReturn(false);
 
@@ -231,6 +244,7 @@ class CardServiceImplTest {
     }
 
     @Test
+    @DisplayName("Card number exists - returns true")
     void cardNumberExists_ReturnsTrue() {
         when(cardInfoRepository.existsByNumber("1234567890123456")).thenReturn(true);
 
