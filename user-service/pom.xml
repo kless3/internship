@@ -29,7 +29,7 @@
 		<jacoco-maven-plugin.version>0.8.12</jacoco-maven-plugin.version>
 		<sonar.organization>kless31332</sonar.organization>
 	</properties>
- 
+  
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
