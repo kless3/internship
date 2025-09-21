@@ -7,37 +7,57 @@ on:
     branches: [ user-service, master ]
 
 jobs:
-  build:
-    name: Build and analyze
+  sonarqube-analysis:
+    name: SonarQube Analysis
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # Полная история коммитов для анализа SonarQube
 
-      - name: Set up JDK
+      - name: Set up JDK 21
         uses: actions/setup-java@v3
         with:
           java-version: '21'
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Build and analyze with SonarQube
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: |
-          cd user-service
-          mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
-            -Dsonar.projectKey=kless3_internship \
-            -Dsonar.projectName="User Service" \
-            -Dsonar.organization=kless31332 \
-            -Dsonar.host.url=https://sonarcloud.io
-
-      - name: Cache Maven packages
+      - name: Cache Maven dependencies
         uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven-
+
+      - name: Build and analyze with SonarQube
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Для интеграции с GitHub
+        run: |
+          # Переходим в директорию user-service (если существует)
+          if [ -d "user-service" ]; then
+            cd user-service
+          fi
+          
+          # Выполняем сборку и анализ SonarQube
+          mvn -B clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+            -Dsonar.projectKey=kless3_internship \
+            -Dsonar.projectName="User Service" \
+            -Dsonar.organization=kless31332 \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.login=$SONAR_TOKEN \
+            -Dsonar.scm.provider=git \
+            -Dsonar.sourceEncoding=UTF-8
+
+      - name: Upload SonarQube results (optional)
+        if: always()  # Запускается даже при неудаче анализа
+        uses: actions/upload-artifact@v3
+        with:
+          name: sonarqube-analysis-results
+          path: |
+            **/target/sonar/*
+            **/target/*.xml
+          retention-days: 7
