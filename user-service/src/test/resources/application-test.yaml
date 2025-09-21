@@ -32,4 +32,4 @@ logging:
     com.internship.user_service: DEBUG
     org.testcontainers: INFO
     org.springframework.data.redis: DEBUG
-    io.lettuce.core: WARN # ИЗМЕНИЛ НА WARN чтобы меньше логов
+    io.lettuce.core: WARN
