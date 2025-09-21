@@ -35,9 +35,9 @@ jobs:
       - name: Build and analyze with SonarQube
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Для интеграции с GitHub
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Для интеграции с GitHub
         run: |
-          # Переходим в директорию user-service (если существует)
+#           Переходим в директорию user-service (если существует)
           if [ -d "user-service" ]; then
             cd user-service
           fi
