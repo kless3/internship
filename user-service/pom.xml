@@ -27,6 +27,17 @@
 		<maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
 		<redis.version>3.2.4</redis.version>
 		<jacoco-maven-plugin.version>0.8.12</jacoco-maven-plugin.version>
+
+
+
+
+		<sonar.organization>kless31332</sonar.organization>
+		<sonar.projectKey>kless_internship</sonar.projectKey>
+		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
+		<sonar.login>${env.SONAR_TOKEN}</sonar.login>
+		<sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+		<sonar.language>java</sonar.language>
+		<sonar.sourceEncoding>UTF-8</sonar.sourceEncoding>
 		<sonar.organization>kless31332</sonar.organization>
 	</properties>
 

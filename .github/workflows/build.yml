@@ -7,30 +7,29 @@ on:
     branches: [ user-service, master ]
 
 jobs:
-  build:
-    name: Build and analyze
+  sonarqube:
+    name: SonarQube Analysis
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # Важно для SonarQube анализа
+          fetch-depth: 0
 
-      - name: Set up JDK
+      - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Verify and run SonarQube scan
-        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=kless_internship
-        # Убедитесь, что эта команда выполняется в директории с pom.xml
-
-      - name: Cache Maven packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+      - name: Build and analyze with SonarQube
+        run: |
+          mvn -B clean verify
+          mvn -B sonar:sonar \
+            -Dsonar.projectKey=kless_internship \
+            -Dsonar.organization=kless31332 \
+            -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
+            -Dsonar.token=${{ secrets.SONAR_TOKEN }}
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
