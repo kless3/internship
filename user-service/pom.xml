@@ -27,7 +27,7 @@
 		<maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
 		<redis.version>3.2.4</redis.version>
 		<jacoco-maven-plugin.version>0.8.12</jacoco-maven-plugin.version>
-		<sonar.organization>gitlab-sonar1</sonar.organization>
+		<sonar.organization>kless31332</sonar.organization>
 	</properties>
 
 	<dependencies>
