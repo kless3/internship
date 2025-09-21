@@ -2,13 +2,13 @@ name: SonarQube Analysis
 
 on:
   push:
-    branches: [ user-service, master ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ user-service, master ]
+    branches: [ main, master ]
 
 jobs:
-  sonarqube:
-    name: SonarQube Analysis
+  build:
+    name: Build and analyze
     runs-on: ubuntu-latest
 
     steps:
@@ -16,7 +16,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up JDK 17
+      - name: Set up JDK
         uses: actions/setup-java@v3
         with:
           java-version: '17'
@@ -25,11 +25,15 @@ jobs:
 
       - name: Build and analyze with SonarQube
         run: |
-          mvn -B clean verify
-          mvn -B sonar:sonar \
+          cd user-service
+          mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
             -Dsonar.projectKey=kless_internship \
-            -Dsonar.organization=kless31332 \
-            -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
-            -Dsonar.token=${{ secrets.SONAR_TOKEN }}
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+            -Dsonar.projectName="User Service"
+
+      - name: Cache Maven packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
