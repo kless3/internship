@@ -1,9 +1,4 @@
 spring:
-  datasource:
-    url: jdbc:postgresql://localhost:5432/internship
-    username: postgres
-    password: postgres
-    driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
       ddl-auto: create-drop
@@ -16,4 +11,25 @@ spring:
     init:
       mode: always
   cache:
-    type: none
+    type: redis
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 10000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+        shutdown-timeout: 10000ms
+  testcontainers:
+    reuse:
+      enable: false
+
+logging:
+  level:
+    com.internship.user_service: DEBUG
+    org.testcontainers: INFO
+    org.springframework.data.redis: DEBUG
+    io.lettuce.core: WARN # ИЗМЕНИЛ НА WARN чтобы меньше логов
