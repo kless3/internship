@@ -29,7 +29,7 @@ jobs:
         run: |
           cd user-service
           mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
-            -Dsonar.projectKey=kless_internship \
+            -Dsonar.projectKey=kless3_internship \
             -Dsonar.projectName="User Service" \
             -Dsonar.organization=kless31332 \
             -Dsonar.host.url=https://sonarcloud.io
