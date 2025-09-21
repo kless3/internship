@@ -24,11 +24,15 @@ jobs:
           cache: 'maven'
 
       - name: Build and analyze with SonarQube
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           cd user-service
           mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
             -Dsonar.projectKey=kless_internship \
-            -Dsonar.projectName="User Service"
+            -Dsonar.projectName="User Service" \
+            -Dsonar.organization=kless31332 \
+            -Dsonar.host.url=https://sonarcloud.io
 
       - name: Cache Maven packages
         uses: actions/cache@v3
