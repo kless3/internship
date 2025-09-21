@@ -26,6 +26,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+
 @SpringBootTest
 @Testcontainers
 @ActiveProfiles("test")
@@ -80,7 +81,7 @@ class CardServiceIntegrationTest {
         testCardRequest = new CardInfoRequestDTO();
         testCardRequest.setNumber("4111111111111111");
         testCardRequest.setHolder("CARD USER");
-        testCardRequest.setExpirationDate(LocalDate.of(2025,12,1));
+        testCardRequest.setExpirationDate(LocalDate.of(2025, 12, 1));
     }
 
     @Test
