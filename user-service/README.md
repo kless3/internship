@@ -29,17 +29,17 @@ A microservice for managing users and their bank cards, developed with Spring Bo
 ## API endpoints
 ### Users (/api/users)
 
-| Method | Endpoint | Description                      |
-|--------|----------|-------------------------------|
-| GET    | `/api/users` | Get all users                 |
-| GET    | `/api/users/{id}` | Get user by id                |
-| GET    | `/api/users/email?email={email}` | Get user by email             |
-| GET    | `/api/users/byIds?ids=1,2,3` | Get users by ids              |
-| GET    | `/api/users/{id}/exists` | Check if the user exists      |
-| GET    | `/api/users/email/{email}/exists` | Проверить существование email |
-| POST   | `/api/users` | Create new user               |
-| PUT    | `/api/users/{id}/upd` | Upadte user                   |
-| DELETE | `/api/users/{id}` | Delete user                   |
+| Method | Endpoint | Description               |
+|--------|----------|---------------------------|
+| GET    | `/api/users` | Get all users             |
+| GET    | `/api/users/{id}` | Get user by id            |
+| GET    | `/api/users/email?email={email}` | Get user by email         |
+| GET    | `/api/users/byIds?ids=1,2,3` | Get users by ids          |
+| GET    | `/api/users/{id}/exists` | Check if the user exists  |
+| GET    | `/api/users/email/{email}/exists` | Check if the email exists |
+| POST   | `/api/users` | Create new user           |
+| PUT    | `/api/users/{id}/upd` | Upadte user               |
+| DELETE | `/api/users/{id}` | Delete user               |
 ### Bank Cards (/api/cards)
 
 | Method | Endpoint | Description                             |
