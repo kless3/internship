@@ -29,7 +29,7 @@ A microservice for managing users and their bank cards, developed with Spring Bo
 ## API endpoints
 ### Users (/api/users)
 
-| Method | Endpoint | Описание                      |
+| Method | Endpoint | Description                      |
 |--------|----------|-------------------------------|
 | GET    | `/api/users` | Get all users                 |
 | GET    | `/api/users/{id}` | Get user by id                |
@@ -42,7 +42,7 @@ A microservice for managing users and their bank cards, developed with Spring Bo
 | DELETE | `/api/users/{id}` | Delete user                   |
 ### Bank Cards (/api/cards)
 
-| Method | Endpoint | Описание                                |
+| Method | Endpoint | Description                             |
 |--------|----------|-----------------------------------------|
 | GET    | `/api/cards` | Get all bank cards                      |
 | GET    | `/api/cards/{id}` | Get bank card by id                     |
