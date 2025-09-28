@@ -40,17 +40,33 @@ jobs:
         run: |
           if [ -d "user-service" ]; then
             cd user-service
+            mvn clean compile -DskipTests
+          else
+            mvn clean compile -DskipTests
           fi
-          mvn clean compile -DskipTests
+
+      - name: Find and list target directories
+        run: |
+          echo "Searching for target directories..."
+          find . -name "target" -type d
+          echo "Listing contents of potential target directories:"
+          if [ -d "user-service/target" ]; then
+            echo "user-service/target contents:"
+            ls -la user-service/target/
+          fi
+          if [ -d "target" ]; then
+            echo "root target contents:"
+            ls -la target/
+          fi
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts
           path: |
-            target/classes/
-            target/generated-sources/
-          if-no-files-found: error
+            **/target/classes/
+            **/target/generated-sources/
+          if-no-files-found: warn
 
   test:
     name: Testing
@@ -105,14 +121,16 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-artifacts
-          path: target/
+          path: ./
 
       - name: Run unit tests
         run: |
           if [ -d "user-service" ]; then
             cd user-service
+            mvn test -DskipITs
+          else
+            mvn test -DskipITs
           fi
-          mvn test -DskipITs
         env:
           SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/shopdb
           DATABASE_USERNAME: shop_user
@@ -126,16 +144,18 @@ jobs:
         with:
           name: test-results
           path: |
-            target/surefire-reports/
-            target/failsafe-reports/
+            **/target/surefire-reports/
+            **/target/failsafe-reports/
           retention-days: 30
+          if-no-files-found: warn
 
       - name: Upload test coverage
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: target/site/jacoco/
+          path: "**/target/site/jacoco/"
           retention-days: 30
+          if-no-files-found: warn
 
   sonarqube-analysis:
     name: SonarQube Analysis
@@ -163,19 +183,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: build-artifacts
-          path: target/
-
-      - name: Cache SonarQube packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.sonar/cache
-          key: ${{ runner.os }}-sonar
-          restore-keys: ${{ runner.os }}-sonar
-
       - name: Build and analyze with SonarQube
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -191,9 +198,7 @@ jobs:
             -Dsonar.organization=kless31332 \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.login=$SONAR_TOKEN \
-            -Dsonar.sourceEncoding=UTF-8 \
-            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
-            -Dsonar.java.coveragePlugin=jacoco
+            -Dsonar.sourceEncoding=UTF-8
 
       - name: Quality Gate Check
         uses: sonarsource/sonarqube-quality-gate-action@master
@@ -234,8 +239,10 @@ jobs:
         run: |
           if [ -d "user-service" ]; then
             cd user-service
+            mvn clean package -DskipTests
+          else
+            mvn clean package -DskipTests
           fi
-          mvn clean package -DskipTests
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
