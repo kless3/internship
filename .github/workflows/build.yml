@@ -259,36 +259,3 @@ jobs:
           path: |
             docker-compose.ci.yml
           retention-days: 30
-
-      - name: Generate deployment manifest
-        run: |
-          cat > docker-compose.ci.yml << EOF
-          version: '3.8'
-          services:
-            app:
-              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-              environment:
-                - SPRING_PROFILES_ACTIVE=prod
-                - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/shopdb
-                - DATABASE_USERNAME=shop_user
-                - DATABASE_PASSWORD=shop_password
-                - SPRING_DATA_REDIS_HOST=redis
-              ports:
-                - "8080:8080"
-            postgres:
-              image: postgres:16-alpine
-              environment:
-                - POSTGRES_DB=shopdb
-                - POSTGRES_USER=shop_user
-                - POSTGRES_PASSWORD=shop_password
-            redis:
-              image: redis:7.2-alpine
-          EOF
-
-      - name: Upload Docker artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-artifacts
-          path: |
-            docker-compose.ci.yml
-          retention-days: 30
