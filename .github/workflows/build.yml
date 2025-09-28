@@ -146,38 +146,23 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Build and run SonarQube analysis with Maven
+      - name: Run complete analysis with Maven
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          # Переходим в директорию с проектом
           if [ -d "user-service" ] && [ -f "user-service/pom.xml" ]; then
             cd user-service
-            echo "Analyzing user-service module"
-          else
-            echo "Analyzing root project"
           fi
           
-          # Используем Maven плагин для анализа (рекомендованный способ)
-          mvn clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+          mvn clean verify sonar:sonar \
             -Dsonar.projectKey=kless3_internship \
             -Dsonar.projectName="User Service" \
             -Dsonar.organization=kless31332 \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.login=$SONAR_TOKEN \
             -Dsonar.sourceEncoding=UTF-8 \
-            -DskipITs
-
-      - name: Wait for analysis completion
-        run: |
-          echo "Waiting for SonarQube analysis to complete..."
-          sleep 30
-
-      - name: Check Quality Gate
-        uses: sonarsource/sonarqube-quality-gate-action@master
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        timeout-minutes: 10
+            -Dsonar.qualitygate.wait=true \
+            -Dsonar.qualitygate.timeout=600
 
   docker-build:
     name: Artifact Creation (Docker Image)
