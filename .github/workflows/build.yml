@@ -146,12 +146,31 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Build and run tests
+      - name: Build project with tests and coverage
+        run: |
+          if [ -d "user-service" ] && [ -f "user-service/pom.xml" ]; then
+            cd user-service
+            echo "Building user-service module"
+          else
+            echo "Building root project"
+          fi
+          
+          mvn clean verify -DskipITs
+
+      - name: Debug - Check compiled classes
         run: |
           if [ -d "user-service" ] && [ -f "user-service/pom.xml" ]; then
             cd user-service
           fi
-          mvn clean verify -DskipITs
+          
+          echo "Checking for compiled classes:"
+          find . -name "*.class" | head -10
+          echo "Target directory structure:"
+          ls -la target/ 2>/dev/null || echo "No target directory"
+          if [ -d "target/classes" ]; then
+            echo "Classes found in target/classes:"
+            ls -la target/classes/ | head -10
+          fi
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
@@ -164,7 +183,13 @@ jobs:
             -Dsonar.projectKey=kless3_internship
             -Dsonar.projectName="User Service"
             -Dsonar.organization=kless31332
+            -Dsonar.java.binaries=target/classes
+            -Dsonar.sources=src/main/java
+            -Dsonar.tests=src/test/java
+            -Dsonar.junit.reportPaths=target/surefire-reports
+            -Dsonar.jacoco.reportPaths=target/jacoco.exec
             -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+            -Dsonar.sourceEncoding=UTF-8
 
   docker-build:
     name: Artifact Creation (Docker Image)
