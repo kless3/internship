@@ -45,29 +45,6 @@ jobs:
             mvn clean compile -DskipTests
           fi
 
-      - name: Find and list target directories
-        run: |
-          echo "Searching for target directories..."
-          find . -name "target" -type d
-          echo "Listing contents of potential target directories:"
-          if [ -d "user-service/target" ]; then
-            echo "user-service/target contents:"
-            ls -la user-service/target/
-          fi
-          if [ -d "target" ]; then
-            echo "root target contents:"
-            ls -la target/
-          fi
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-artifacts
-          path: |
-            **/target/classes/
-            **/target/generated-sources/
-          if-no-files-found: warn
-
   test:
     name: Testing
     runs-on: ubuntu-latest
@@ -117,12 +94,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: build-artifacts
-          path: ./
-
       - name: Run unit tests
         run: |
           if [ -d "user-service" ]; then
@@ -146,14 +117,6 @@ jobs:
           path: |
             **/target/surefire-reports/
             **/target/failsafe-reports/
-          retention-days: 30
-          if-no-files-found: warn
-
-      - name: Upload test coverage
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: "**/target/site/jacoco/"
           retention-days: 30
           if-no-files-found: warn
 
@@ -186,25 +149,49 @@ jobs:
       - name: Build and analyze with SonarQube
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          # Используем SonarCloud для вашего проекта
+          SONAR_HOST_URL: https://sonarcloud.io
         run: |
+          PROJECT_DIR="."
           if [ -d "user-service" ]; then
-            cd user-service
+            PROJECT_DIR="user-service"
           fi
           
-          mvn -B clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+          cd $PROJECT_DIR
+          
+          # Сначала генерируем отчеты о покрытии
+          mvn clean verify -DskipTests
+          
+          # Затем запускаем SonarQube анализ
+          mvn sonar:sonar \
             -Dsonar.projectKey=kless3_internship \
             -Dsonar.projectName="User Service" \
             -Dsonar.organization=kless31332 \
-            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.host.url=$SONAR_HOST_URL \
             -Dsonar.login=$SONAR_TOKEN \
-            -Dsonar.sourceEncoding=UTF-8
+            -Dsonar.sourceEncoding=UTF-8 \
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
 
-      - name: Quality Gate Check
+      - name: Wait for SonarQube analysis completion
+        run: |
+          PROJECT_DIR="."
+          if [ -d "user-service" ]; then
+            PROJECT_DIR="user-service"
+          fi
+          
+          cd $PROJECT_DIR
+          
+          # Ждем завершения анализа
+          sleep 30
+
+      - name: Check SonarQube Quality Gate
         uses: sonarsource/sonarqube-quality-gate-action@master
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          # Явно указываем путь к отчету
+          scanMetadataReportFile: .scannerwork/report-task.txt
+        timeout-minutes: 5
 
   docker-build:
     name: Artifact Creation (Docker Image)
