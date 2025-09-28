@@ -146,7 +146,20 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Run complete analysis with Maven
+      - name: Debug - Check project settings
+        run: |
+          if [ -d "user-service" ] && [ -f "user-service/pom.xml" ]; then
+            cd user-service
+          fi
+          
+          echo "=== Project Information ==="
+          echo "Project Key: kless3_internship"
+          echo "Organization: kless31332"
+          echo "=== Maven Project ==="
+          mvn help:evaluate -Dexpression=project.artifactId -q -DforceStdout || echo "Cannot get artifactId"
+          mvn help:evaluate -Dexpression=project.groupId -q -DforceStdout || echo "Cannot get groupId"
+
+      - name: Try analysis with auto-generated project key
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
@@ -154,15 +167,12 @@ jobs:
             cd user-service
           fi
           
+          # Пробуем с автоматическим определением projectKey
           mvn clean verify sonar:sonar \
-            -Dsonar.projectKey=kless3_internship \
-            -Dsonar.projectName="User Service" \
-            -Dsonar.organization=kless31332 \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.login=$SONAR_TOKEN \
-            -Dsonar.sourceEncoding=UTF-8 \
-            -Dsonar.qualitygate.wait=true \
-            -Dsonar.qualitygate.timeout=600
+            -Dsonar.organization=kless31332 \
+            -Dsonar.qualitygate.wait=true
 
   docker-build:
     name: Artifact Creation (Docker Image)
