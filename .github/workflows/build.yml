@@ -154,7 +154,6 @@ jobs:
             cd user-service
           fi
           
-          # Пробуем без указания organization
           mvn clean verify sonar:sonar \
             -Dsonar.projectKey=kless3_internship \
             -Dsonar.projectName="User Service" \
