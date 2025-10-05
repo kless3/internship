@@ -1,43 +1,47 @@
 package com.internship.auth_service.model;
 
 import jakarta.persistence.*;
-import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
 @Entity
 @Table(name = "user_credentials")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class UserCredentials {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "login", unique = true, nullable = false, length = 100)
     private String login;
 
-    @Column(name = "password_hash", nullable = false)
+    @Column(name = "password_hash", nullable = false, length = 255)
     private String passwordHash;
 
-    @CreationTimestamp
+    @Column(name = "enabled", nullable = false)
+    private boolean enabled = true;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
-    @JoinColumn(name = "user_login")
-    private List<UserRole> roles;
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
 
-    public List<String> getRolesAsStrings() {
-        return roles.stream()
-                .map(UserRole::getRole)
-                .collect(Collectors.toList());
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }
