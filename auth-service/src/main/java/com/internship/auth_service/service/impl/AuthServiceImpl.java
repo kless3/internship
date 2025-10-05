@@ -24,6 +24,14 @@ public class AuthServiceImpl implements AuthService {
     private final UserCredentialsRepository userCredentialsRepository;
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
+    
+    private static final String INVALID_LOGIN_OR_PASSWORD = "Invalid login or password";
+    private static final String AUTHENTICATION_FAILED = "Authentication failed: ";
+    private static final String INVALID_REFRESH_TOKEN = "Invalid refresh token";
+    private static final String TOKEN_REFRESH_FAILED = "Token refresh failed: ";
+    private static final String USER_NOT_FOUND_MESSAGE = "User not found";
+    private static final String TOKEN_VALIDATION_ERROR = "Token validation error";
+    private static final String TOKEN_IS_VALID = "Token is valid";
 
     @Override
     @Transactional
@@ -44,9 +52,9 @@ public class AuthServiceImpl implements AuthService {
             return new TokenResponse(accessToken, refreshToken, jwtUtil.getAccessTokenExpiration());
 
         } catch (BadCredentialsException e) {
-            throw new AuthenticationException("Invalid login or password");
+            throw new AuthenticationException(INVALID_LOGIN_OR_PASSWORD);
         } catch (Exception e) {
-            throw new AuthenticationException("Authentication failed: " + e.getMessage());
+            throw new AuthenticationException(AUTHENTICATION_FAILED + e.getMessage());
         }
     }
 
@@ -55,7 +63,7 @@ public class AuthServiceImpl implements AuthService {
     public TokenResponse refreshToken(RefreshTokenRequest refreshTokenRequest) {
         try {
             if (!jwtUtil.validateToken(refreshTokenRequest.getRefreshToken())) {
-                throw new InvalidTokenException("Invalid refresh token");
+                throw new InvalidTokenException(INVALID_REFRESH_TOKEN);
             }
 
             String login = jwtUtil.extractLogin(refreshTokenRequest.getRefreshToken());
@@ -72,7 +80,7 @@ public class AuthServiceImpl implements AuthService {
         } catch (AuthServiceException e) {
             throw e;
         } catch (Exception e) {
-            throw new InvalidTokenException("Token refresh failed: " + e.getMessage());
+            throw new InvalidTokenException(TOKEN_REFRESH_FAILED + e.getMessage());
         }
     }
 
@@ -81,19 +89,19 @@ public class AuthServiceImpl implements AuthService {
     public TokenValidationResponse validateToken(ValidateTokenRequest validateTokenRequest) {
         try {
             if (!jwtUtil.validateToken(validateTokenRequest.getToken())) {
-                return new TokenValidationResponse(false, null, "Invalid token");
+                return new TokenValidationResponse(false, null, INVALID_REFRESH_TOKEN);
             }
 
             String login = jwtUtil.extractLogin(validateTokenRequest.getToken());
 
             if (!userCredentialsRepository.existsByLogin(login)) {
-                return new TokenValidationResponse(false, null, "User not found");
+                return new TokenValidationResponse(false, null, USER_NOT_FOUND_MESSAGE);
             }
 
-            return new TokenValidationResponse(true, login, "Token is valid");
+            return new TokenValidationResponse(true, login, TOKEN_IS_VALID);
 
         } catch (Exception e) {
-            return new TokenValidationResponse(false, null, "Token validation error");
+            return new TokenValidationResponse(false, null, TOKEN_VALIDATION_ERROR);
         }
     }
 
