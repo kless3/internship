@@ -1,0 +1,116 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-insert-test-data
+      author: Yafimchyk
+      changes:
+        - insert:
+            tableName: users
+            columns:
+              - column:
+                  name: name
+                  value: "Ryhor"
+              - column:
+                  name: surname
+                  value: "Kisly"
+              - column:
+                  name: birth_date
+                  value: "1999-05-15"
+              - column:
+                  name: email
+                  value: "ryhor.kisly@example.com"
+
+        - insert:
+            tableName: users
+            columns:
+              - column:
+                  name: name
+                  value: "Maks"
+              - column:
+                  name: surname
+                  value: "Yafimchyk"
+              - column:
+                  name: birth_date
+                  value: "2007-04-15"
+              - column:
+                  name: email
+                  value: "maks.yafimchyk@example.com"
+
+        - insert:
+            tableName: users
+            columns:
+              - column:
+                  name: name
+                  value: "Bob"
+              - column:
+                  name: surname
+                  value: "Wilson"
+              - column:
+                  name: birth_date
+                  value: "1995-08-03"
+              - column:
+                  name: email
+                  value: "bob.wilson@example.com"
+
+        - insert:
+            tableName: card_info
+            columns:
+              - column:
+                  name: user_id
+                  value: 1
+              - column:
+                  name: number
+                  value: "4111111111111111"
+              - column:
+                  name: holder
+                  value: "RYHOR KISLY"
+              - column:
+                  name: expiration_date
+                  value: "2026-12-31"
+
+        - insert:
+            tableName: card_info
+            columns:
+              - column:
+                  name: user_id
+                  value: 1
+              - column:
+                  name: number
+                  value: "5555555555554444"
+              - column:
+                  name: holder
+                  value: "RYHOR KISLY"
+              - column:
+                  name: expiration_date
+                  value: "2025-06-30"
+
+        - insert:
+            tableName: card_info
+            columns:
+              - column:
+                  name: user_id
+                  value: 2
+              - column:
+                  name: number
+                  value: "378282246310005"
+              - column:
+                  name: holder
+                  value: "MAKS YAFIMCHYK"
+              - column:
+                  name: expiration_date
+                  value: "2024-09-30"
+
+        - insert:
+            tableName: card_info
+            columns:
+              - column:
+                  name: user_id
+                  value: 3
+              - column:
+                  name: number
+                  value: "6011111111111117"
+              - column:
+                  name: holder
+                  value: "BOB WILSON"
+              - column:
+                  name: expiration_date
+                  value: "2027-03-31"
