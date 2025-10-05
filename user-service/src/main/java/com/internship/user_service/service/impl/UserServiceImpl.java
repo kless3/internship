@@ -64,13 +64,19 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(key = "'ids_' + #ids.hashCode()", unless = "#result.isEmpty()")
     public List<UserResponseDTO> getUsersByIds(List<Long> ids) {
 
         List<User> users = userRepository.findByIdIn(ids);
         return users.stream()
                 .map(userMapper::toDTO)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public User getUserEntityById(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("User not found with id " + id));
     }
 
     @Override

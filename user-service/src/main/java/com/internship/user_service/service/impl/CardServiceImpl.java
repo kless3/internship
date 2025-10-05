@@ -6,8 +6,8 @@ import com.internship.user_service.mapper.CardInfoMapper;
 import com.internship.user_service.model.CardInfo;
 import com.internship.user_service.model.User;
 import com.internship.user_service.repository.CardInfoRepository;
-import com.internship.user_service.repository.UserRepository;
 import com.internship.user_service.service.CardInfoService;
+import com.internship.user_service.service.UserService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.*;
@@ -22,7 +22,7 @@ import java.util.List;
 public class CardServiceImpl implements CardInfoService {
 
     private final CardInfoRepository cardInfoRepository;
-    private final UserRepository userRepository;
+    private final UserService userService;
     private final CardInfoMapper cardInfoMapper;
 
     @Override
@@ -33,8 +33,7 @@ public class CardServiceImpl implements CardInfoService {
     })
     public CardInfoResponseDTO createCard(Long userId, CardInfoRequestDTO cardInfoRequestDTO) {
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + userId));
+        User user = userService.getUserEntityById(userId);
 
         if (cardInfoRepository.existsByNumber(cardInfoRequestDTO.getNumber())) {
             throw new IllegalArgumentException("Card with number " + cardInfoRequestDTO.getNumber() + " already exists");
@@ -72,7 +71,6 @@ public class CardServiceImpl implements CardInfoService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(key = "'ids_' + #ids.hashCode()")
     public List<CardInfoResponseDTO> getCardsByIds(List<Long> ids) {
 
         List<CardInfo> cards = cardInfoRepository.findByIdIn(ids);
@@ -83,7 +81,6 @@ public class CardServiceImpl implements CardInfoService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(key = "'user_' + #userId")
     public List<CardInfoResponseDTO> getCardsByUserId(Long userId) {
 
         List<CardInfo> cards = cardInfoRepository.findByUserId(userId);

@@ -4,7 +4,8 @@ import com.internship.user_service.dto.CardInfoRequestDTO;
 import com.internship.user_service.dto.CardInfoResponseDTO;
 import com.internship.user_service.exception.DuplicateResourceException;
 import com.internship.user_service.exception.ResourceNotFoundException;
-import com.internship.user_service.service.impl.CardServiceImpl;
+//import com.internship.user_service.service.CardServiceImpl;
+import com.internship.user_service.service.CardInfoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -14,11 +15,11 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/cards")
+@RequestMapping("/api/v1/cards")
 @RequiredArgsConstructor
 public class CardController {
 
-    private final CardServiceImpl cardService;
+    private final CardInfoService cardService;
 
     @GetMapping
     public ResponseEntity<List<CardInfoResponseDTO>> getAllCards() {

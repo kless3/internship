@@ -2,6 +2,7 @@ package com.internship.user_service.service;
 
 import com.internship.user_service.dto.UserRequestDTO;
 import com.internship.user_service.dto.UserResponseDTO;
+import com.internship.user_service.model.User;
 
 import java.util.List;
 
@@ -18,6 +19,8 @@ public interface UserService {
     List<UserResponseDTO> getAllUsers();
 
     UserResponseDTO updateUser(Long id, UserRequestDTO userRequestDTO);
+
+    User getUserEntityById(Long id);
 
     void deleteUser(Long id);
 

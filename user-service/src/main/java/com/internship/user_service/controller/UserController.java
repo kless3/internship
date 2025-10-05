@@ -4,7 +4,7 @@ import com.internship.user_service.dto.UserRequestDTO;
 import com.internship.user_service.dto.UserResponseDTO;
 import com.internship.user_service.exception.DuplicateResourceException;
 import com.internship.user_service.exception.ResourceNotFoundException;
-import com.internship.user_service.service.impl.UserServiceImpl;
+import com.internship.user_service.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -14,11 +14,11 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
 public class UserController {
 
-    private final UserServiceImpl userService;
+    private final UserService userService;
 
     @GetMapping
     public ResponseEntity<List<UserResponseDTO>> getAllUsers() {
