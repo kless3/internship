@@ -1,6 +1,5 @@
 package com.internship.auth_service.security;
 
-import com.internship.auth_service.security.JwtUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
