@@ -6,7 +6,7 @@ import com.internship.user_service.mapper.CardInfoMapper;
 import com.internship.user_service.model.CardInfo;
 import com.internship.user_service.model.User;
 import com.internship.user_service.repository.CardInfoRepository;
-import com.internship.user_service.repository.UserRepository;
+import com.internship.user_service.service.UserService;
 import com.internship.user_service.service.impl.CardServiceImpl;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,7 +33,7 @@ class CardServiceImplTest {
     private CardInfoRepository cardInfoRepository;
 
     @Mock
-    private UserRepository userRepository;
+    private UserService userService;
 
     @Mock
     private CardInfoMapper cardInfoMapper;
@@ -68,7 +68,7 @@ class CardServiceImplTest {
     @Test
     @DisplayName("Create card - success")
     void createCard_Success() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userService.getUserEntityById(1L)).thenReturn(null);
         when(cardInfoRepository.existsByNumber(cardInfoRequestDTO.getNumber())).thenReturn(false);
         when(cardInfoMapper.toEntity(cardInfoRequestDTO)).thenReturn(cardInfo);
         when(cardInfoRepository.save(cardInfo)).thenReturn(cardInfo);
@@ -82,18 +82,9 @@ class CardServiceImplTest {
     }
 
     @Test
-    @DisplayName("Create card - user not found, should throw exception")
-    void createCard_UserNotFound_ThrowsException() {
-        when(userRepository.findById(1L)).thenReturn(Optional.empty());
-
-        assertThrows(EntityNotFoundException.class, () ->
-                cardService.createCard(1L, cardInfoRequestDTO));
-    }
-
-    @Test
     @DisplayName("Create card - card number exists, should throw exception")
     void createCard_CardNumberExists_ThrowsException() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userService.getUserEntityById(1L)).thenReturn(null);
         when(cardInfoRepository.existsByNumber(cardInfoRequestDTO.getNumber())).thenReturn(true);
 
         assertThrows(IllegalArgumentException.class, () ->
