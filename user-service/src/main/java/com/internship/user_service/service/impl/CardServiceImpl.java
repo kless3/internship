@@ -21,6 +21,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CardServiceImpl implements CardInfoService {
 
+    private static final String CARD_NOT_FOUND_WITH_ID = "Card not found with id: ";
+    private static final String CARD_NOT_FOUND_WITH_NUMBER = "Card not found with number: ";
+    private static final String CARD_ALREADY_EXISTS_WITH_NUMBER = "Card with number %s already exists";
+
     private final CardInfoRepository cardInfoRepository;
     private final UserService userService;
     private final CardInfoMapper cardInfoMapper;
@@ -36,7 +40,7 @@ public class CardServiceImpl implements CardInfoService {
         User user = userService.getUserEntityById(userId);
 
         if (cardInfoRepository.existsByNumber(cardInfoRequestDTO.getNumber())) {
-            throw new IllegalArgumentException("Card with number " + cardInfoRequestDTO.getNumber() + " already exists");
+            throw new IllegalArgumentException(String.format(CARD_ALREADY_EXISTS_WITH_NUMBER, cardInfoRequestDTO.getNumber()));
         }
 
         CardInfo cardInfo = cardInfoMapper.toEntity(cardInfoRequestDTO);
@@ -53,7 +57,7 @@ public class CardServiceImpl implements CardInfoService {
     public CardInfoResponseDTO getCardById(Long id) {
 
         CardInfo cardInfo = cardInfoRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Card not found with id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException(CARD_NOT_FOUND_WITH_ID + id));
 
         return cardInfoMapper.toDTO(cardInfo);
     }
@@ -64,7 +68,7 @@ public class CardServiceImpl implements CardInfoService {
     public CardInfoResponseDTO getCardByNumber(String number) {
 
         CardInfo cardInfo = cardInfoRepository.findByNumber(number)
-                .orElseThrow(() -> new EntityNotFoundException("Card not found with number: " + number));
+                .orElseThrow(() -> new EntityNotFoundException(CARD_NOT_FOUND_WITH_NUMBER + number));
 
         return cardInfoMapper.toDTO(cardInfo);
     }
@@ -110,16 +114,15 @@ public class CardServiceImpl implements CardInfoService {
     public CardInfoResponseDTO updateCard(Long id, CardInfoRequestDTO cardInfoRequestDTO) {
 
         CardInfo cardInfo = cardInfoRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Card not found with id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException(CARD_NOT_FOUND_WITH_ID + id));
 
         if (!cardInfo.getNumber().equals(cardInfoRequestDTO.getNumber()) &&
                 cardInfoRepository.existsByNumber(cardInfoRequestDTO.getNumber())) {
-            throw new IllegalArgumentException("Card number " + cardInfoRequestDTO.getNumber() + " already exists");
+            throw new IllegalArgumentException(String.format(CARD_ALREADY_EXISTS_WITH_NUMBER, cardInfoRequestDTO.getNumber()));
         }
 
         cardInfoMapper.updateEntityFromDTO(cardInfoRequestDTO, cardInfo);
         CardInfo updatedCard = cardInfoRepository.save(cardInfo);
-
 
         return cardInfoMapper.toDTO(updatedCard);
     }
@@ -133,7 +136,7 @@ public class CardServiceImpl implements CardInfoService {
     public void deleteCard(Long id) {
 
         if (!cardInfoRepository.existsById(id)) {
-            throw new EntityNotFoundException("Card not found with id: " + id);
+            throw new EntityNotFoundException(CARD_NOT_FOUND_WITH_ID + id);
         }
         cardInfoRepository.deleteById(id);
     }
