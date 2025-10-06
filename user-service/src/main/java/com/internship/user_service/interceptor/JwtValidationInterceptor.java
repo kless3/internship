@@ -15,7 +15,6 @@ public class JwtValidationInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-        // Пропускаем публичные endpoints
         if (isPublicEndpoint(request)) {
             return true;
         }
@@ -43,8 +42,7 @@ public class JwtValidationInterceptor implements HandlerInterceptor {
     private boolean isPublicEndpoint(HttpServletRequest request) {
         String path = request.getRequestURI();
         String method = request.getMethod();
-
-        // Публичные endpoints - проверка существования пользователя/email
+        
         return (path.matches("/api/v1/users/\\d+/exists") && "GET".equals(method)) ||
                 (path.matches("/api/v1/users/email/.+/exists") && "GET".equals(method)) ||
                 path.equals("/actuator/health");
