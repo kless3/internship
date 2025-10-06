@@ -22,6 +22,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
+    private static final String USER_NOT_FOUND_WITH_ID = "User not found with id: ";
+    private static final String USER_NOT_FOUND_WITH_EMAIL = "User not found with email: ";
+    private static final String USER_NOT_FOUND_WITH_ID_ENTITY = "User not found with id ";
+    private static final String USER_ALREADY_EXISTS_WITH_EMAIL = "User with email %s already exists";
+    private static final String EMAIL_ALREADY_EXISTS = "Email %s already exists";
+
     private final UserRepository userRepository;
     private final UserMapper userMapper;
 
@@ -31,7 +37,7 @@ public class UserServiceImpl implements UserService {
     public UserResponseDTO createUser(UserRequestDTO userRequestDTO) {
 
         if (userRepository.existsByEmail(userRequestDTO.getEmail())) {
-            throw new IllegalArgumentException("User with email " + userRequestDTO.getEmail() + " already exists");
+            throw new IllegalArgumentException(String.format(USER_ALREADY_EXISTS_WITH_EMAIL, userRequestDTO.getEmail()));
         }
 
         User user = userMapper.toEntity(userRequestDTO);
@@ -46,7 +52,7 @@ public class UserServiceImpl implements UserService {
     public UserResponseDTO getUserById(Long id) {
 
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException(USER_NOT_FOUND_WITH_ID + id));
 
         return userMapper.toDTO(user);
     }
@@ -57,7 +63,7 @@ public class UserServiceImpl implements UserService {
     public UserResponseDTO getUserByEmail(String email) {
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new EntityNotFoundException("User not found with email: " + email));
+                .orElseThrow(() -> new EntityNotFoundException(USER_NOT_FOUND_WITH_EMAIL + email));
 
         return userMapper.toDTO(user);
     }
@@ -76,7 +82,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public User getUserEntityById(Long id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("User not found with id " + id));
+                .orElseThrow(() -> new EntityNotFoundException(USER_NOT_FOUND_WITH_ID_ENTITY + id));
     }
 
     @Override
@@ -97,11 +103,11 @@ public class UserServiceImpl implements UserService {
     public UserResponseDTO updateUser(Long id, UserRequestDTO userRequestDTO) {
 
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException(USER_NOT_FOUND_WITH_ID + id));
 
         if (!user.getEmail().equals(userRequestDTO.getEmail()) &&
                 userRepository.existsByEmail(userRequestDTO.getEmail())) {
-            throw new IllegalArgumentException("Email " + userRequestDTO.getEmail() + " already exists");
+            throw new IllegalArgumentException(String.format(EMAIL_ALREADY_EXISTS, userRequestDTO.getEmail()));
         }
 
         userMapper.updateEntityFromDTO(userRequestDTO, user);
@@ -116,7 +122,7 @@ public class UserServiceImpl implements UserService {
     public void deleteUser(Long id) {
 
         if (!userRepository.existsById(id)) {
-            throw new EntityNotFoundException("User not found with id: " + id);
+            throw new EntityNotFoundException(USER_NOT_FOUND_WITH_ID + id);
         }
 
         userRepository.deleteById(id);
