@@ -42,7 +42,7 @@ public class JwtValidationInterceptor implements HandlerInterceptor {
     private boolean isPublicEndpoint(HttpServletRequest request) {
         String path = request.getRequestURI();
         String method = request.getMethod();
-        
+
         return (path.matches("/api/v1/users/\\d+/exists") && "GET".equals(method)) ||
                 (path.matches("/api/v1/users/email/.+/exists") && "GET".equals(method)) ||
                 path.equals("/actuator/health");
