@@ -6,6 +6,7 @@ import com.internship.auth_service.model.UserCredentials;
 import com.internship.auth_service.repository.UserCredentialsRepository;
 import com.internship.auth_service.service.AuthService;
 import com.internship.auth_service.security.JwtUtil;
+import com.internship.auth_service.service.UserServiceClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -16,6 +17,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Map;
+
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
@@ -24,6 +27,7 @@ public class AuthServiceImpl implements AuthService {
     private final UserCredentialsRepository userCredentialsRepository;
     private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
+    private final UserServiceClient userServiceClient;
     
     private static final String INVALID_LOGIN_OR_PASSWORD = "Invalid login or password";
     private static final String AUTHENTICATION_FAILED = "Authentication failed: ";
@@ -117,7 +121,21 @@ public class AuthServiceImpl implements AuthService {
         userCredentials.setPasswordHash(passwordEncoder.encode(registerRequest.getPassword()));
         userCredentials.setEnabled(true);
 
-        userCredentialsRepository.save(userCredentials);
+        UserCredentials savedUser = userCredentialsRepository.save(userCredentials);
+
+        Map<String, Object> userProfileData = Map.of(
+                "name", registerRequest.getName(),
+                "surname", registerRequest.getSurname(),
+                "birthDate", registerRequest.getBirthDate(),
+                "email", registerRequest.getEmail()
+        );
+
+        boolean userProfileCreated = userServiceClient.createUserProfile(userProfileData);
+
+        if (!userProfileCreated) {
+            userCredentialsRepository.delete(savedUser);
+            throw new RuntimeException("Failed to create user profile");
+        }
     }
 
     @Override

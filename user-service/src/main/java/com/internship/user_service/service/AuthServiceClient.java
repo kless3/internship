@@ -51,7 +51,7 @@ public class AuthServiceClient {
             ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
 
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                return (String) response.getBody().get("login");
+                return (String) response.getBody().get("login"); // получаем логин
             }
             return null;
         } catch (Exception e) {
