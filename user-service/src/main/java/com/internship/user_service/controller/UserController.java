@@ -20,6 +20,11 @@ public class UserController {
 
     private final UserService userService;
 
+    private static final String USER_NOT_FOUND_BY_ID = "User not found with id: ";
+    private static final String USER_NOT_FOUND_BY_EMAIL = "User not found with email: ";
+    private static final String USER_EMAIL_ALREADY_EXISTS = "User with email %s already exists";
+    private static final String EMAIL_ALREADY_EXISTS = "Email %s already exists";
+
     @GetMapping
     public ResponseEntity<List<UserResponseDTO>> getAllUsers() {
         List<UserResponseDTO> users = userService.getAllUsers();
@@ -30,16 +35,16 @@ public class UserController {
     public ResponseEntity<UserResponseDTO> getUserById(@PathVariable Long id) {
         UserResponseDTO user = userService.getUserById(id);
         if (user == null) {
-            throw new ResourceNotFoundException("User not found with id: " + id);
+            throw new ResourceNotFoundException(USER_NOT_FOUND_BY_ID + id);
         }
         return ResponseEntity.ok(user);
     }
 
-    @GetMapping("/email")
-    public ResponseEntity<UserResponseDTO> getUserByEmail(@RequestParam String email) {
+    @GetMapping("/email/{email}")
+    public ResponseEntity<UserResponseDTO> getUserByEmail(@PathVariable String email) {
         UserResponseDTO user = userService.getUserByEmail(email);
         if (user == null) {
-            throw new ResourceNotFoundException("User not found with email: " + email);
+            throw new ResourceNotFoundException(USER_NOT_FOUND_BY_EMAIL + email);
         }
         return ResponseEntity.ok(user);
     }
@@ -68,7 +73,7 @@ public class UserController {
             UserResponseDTO createdUser = userService.createUser(userRequest);
             return new ResponseEntity<>(createdUser, HttpStatus.CREATED);
         } catch (DuplicateResourceException e) {
-            throw new DuplicateResourceException("User with email " + userRequest.getEmail() + " already exists");
+            throw new DuplicateResourceException(String.format(USER_EMAIL_ALREADY_EXISTS, userRequest.getEmail()));
         }
     }
 
@@ -78,9 +83,9 @@ public class UserController {
             UserResponseDTO updatedUser = userService.updateUser(id, updateRequest);
             return ResponseEntity.ok(updatedUser);
         } catch (ResourceNotFoundException e) {
-            throw new ResourceNotFoundException("User not found with id: " + id);
+            throw new ResourceNotFoundException(USER_NOT_FOUND_BY_ID + id);
         } catch (DuplicateResourceException e) {
-            throw new DuplicateResourceException("Email " + updateRequest.getEmail() + " already exists");
+            throw new DuplicateResourceException(String.format(EMAIL_ALREADY_EXISTS, updateRequest.getEmail()));
         }
     }
 
@@ -90,8 +95,7 @@ public class UserController {
             userService.deleteUser(id);
             return ResponseEntity.noContent().build();
         } catch (ResourceNotFoundException e) {
-            throw new ResourceNotFoundException("User not found with id: " + id);
+            throw new ResourceNotFoundException(USER_NOT_FOUND_BY_ID + id);
         }
     }
-
 }

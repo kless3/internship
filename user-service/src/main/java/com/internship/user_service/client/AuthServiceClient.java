@@ -1,4 +1,4 @@
-package com.internship.user_service.service;
+package com.internship.user_service.client;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -51,7 +51,7 @@ public class AuthServiceClient {
             ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
 
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                return (String) response.getBody().get("login"); // получаем логин
+                return (String) response.getBody().get("login");
             }
             return null;
         } catch (Exception e) {
