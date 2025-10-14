@@ -22,15 +22,14 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
-    private final UserRepository userRepository;
-    private final UserMapper userMapper;
-
     private static final String USER_NOT_FOUND_WITH_ID = "User not found with id: ";
     private static final String USER_NOT_FOUND_WITH_EMAIL = "User not found with email: ";
     private static final String USER_NOT_FOUND_WITH_ID_ENTITY = "User not found with id ";
     private static final String USER_ALREADY_EXISTS_WITH_EMAIL = "User with email %s already exists";
     private static final String EMAIL_ALREADY_EXISTS = "Email %s already exists";
 
+    private final UserRepository userRepository;
+    private final UserMapper userMapper;
 
     @Override
     @Transactional

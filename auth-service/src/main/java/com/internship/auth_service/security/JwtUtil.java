@@ -1,5 +1,6 @@
 package com.internship.auth_service.security;
 
+import com.internship.auth_service.exception.AuthenticationException;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,6 +12,8 @@ import java.util.Date;
 
 @Component
 public class JwtUtil {
+
+    private static final String JWT_AUTHENTICATION_FAIL = "Invalid JWT token";
 
     @Value("${jwt.secret}")
     private String jwtSecret;
@@ -51,16 +54,20 @@ public class JwtUtil {
     public String extractLogin(String token) {
         try {
             return extractClaim(token, Claims::getSubject);
-        } catch (Exception e) {
-            return null;
+        } catch (ExpiredJwtException e) {
+            return e.getClaims().getSubject();
+        } catch (JwtException | IllegalArgumentException e) {
+            throw new AuthenticationException(JWT_AUTHENTICATION_FAIL);
         }
     }
 
     public Date extractExpiration(String token) {
         try {
             return extractClaim(token, Claims::getExpiration);
-        } catch (Exception e) {
-            return null;
+        } catch (ExpiredJwtException e) {
+            return e.getClaims().getExpiration();
+        } catch (JwtException | IllegalArgumentException e) {
+            throw new AuthenticationException(JWT_AUTHENTICATION_FAIL);
         }
     }
 
@@ -70,11 +77,17 @@ public class JwtUtil {
     }
 
     private Claims extractAllClaims(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
+        try {
+            return Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+        } catch (ExpiredJwtException e) {
+            return e.getClaims();
+        } catch (JwtException | IllegalArgumentException e) {
+            throw new AuthenticationException(JWT_AUTHENTICATION_FAIL);
+        }
     }
 
     public boolean validateToken(String token) {
@@ -84,14 +97,18 @@ public class JwtUtil {
                     .build()
                     .parseClaimsJws(token);
             return true;
-        } catch (Exception e) {
+        } catch (JwtException | IllegalArgumentException e) {
             return false;
         }
     }
 
     public boolean isTokenExpired(String token) {
-        Date expiration = extractExpiration(token);
-        return expiration != null && expiration.before(new Date());
+        try {
+            Date expiration = extractExpiration(token);
+            return expiration.before(new Date());
+        } catch (AuthenticationException e) {
+            return true;
+        }
     }
 
     public Long getAccessTokenExpiration() {
