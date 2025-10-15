@@ -14,7 +14,6 @@ jobs:
   build-and-test:
     name: Build and Test Services
     runs-on: ubuntu-latest
-    timeout-minutes: 30
 
     services:
       postgres:
@@ -46,13 +45,10 @@ jobs:
         service:
           - path: "user-service"
             name: "userservice"
-            build-tool: "maven"
           - path: "auth-service"
             name: "authenticationservice"
-            build-tool: "maven"
           - path: "order-service"
             name: "orderservice"
-            build-tool: "gradle"
 
     steps:
       - name: Checkout code from order-service branch
@@ -67,24 +63,15 @@ jobs:
           java-version: '21'
           distribution: 'zulu'
 
-      - name: Grant execute permission for gradlew
-        if: matrix.service.build-tool == 'gradle'
-        run: chmod +x ./order-service/gradlew
-
       - name: Create separate databases for each service
         run: |
-          for db in auth internship order_db; do
-            psql postgresql://postgres:postgres@localhost:5432/postgres -c "SELECT 'CREATE DATABASE $db' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '$db')\gexec" || echo "Database $db might already exist or error occurred"
-          done
-          echo "Databases created/verified successfully"
-
-      - name: Wait for databases to be ready
-        run: |
-          sleep 5
-          psql postgresql://postgres:postgres@localhost:5432/postgres -c "\l" || echo "Failed to list databases"
+          psql postgresql://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE auth;"
+          psql postgresql://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE internship;"
+          psql postgresql://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE order_db;"
+          echo "Databases created successfully"
 
       - name: Cache Maven dependencies
-        if: matrix.service.build-tool == 'maven'
+        if: matrix.service.path == 'user-service' || matrix.service.path == 'auth-service'
         uses: actions/cache@v4
         with:
           path: ~/.m2
@@ -93,52 +80,45 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: Cache Gradle dependencies
-        if: matrix.service.build-tool == 'gradle'
+        if: matrix.service.path == 'order-service'
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
+          restore-keys: ${{ runner.os }}-gradle
 
       - name: Build ${{ matrix.service.name }}
-        timeout-minutes: 10
         run: |
           cd ${{ matrix.service.path }}
-          if [ "${{ matrix.service.build-tool }}" == "maven" ]; then
+          if [ -f "pom.xml" ]; then
             echo "Building Maven project: ${{ matrix.service.path }}"
-            mvn clean compile -DskipTests --no-transfer-progress
-          else
+            mvn clean compile -DskipTests
+          elif [ -f "build.gradle" ]; then
             echo "Building Gradle project: ${{ matrix.service.path }}"
-            chmod +x ../gradlew
-            ../gradlew clean build -x test --no-daemon --console=plain
+            ./gradlew clean build -x test --info
           fi
 
       - name: Run Unit Tests for ${{ matrix.service.name }}
-        timeout-minutes: 15
         run: |
           cd ${{ matrix.service.path }}
-          if [ "${{ matrix.service.build-tool }}" == "maven" ]; then
+          if [ -f "pom.xml" ]; then
             echo "Running Maven tests: ${{ matrix.service.path }}"
-            mvn test jacoco:report --no-transfer-progress -Dmaven.test.failure.ignore=true
-          else
+            mvn test jacoco:report
+          elif [ -f "build.gradle" ]; then
             echo "Running Gradle tests: ${{ matrix.service.path }}"
-            chmod +x ../gradlew
-            ../gradlew test jacocoTestReport --no-daemon --console=plain --continue
+            ./gradlew test jacocoTestReport --info
           fi
 
       - name: Verify test results for ${{ matrix.service.name }}
         run: |
           cd ${{ matrix.service.path }}
           echo "=== Test Results for ${{ matrix.service.path }} ==="
-          if [ "${{ matrix.service.build-tool }}" == "maven" ]; then
-            find target/surefire-reports -name "*.txt" 2>/dev/null | head -5 || echo "No Maven test reports"
-            ls -la target/site/jacoco/ 2>/dev/null || echo "No Maven JaCoCo reports"
-          else
-            find build/test-results/test -name "*.xml" 2>/dev/null | head -5 || echo "No Gradle test results"
-            ls -la build/reports/jacoco/ 2>/dev/null || echo "No Gradle JaCoCo reports"
+          if [ -f "pom.xml" ]; then
+            ls -la target/surefire-reports/ || echo "No Maven test reports"
+            ls -la target/site/jacoco/ || echo "No Maven JaCoCo reports"
+          elif [ -f "build.gradle" ]; then
+            ls -la build/test-results/test/ || echo "No Gradle test results"
+            ls -la build/reports/jacoco/ || echo "No Gradle JaCoCo reports"
           fi
 
       - name: Upload test results
@@ -157,7 +137,6 @@ jobs:
     name: SonarQube Analysis
     runs-on: ubuntu-latest
     needs: build-and-test
-    timeout-minutes: 25
 
     steps:
       - name: Checkout code from order-service branch
@@ -172,9 +151,6 @@ jobs:
           java-version: '21'
           distribution: 'zulu'
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x ./order-service/gradlew
-
       - name: Cache SonarQube packages
         uses: actions/cache@v4
         with:
@@ -182,59 +158,69 @@ jobs:
           key: ${{ runner.os }}-sonar-order-service
           restore-keys: ${{ runner.os }}-sonar-order-service
 
-      - name: Run Sonar analysis for all services together
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
+          restore-keys: ${{ runner.os }}-gradle
+
+      - name: Run Sonar analysis for all services
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          echo "Running Sonar analysis for all services in single project..."
+          echo "Running Sonar analysis from order-service branch..."
           
-          echo "Building User Service with coverage..."
+          # User Service (Maven)
+          echo "Analyzing User Service..."
           cd user-service
-          mvn clean test jacoco:report -DskipTests=false --no-transfer-progress -Dmaven.test.failure.ignore=true
-          
-          echo "Building Auth Service with coverage..."
-          cd ../auth-service
-          mvn clean test jacoco:report -DskipTests=false --no-transfer-progress -Dmaven.test.failure.ignore=true
-          
-          echo "Building Order Service with coverage..."
-          cd ../order-service
-          chmod +x ../gradlew
-          ../gradlew clean test jacocoTestReport --no-daemon --console=plain --continue
-          
-          cd ..
-          
           mvn sonar:sonar \
-            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }} \
-            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} \
+            -Dsonar.projectKey=kless3_internship_userservice \
+            -Dsonar.organization=kless31332 \
             -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
+            -Dsonar.branch.name=order-service
+          
+          # Auth Service (Maven)
+          echo "Analyzing Auth Service..."
+          cd ../auth-service
+          mvn sonar:sonar \
+            -Dsonar.projectKey=kless3_internship_authservice \
+            -Dsonar.organization=kless31332 \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
+            -Dsonar.branch.name=order-service
+
+          # Order Service (Gradle)
+          echo "Analyzing Order Service..."
+          cd ../order-service
+          ./gradlew sonar \
             -Dsonar.branch.name=order-service \
-            -Dsonar.sources=user-service/src/main/java,auth-service/src/main/java,order-service/src/main/java \
-            -Dsonar.tests=user-service/src/test/java,auth-service/src/test/java,order-service/src/test/java \
-            -Dsonar.java.binaries=user-service/target/classes,auth-service/target/classes,order-service/build/classes/java/main \
-            -Dsonar.coverage.jacoco.xmlReportPaths=user-service/target/site/jacoco/jacoco.xml,auth-service/target/site/jacoco/jacoco.xml,order-service/build/reports/jacoco/test/jacocoTestReport.xml \
-            -Dsonar.junit.reportPaths=user-service/target/surefire-reports/*.xml,auth-service/target/surefire-reports/*.xml,order-service/build/test-results/test/*.xml \
-            -Dsonar.sourceEncoding=UTF-8 \
-            --no-transfer-progress
+            --info
 
   artifact-creation:
     name: Create Artifacts
     runs-on: ubuntu-latest
     needs: sonar-analysis
     if: github.ref == 'refs/heads/order-service'
-    timeout-minutes: 20
 
     strategy:
       matrix:
         service:
           - path: "user-service"
             name: "userservice"
-            build-tool: "maven"
           - path: "auth-service"
             name: "authservice"
-            build-tool: "maven"
           - path: "order-service"
             name: "orderservice"
-            build-tool: "gradle"
 
     steps:
       - name: Checkout code from order-service branch
@@ -248,21 +234,15 @@ jobs:
           java-version: '21'
           distribution: 'zulu'
 
-      - name: Grant execute permission for gradlew
-        if: matrix.service.build-tool == 'gradle'
-        run: chmod +x ./order-service/gradlew
-
       - name: Build JAR for ${{ matrix.service.name }}
-        timeout-minutes: 10
         run: |
           cd ${{ matrix.service.path }}
-          if [ "${{ matrix.service.build-tool }}" == "maven" ]; then
+          if [ -f "pom.xml" ]; then
             echo "Building Maven JAR: ${{ matrix.service.path }}"
-            mvn clean package -DskipTests --no-transfer-progress
-          else
+            mvn clean package -DskipTests
+          elif [ -f "build.gradle" ]; then
             echo "Building Gradle JAR: ${{ matrix.service.path }}"
-            chmod +x ../gradlew
-            ../gradlew clean build -x test --no-daemon --console=plain
+            ./gradlew clean build -x test --info
           fi
 
       - name: Upload JAR artifacts from order-service branch
@@ -279,11 +259,12 @@ jobs:
           cd ${{ matrix.service.path }}
           mkdir -p deployment
           
-          if [ "${{ matrix.service.build-tool }}" == "maven" ]; then
-            cp target/*.jar deployment/ 2>/dev/null || echo "No JAR files found"
+          
+          if [ -f "pom.xml" ]; then
+            cp target/*.jar deployment/
             cp -r src/main/resources/* deployment/ 2>/dev/null || true
-          else
-            cp build/libs/*.jar deployment/ 2>/dev/null || echo "No JAR files found"
+          elif [ -f "build.gradle" ]; then
+            cp build/libs/*.jar deployment/
             cp -r src/main/resources/* deployment/ 2>/dev/null || true
           fi
           
