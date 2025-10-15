@@ -63,12 +63,16 @@ jobs:
           java-version: '21'
           distribution: 'zulu'
 
+      - name: Grant execute permission for gradlew
+        if: matrix.service.path == 'order-service'
+        run: chmod +x ./order-service/gradlew
+
       - name: Create separate databases for each service
         run: |
-          psql postgresql://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE auth;"
-          psql postgresql://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE internship;"
-          psql postgresql://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE order_db;"
-          echo "Databases created successfully"
+          psql postgresql://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE auth;" || echo "Database auth might already exist"
+          psql postgresql://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE internship;" || echo "Database internship might already exist"
+          psql postgresql://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE order_db;" || echo "Database order_db might already exist"
+          echo "Databases created/verified successfully"
 
       - name: Cache Maven dependencies
         if: matrix.service.path == 'user-service' || matrix.service.path == 'auth-service'
@@ -83,9 +87,12 @@ jobs:
         if: matrix.service.path == 'order-service'
         uses: actions/cache@v4
         with:
-          path: ~/.gradle/caches
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
-          restore-keys: ${{ runner.os }}-gradle
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
 
       - name: Build ${{ matrix.service.name }}
         run: |
@@ -95,7 +102,8 @@ jobs:
             mvn clean compile -DskipTests
           elif [ -f "build.gradle" ]; then
             echo "Building Gradle project: ${{ matrix.service.path }}"
-            ./gradlew clean build -x test --info
+            chmod +x ../gradlew
+            ../gradlew clean build -x test --info
           fi
 
       - name: Run Unit Tests for ${{ matrix.service.name }}
@@ -106,7 +114,8 @@ jobs:
             mvn test jacoco:report
           elif [ -f "build.gradle" ]; then
             echo "Running Gradle tests: ${{ matrix.service.path }}"
-            ./gradlew test jacocoTestReport --info
+            chmod +x ../gradlew
+            ../gradlew test jacocoTestReport --info
           fi
 
       - name: Verify test results for ${{ matrix.service.name }}
@@ -151,6 +160,9 @@ jobs:
           java-version: '21'
           distribution: 'zulu'
 
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./order-service/gradlew
+
       - name: Cache SonarQube packages
         uses: actions/cache@v4
         with:
@@ -158,53 +170,48 @@ jobs:
           key: ${{ runner.os }}-sonar-order-service
           restore-keys: ${{ runner.os }}-sonar-order-service
 
-      - name: Cache Maven dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
-
-      - name: Cache Gradle dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.gradle/caches
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
-          restore-keys: ${{ runner.os }}-gradle
-
-      - name: Run Sonar analysis for all services
+      - name: Run Sonar analysis for all services together
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          echo "Running Sonar analysis from order-service branch..."
+          echo "Running Sonar analysis for all services in single project..."
           
-          # User Service (Maven)
-          echo "Analyzing User Service..."
+          # Собираем все сервисы и генерируем отчеты покрытия
+          echo "Building User Service with coverage..."
           cd user-service
-          mvn sonar:sonar \
-            -Dsonar.projectKey=kless3_internship_userservice \
-            -Dsonar.organization=kless31332 \
-            -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
-            -Dsonar.branch.name=order-service
+          mvn clean test jacoco:report -DskipTests=false
           
-          # Auth Service (Maven)
-          echo "Analyzing Auth Service..."
+          echo "Building Auth Service with coverage..."
           cd ../auth-service
-          mvn sonar:sonar \
-            -Dsonar.projectKey=kless3_internship_authservice \
-            -Dsonar.organization=kless31332 \
-            -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
-            -Dsonar.branch.name=order-service
-
-          # Order Service (Gradle)
-          echo "Analyzing Order Service..."
+          mvn clean test jacoco:report -DskipTests=false
+          
+          echo "Building Order Service with coverage..."
           cd ../order-service
-          ./gradlew sonar \
-            -Dsonar.branch.name=order-service \
-            --info
+          chmod +x ../gradlew
+          ../gradlew clean test jacocoTestReport --info
+          
+          # Возвращаемся в корень и запускаем Sonar для всего проекта
+          cd ..
+          
+          # Создаем общий sonar-project.properties
+          cat > sonar-project.properties << EOF
+          sonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+          sonar.organization=${{ secrets.SONAR_ORGANIZATION }}
+          sonar.host.url=https://sonarcloud.io
+          sonar.branch.name=order-service
+          sonar.sources=user-service/src/main/java,auth-service/src/main/java,order-service/src/main/java
+          sonar.tests=user-service/src/test/java,auth-service/src/test/java,order-service/src/test/java
+          sonar.java.binaries=user-service/target/classes,auth-service/target/classes,order-service/build/classes
+          sonar.java.libraries=user-service/target/*.jar,auth-service/target/*.jar,order-service/build/libs/*.jar
+          sonar.coverage.jacoco.xmlReportPaths=user-service/target/site/jacoco/jacoco.xml,auth-service/target/site/jacoco/jacoco.xml,order-service/build/reports/jacoco/test/jacocoTestReport.xml
+          sonar.junit.reportPaths=user-service/target/surefire-reports/*.xml,auth-service/target/surefire-reports/*.xml,order-service/build/test-results/test/*.xml
+          sonar.sourceEncoding=UTF-8
+          EOF
+          
+          # Запускаем Sonar сканер
+          mvn sonar:sonar -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }} \
+                         -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} \
+                         -Dsonar.branch.name=order-service
 
   artifact-creation:
     name: Create Artifacts
@@ -234,6 +241,10 @@ jobs:
           java-version: '21'
           distribution: 'zulu'
 
+      - name: Grant execute permission for gradlew
+        if: matrix.service.path == 'order-service'
+        run: chmod +x ./order-service/gradlew
+
       - name: Build JAR for ${{ matrix.service.name }}
         run: |
           cd ${{ matrix.service.path }}
@@ -242,7 +253,8 @@ jobs:
             mvn clean package -DskipTests
           elif [ -f "build.gradle" ]; then
             echo "Building Gradle JAR: ${{ matrix.service.path }}"
-            ./gradlew clean build -x test --info
+            chmod +x ../gradlew
+            ../gradlew clean build -x test --info
           fi
 
       - name: Upload JAR artifacts from order-service branch
@@ -259,12 +271,11 @@ jobs:
           cd ${{ matrix.service.path }}
           mkdir -p deployment
           
-          
           if [ -f "pom.xml" ]; then
-            cp target/*.jar deployment/
+            cp target/*.jar deployment/ 2>/dev/null || echo "No JAR files found"
             cp -r src/main/resources/* deployment/ 2>/dev/null || true
           elif [ -f "build.gradle" ]; then
-            cp build/libs/*.jar deployment/
+            cp build/libs/*.jar deployment/ 2>/dev/null || echo "No JAR files found"
             cp -r src/main/resources/* deployment/ 2>/dev/null || true
           fi
           
