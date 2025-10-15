@@ -1,46 +1,20 @@
-name: CI Pipeline Optimized
+name: CI Pipeline
 
 on:
   push:
-    branches: [ order-service ]
+    branches: [ main, develop ]
   pull_request:
-    branches: [ order-service ]
+    branches: [ main, develop ]
+
+env:
+  REGISTRY: kless3
+  SERVICES: "auth-service user-service order-service"
+  IMAGE_NAME: kless3/internship
 
 jobs:
-  build:
-    name: Build Services
+  build-and-test:
+    name: Build and Test Services
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-
-    strategy:
-      matrix:
-        service: [user-service, auth-service, order-service]
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'zulu'
-
-      - name: Build ${{ matrix.service }}
-        run: |
-          cd ${{ matrix.service }}
-          if [ -f "pom.xml" ]; then
-            mvn clean compile -DskipTests -T 1C --no-transfer-progress
-          elif [ -f "build.gradle" ]; then
-            chmod +x gradlew
-            ./gradlew clean classes -x test --no-daemon
-          fi
-
-  test:
-    name: Run Tests
-    runs-on: ubuntu-latest
-    needs: build
-    timeout-minutes: 30
 
     services:
       postgres:
@@ -48,33 +22,204 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
-        ports: [5432:5432]
+          POSTGRES_DB: internship_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
 
       redis:
         image: redis:7-alpine
-        ports: [6379:6379]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
 
     strategy:
       matrix:
-        service: [user-service, auth-service, order-service]
+        service: [ user-service, auth-service, order-service ]
 
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Java
+      - name: Detect build tool and setup
+        run: |
+          if [ "${{ matrix.service }}" = "order-service" ]; then
+            echo "BUILD_TOOL=gradle" >> $GITHUB_ENV
+          else
+            echo "BUILD_TOOL=maven" >> $GITHUB_ENV
+          fi
+
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           java-version: '21'
-          distribution: 'zulu'
+          distribution: 'temurin'
+          cache: ${{ env.BUILD_TOOL }}
 
-      - name: Run Tests
+      - name: Create database schemas
+        run: |
+          psql postgresql://postgres:postgres@localhost:5432/internship_db -c "CREATE SCHEMA IF NOT EXISTS auth_schema;"
+          psql postgresql://postgres:postgres@localhost:5432/internship_db -c "CREATE SCHEMA IF NOT EXISTS user_schema;"
+          psql postgresql://postgres:postgres@localhost:5432/internship_db -c "CREATE SCHEMA IF NOT EXISTS order_schema;"
+
+      - name: Build ${{ matrix.service }}
         run: |
           cd ${{ matrix.service }}
-          if [ -f "pom.xml" ]; then
-            mvn test -DskipTests=false --no-transfer-progress
-          elif [ -f "build.gradle" ]; then
-            chmod +x gradlew
-            ./gradlew test --no-daemon
+          if [ "${{ env.BUILD_TOOL }}" = "maven" ]; then
+            mvn clean compile -DskipTests
+          else
+            ./gradlew clean compileJava -x test
           fi
+
+      - name: Run tests with coverage for ${{ matrix.service }}
+        run: |
+          cd ${{ matrix.service }}
+          if [ "${{ env.BUILD_TOOL }}" = "maven" ]; then
+            # Для Maven проектов
+            mvn clean test jacoco:report -Djacoco.destDir=target/site/jacoco
+          else
+            # Для Gradle проекта (order-service)
+            ./gradlew test jacocoTestReport
+          fi
+
+      - name: Verify coverage report generation
+        run: |
+          cd ${{ matrix.service }}
+          if [ "${{ env.BUILD_TOOL }}" = "maven" ]; then
+            ls -la target/site/jacoco/ || echo "JaCoCo report not found!"
+          else
+            ls -la build/reports/jacoco/ || echo "JaCoCo report not found!"
+          fi
+
+      - name: Upload test results and coverage reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.service }}
+          path: |
+            ${{ matrix.service }}/target/surefire-reports/
+            ${{ matrix.service }}/target/failsafe-reports/
+            ${{ matrix.service }}/target/site/jacoco/
+            ${{ matrix.service }}/target/jacoco.exec
+            ${{ matrix.service }}/build/reports/tests/
+            ${{ matrix.service }}/build/reports/jacoco/
+          retention-days: 30
+
+  code-analysis:
+    name: Code Analysis
+    runs-on: ubuntu-latest
+    needs: build-and-test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Build all services for Sonar
+        run: |
+          cd user-service && mvn clean compile -DskipTests
+          cd ../auth-service && mvn clean compile -DskipTests
+          cd ../order-service && ./gradlew clean compileJava -x test
+
+      - name: SonarQube Analysis
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: |
+          # User Service (Maven)
+          cd user-service
+          mvn sonar:sonar \
+            -Dsonar.projectKey=kless3_internship_user_service \
+            -Dsonar.projectName='User Service' \
+            -Dsonar.organization=kless31332 \
+            -Dsonar.java.binaries=target/classes \
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
+            -Dsonar.qualitygate.wait=true
+
+          # Auth Service (Maven)
+          cd ../auth-service
+          mvn sonar:sonar \
+            -Dsonar.projectKey=kless3_internship_auth_service \
+            -Dsonar.projectName='Auth Service' \
+            -Dsonar.organization=kless31332 \
+            -Dsonar.java.binaries=target/classes \
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
+            -Dsonar.qualitygate.wait=true
+
+          # Order Service (Gradle)
+          cd ../order-service
+          ./gradlew sonar \
+            -Dsonar.projectKey=kless3_internship_order_service \
+            -Dsonar.projectName='Order Service' \
+            -Dsonar.organization=kless31332 \
+            -Dsonar.java.binaries=build/classes/java/main \
+            -Dsonar.coverage.jacoco.xmlReportPaths=build/reports/jacoco/test/jacocoTestReport.xml \
+            -Dsonar.qualitygate.wait=true
+
+  docker-build:
+    name: Build and Push Docker Images
+    runs-on: ubuntu-latest
+    needs: code-analysis
+    if: github.ref == 'refs/heads/main'
+
+    strategy:
+      matrix:
+        service: [ user-service, auth-service, order-service ]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Builds
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build Docker image for ${{ matrix.service }}
+        uses: docker/build-push-action@v5
+        with:
+          context: ./${{ matrix.service }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ matrix.service }}:latest
+            ${{ env.REGISTRY }}/${{ matrix.service }}:${{ github.sha }}
+            ${{ env.IMAGE_NAME }}-${{ matrix.service }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify Docker image for ${{ matrix.service }}
+        run: |
+          docker pull ${{ env.REGISTRY }}/${{ matrix.service }}:latest
+          docker images ${{ env.REGISTRY }}/${{ matrix.service }}
+
+      - name: Scan image for vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ matrix.service }}:latest
+          format: 'sarif'
+          output: 'trivy-results-${{ matrix.service }}.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results-${{ matrix.service }}.sarif'
