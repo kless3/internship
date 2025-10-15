@@ -2,9 +2,9 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ order-service ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ order-service ]
 
 env:
   REGISTRY: MaksimYafimchyk
