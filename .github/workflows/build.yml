@@ -14,7 +14,7 @@ jobs:
   build-and-test:
     name: Build and Test Services
     runs-on: ubuntu-latest
-    timeout-minutes: 30  # Добавляем таймаут для всего job
+    timeout-minutes: 30
 
     services:
       postgres:
@@ -73,10 +73,15 @@ jobs:
 
       - name: Create separate databases for each service
         run: |
-          psql postgresql://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE IF NOT EXISTS auth;"
-          psql postgresql://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE IF NOT EXISTS internship;"
-          psql postgresql://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE IF NOT EXISTS order_db;"
+          for db in auth internship order_db; do
+            psql postgresql://postgres:postgres@localhost:5432/postgres -c "SELECT 'CREATE DATABASE $db' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '$db')\gexec" || echo "Database $db might already exist or error occurred"
+          done
           echo "Databases created/verified successfully"
+
+      - name: Wait for databases to be ready
+        run: |
+          sleep 5
+          psql postgresql://postgres:postgres@localhost:5432/postgres -c "\l" || echo "Failed to list databases"
 
       - name: Cache Maven dependencies
         if: matrix.service.build-tool == 'maven'
@@ -99,7 +104,7 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: Build ${{ matrix.service.name }}
-        timeout-minutes: 10  # Таймаут для сборки
+        timeout-minutes: 10
         run: |
           cd ${{ matrix.service.path }}
           if [ "${{ matrix.service.build-tool }}" == "maven" ]; then
@@ -112,7 +117,7 @@ jobs:
           fi
 
       - name: Run Unit Tests for ${{ matrix.service.name }}
-        timeout-minutes: 15  # Таймаут для тестов
+        timeout-minutes: 15
         run: |
           cd ${{ matrix.service.path }}
           if [ "${{ matrix.service.build-tool }}" == "maven" ]; then
@@ -152,7 +157,7 @@ jobs:
     name: SonarQube Analysis
     runs-on: ubuntu-latest
     needs: build-and-test
-    timeout-minutes: 25  # Таймаут для Sonar анализа
+    timeout-minutes: 25
 
     steps:
       - name: Checkout code from order-service branch
@@ -183,7 +188,6 @@ jobs:
         run: |
           echo "Running Sonar analysis for all services in single project..."
           
-          # Собираем Maven сервисы с покрытием
           echo "Building User Service with coverage..."
           cd user-service
           mvn clean test jacoco:report -DskipTests=false --no-transfer-progress -Dmaven.test.failure.ignore=true
@@ -197,10 +201,8 @@ jobs:
           chmod +x ../gradlew
           ../gradlew clean test jacocoTestReport --no-daemon --console=plain --continue
           
-          # Возвращаемся в корень и запускаем Sonar для всего проекта
           cd ..
           
-          # Запускаем Sonar сканер
           mvn sonar:sonar \
             -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }} \
             -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }} \
@@ -219,7 +221,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: sonar-analysis
     if: github.ref == 'refs/heads/order-service'
-    timeout-minutes: 20  # Таймаут для создания артефактов
+    timeout-minutes: 20
 
     strategy:
       matrix:
