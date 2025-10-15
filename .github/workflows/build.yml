@@ -42,7 +42,13 @@ jobs:
 
     strategy:
       matrix:
-        service: [ userservice, authenticationservice, orderservice ]
+        service:
+          - path: "user-service"
+            name: "userservice"
+          - path: "auth-service"
+            name: "authenticationservice"
+          - path: "order-service"
+            name: "orderservice"
 
     steps:
       - name: Checkout code from order-service branch
@@ -65,7 +71,7 @@ jobs:
           echo "Databases created successfully"
 
       - name: Cache Maven dependencies
-        if: matrix.service == 'userservice' || matrix.service == 'authenticationservice'
+        if: matrix.service.path == 'user-service' || matrix.service.path == 'auth-service'
         uses: actions/cache@v4
         with:
           path: ~/.m2
@@ -74,39 +80,39 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: Cache Gradle dependencies
-        if: matrix.service == 'orderservice'
+        if: matrix.service.path == 'order-service'
         uses: actions/cache@v4
         with:
           path: ~/.gradle/caches
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
           restore-keys: ${{ runner.os }}-gradle
 
-      - name: Build ${{ matrix.service }}
+      - name: Build ${{ matrix.service.name }}
         run: |
-          cd ${{ matrix.service }}
+          cd ${{ matrix.service.path }}
           if [ -f "pom.xml" ]; then
-            echo "Building Maven project: ${{ matrix.service }}"
+            echo "Building Maven project: ${{ matrix.service.path }}"
             mvn clean compile -DskipTests
           elif [ -f "build.gradle" ]; then
-            echo "Building Gradle project: ${{ matrix.service }}"
+            echo "Building Gradle project: ${{ matrix.service.path }}"
             ./gradlew clean build -x test --info
           fi
 
-      - name: Run Unit Tests for ${{ matrix.service }}
+      - name: Run Unit Tests for ${{ matrix.service.name }}
         run: |
-          cd ${{ matrix.service }}
+          cd ${{ matrix.service.path }}
           if [ -f "pom.xml" ]; then
-            echo "Running Maven tests: ${{ matrix.service }}"
+            echo "Running Maven tests: ${{ matrix.service.path }}"
             mvn test jacoco:report
           elif [ -f "build.gradle" ]; then
-            echo "Running Gradle tests: ${{ matrix.service }}"
+            echo "Running Gradle tests: ${{ matrix.service.path }}"
             ./gradlew test jacocoTestReport --info
           fi
 
-      - name: Verify test results for ${{ matrix.service }}
+      - name: Verify test results for ${{ matrix.service.name }}
         run: |
-          cd ${{ matrix.service }}
-          echo "=== Test Results for ${{ matrix.service }} ==="
+          cd ${{ matrix.service.path }}
+          echo "=== Test Results for ${{ matrix.service.path }} ==="
           if [ -f "pom.xml" ]; then
             ls -la target/surefire-reports/ || echo "No Maven test reports"
             ls -la target/site/jacoco/ || echo "No Maven JaCoCo reports"
@@ -119,12 +125,12 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-results-${{ matrix.service }}-order-service
+          name: test-results-${{ matrix.service.name }}-order-service
           path: |
-            ${{ matrix.service }}/target/surefire-reports/
-            ${{ matrix.service }}/target/site/jacoco/
-            ${{ matrix.service }}/build/test-results/
-            ${{ matrix.service }}/build/reports/
+            ${{ matrix.service.path }}/target/surefire-reports/
+            ${{ matrix.service.path }}/target/site/jacoco/
+            ${{ matrix.service.path }}/build/test-results/
+            ${{ matrix.service.path }}/build/reports/
           retention-days: 30
 
   sonar-analysis:
@@ -175,7 +181,7 @@ jobs:
           
           # User Service (Maven)
           echo "Analyzing User Service..."
-          cd userservice
+          cd user-service
           mvn sonar:sonar \
             -Dsonar.projectKey=kless3_internship_userservice \
             -Dsonar.organization=kless31332 \
@@ -183,11 +189,11 @@ jobs:
             -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
             -Dsonar.branch.name=order-service
           
-          # Authentication Service (Maven)
-          echo "Analyzing Authentication Service..."
-          cd ../authenticationservice
+          # Auth Service (Maven)
+          echo "Analyzing Auth Service..."
+          cd ../auth-service
           mvn sonar:sonar \
-            -Dsonar.projectKey=kless3_internship_authenticationservice \
+            -Dsonar.projectKey=kless3_internship_authservice \
             -Dsonar.organization=kless31332 \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
@@ -195,7 +201,7 @@ jobs:
 
           # Order Service (Gradle)
           echo "Analyzing Order Service..."
-          cd ../orderservice
+          cd ../order-service
           ./gradlew sonar \
             -Dsonar.branch.name=order-service \
             --info
@@ -208,7 +214,13 @@ jobs:
 
     strategy:
       matrix:
-        service: [ userservice, authenticationservice, orderservice ]
+        service:
+          - path: "user-service"
+            name: "userservice"
+          - path: "auth-service"
+            name: "authservice"
+          - path: "order-service"
+            name: "orderservice"
 
     steps:
       - name: Checkout code from order-service branch
@@ -222,29 +234,29 @@ jobs:
           java-version: '17'
           distribution: 'zulu'
 
-      - name: Build JAR for ${{ matrix.service }}
+      - name: Build JAR for ${{ matrix.service.name }}
         run: |
-          cd ${{ matrix.service }}
+          cd ${{ matrix.service.path }}
           if [ -f "pom.xml" ]; then
-            echo "Building Maven JAR: ${{ matrix.service }}"
+            echo "Building Maven JAR: ${{ matrix.service.path }}"
             mvn clean package -DskipTests
           elif [ -f "build.gradle" ]; then
-            echo "Building Gradle JAR: ${{ matrix.service }}"
+            echo "Building Gradle JAR: ${{ matrix.service.path }}"
             ./gradlew clean build -x test --info
           fi
 
       - name: Upload JAR artifacts from order-service branch
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.service }}-jar-order-service
+          name: ${{ matrix.service.name }}-jar-order-service
           path: |
-            ${{ matrix.service }}/target/*.jar
-            ${{ matrix.service }}/build/libs/*.jar
+            ${{ matrix.service.path }}/target/*.jar
+            ${{ matrix.service.path }}/build/libs/*.jar
           retention-days: 30
 
       - name: Create deployment package
         run: |
-          cd ${{ matrix.service }}
+          cd ${{ matrix.service.path }}
           mkdir -p deployment
           
           if [ -f "pom.xml" ]; then
@@ -255,7 +267,8 @@ jobs:
             cp -r src/main/resources/* deployment/ 2>/dev/null || true
           fi
           
-          echo "Service: ${{ matrix.service }}" > deployment/version.txt
+          echo "Service: ${{ matrix.service.name }}" > deployment/version.txt
+          echo "Path: ${{ matrix.service.path }}" >> deployment/version.txt
           echo "Branch: order-service" >> deployment/version.txt
           echo "Build: ${{ github.sha }}" >> deployment/version.txt
           echo "Date: $(date)" >> deployment/version.txt
@@ -263,6 +276,6 @@ jobs:
       - name: Upload deployment packages
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.service }}-deployment-order-service
-          path: ${{ matrix.service }}/deployment/**
+          name: ${{ matrix.service.name }}-deployment-order-service
+          path: ${{ matrix.service.path }}/deployment/**
           retention-days: 30
