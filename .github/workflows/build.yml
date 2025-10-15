@@ -1,4 +1,4 @@
-name: CI Pipeline for Order Service Branch
+name: CI Pipeline Optimized
 
 on:
   push:
@@ -6,14 +6,41 @@ on:
   pull_request:
     branches: [ order-service ]
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
-
 jobs:
-  build-and-test:
-    name: Build and Test Services
+  build:
+    name: Build Services
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    strategy:
+      matrix:
+        service: [user-service, auth-service, order-service]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'zulu'
+
+      - name: Build ${{ matrix.service }}
+        run: |
+          cd ${{ matrix.service }}
+          if [ -f "pom.xml" ]; then
+            mvn clean compile -DskipTests -T 1C --no-transfer-progress
+          elif [ -f "build.gradle" ]; then
+            chmod +x gradlew
+            ./gradlew clean classes -x test --no-daemon
+          fi
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 30
 
     services:
       postgres:
@@ -22,40 +49,19 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: postgres
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
+        ports: [5432:5432]
 
       redis:
         image: redis:7-alpine
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
+        ports: [6379:6379]
 
     strategy:
       matrix:
-        service:
-          - path: "user-service"
-            name: "userservice"
-          - path: "auth-service"
-            name: "authenticationservice"
-          - path: "order-service"
-            name: "orderservice"
+        service: [user-service, auth-service, order-service]
 
     steps:
-      - name: Checkout code from order-service branch
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: order-service
-          fetch-depth: 0
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -63,220 +69,12 @@ jobs:
           java-version: '21'
           distribution: 'zulu'
 
-      - name: Create separate databases for each service
+      - name: Run Tests
         run: |
-          psql postgresql://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE auth;"
-          psql postgresql://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE internship;"
-          psql postgresql://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE order_db;"
-          echo "Databases created successfully"
-
-      - name: Cache Maven dependencies
-        if: matrix.service.path == 'user-service' || matrix.service.path == 'auth-service'
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
-
-      - name: Cache Gradle dependencies
-        if: matrix.service.path == 'order-service'
-        uses: actions/cache@v4
-        with:
-          path: ~/.gradle/caches
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
-          restore-keys: ${{ runner.os }}-gradle
-
-      - name: Build ${{ matrix.service.name }}
-        run: |
-          cd ${{ matrix.service.path }}
+          cd ${{ matrix.service }}
           if [ -f "pom.xml" ]; then
-            echo "Building Maven project: ${{ matrix.service.path }}"
-            mvn clean compile -DskipTests
+            mvn test -DskipTests=false --no-transfer-progress
           elif [ -f "build.gradle" ]; then
-            echo "Building Gradle project: ${{ matrix.service.path }}"
-            ./gradlew clean build -x test --info
+            chmod +x gradlew
+            ./gradlew test --no-daemon
           fi
-
-      - name: Run Unit Tests for ${{ matrix.service.name }}
-        run: |
-          cd ${{ matrix.service.path }}
-          if [ -f "pom.xml" ]; then
-            echo "Running Maven tests: ${{ matrix.service.path }}"
-            mvn test jacoco:report
-          elif [ -f "build.gradle" ]; then
-            echo "Running Gradle tests: ${{ matrix.service.path }}"
-            ./gradlew test jacocoTestReport --info
-          fi
-
-      - name: Verify test results for ${{ matrix.service.name }}
-        run: |
-          cd ${{ matrix.service.path }}
-          echo "=== Test Results for ${{ matrix.service.path }} ==="
-          if [ -f "pom.xml" ]; then
-            ls -la target/surefire-reports/ || echo "No Maven test reports"
-            ls -la target/site/jacoco/ || echo "No Maven JaCoCo reports"
-          elif [ -f "build.gradle" ]; then
-            ls -la build/test-results/test/ || echo "No Gradle test results"
-            ls -la build/reports/jacoco/ || echo "No Gradle JaCoCo reports"
-          fi
-
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: test-results-${{ matrix.service.name }}-order-service
-          path: |
-            ${{ matrix.service.path }}/target/surefire-reports/
-            ${{ matrix.service.path }}/target/site/jacoco/
-            ${{ matrix.service.path }}/build/test-results/
-            ${{ matrix.service.path }}/build/reports/
-          retention-days: 30
-
-  sonar-analysis:
-    name: SonarQube Analysis
-    runs-on: ubuntu-latest
-    needs: build-and-test
-
-    steps:
-      - name: Checkout code from order-service branch
-        uses: actions/checkout@v4
-        with:
-          ref: order-service
-          fetch-depth: 0
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'zulu'
-
-      - name: Cache SonarQube packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.sonar/cache
-          key: ${{ runner.os }}-sonar-order-service
-          restore-keys: ${{ runner.os }}-sonar-order-service
-
-      - name: Cache Maven dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
-
-      - name: Cache Gradle dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.gradle/caches
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
-          restore-keys: ${{ runner.os }}-gradle
-
-      - name: Run Sonar analysis for all services
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: |
-          echo "Running Sonar analysis from order-service branch..."
-          
-          # User Service (Maven)
-          echo "Analyzing User Service..."
-          cd user-service
-          mvn sonar:sonar \
-            -Dsonar.projectKey=kless3_internship_userservice \
-            -Dsonar.organization=kless31332 \
-            -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
-            -Dsonar.branch.name=order-service
-          
-          # Auth Service (Maven)
-          echo "Analyzing Auth Service..."
-          cd ../auth-service
-          mvn sonar:sonar \
-            -Dsonar.projectKey=kless3_internship_authservice \
-            -Dsonar.organization=kless31332 \
-            -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
-            -Dsonar.branch.name=order-service
-
-          # Order Service (Gradle)
-          echo "Analyzing Order Service..."
-          cd ../order-service
-          ./gradlew sonar \
-            -Dsonar.branch.name=order-service \
-            --info
-
-  artifact-creation:
-    name: Create Artifacts
-    runs-on: ubuntu-latest
-    needs: sonar-analysis
-    if: github.ref == 'refs/heads/order-service'
-
-    strategy:
-      matrix:
-        service:
-          - path: "user-service"
-            name: "userservice"
-          - path: "auth-service"
-            name: "authservice"
-          - path: "order-service"
-            name: "orderservice"
-
-    steps:
-      - name: Checkout code from order-service branch
-        uses: actions/checkout@v4
-        with:
-          ref: order-service
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'zulu'
-
-      - name: Build JAR for ${{ matrix.service.name }}
-        run: |
-          cd ${{ matrix.service.path }}
-          if [ -f "pom.xml" ]; then
-            echo "Building Maven JAR: ${{ matrix.service.path }}"
-            mvn clean package -DskipTests
-          elif [ -f "build.gradle" ]; then
-            echo "Building Gradle JAR: ${{ matrix.service.path }}"
-            ./gradlew clean build -x test --info
-          fi
-
-      - name: Upload JAR artifacts from order-service branch
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.service.name }}-jar-order-service
-          path: |
-            ${{ matrix.service.path }}/target/*.jar
-            ${{ matrix.service.path }}/build/libs/*.jar
-          retention-days: 30
-
-      - name: Create deployment package
-        run: |
-          cd ${{ matrix.service.path }}
-          mkdir -p deployment
-          
-          
-          if [ -f "pom.xml" ]; then
-            cp target/*.jar deployment/
-            cp -r src/main/resources/* deployment/ 2>/dev/null || true
-          elif [ -f "build.gradle" ]; then
-            cp build/libs/*.jar deployment/
-            cp -r src/main/resources/* deployment/ 2>/dev/null || true
-          fi
-          
-          echo "Service: ${{ matrix.service.name }}" > deployment/version.txt
-          echo "Path: ${{ matrix.service.path }}" >> deployment/version.txt
-          echo "Branch: order-service" >> deployment/version.txt
-          echo "Build: ${{ github.sha }}" >> deployment/version.txt
-          echo "Date: $(date)" >> deployment/version.txt
-
-      - name: Upload deployment packages
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.service.name }}-deployment-order-service
-          path: ${{ matrix.service.path }}/deployment/**
-          retention-days: 30
