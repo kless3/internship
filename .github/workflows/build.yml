@@ -161,3 +161,116 @@ jobs:
             -Dsonar.issue.ignore.multicriteria=e1 \
             -Dsonar.issue.ignore.multicriteria.e1.ruleKey=squid:S00116 \
             -Dsonar.issue.ignore.multicriteria.e1.resourceKey=**/*
+
+  docker-build:
+    name: Artifact Creation (Docker Images)
+    runs-on: ubuntu-latest
+    needs: code-analysis
+    if: github.event_name == 'push' && github.ref == 'refs/heads/order-service'
+
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      matrix:
+        service: [ user-service, auth-service, order-service ]
+        include:
+          - service: auth-service
+            build_tool: maven
+            context: ./auth-service
+          - service: user-service
+            build_tool: maven
+            context: ./user-service
+          - service: order-service
+            build_tool: gradle
+            context: ./order-service
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: ${{ matrix.build_tool }}
+
+      - name: Make gradlew executable (for order-service)
+        if: matrix.service == 'order-service'
+        run: |
+          cd order-service
+          chmod +x ./gradlew
+
+      - name: Build ${{ matrix.service }} with ${{ matrix.build_tool }}
+        run: |
+          cd ${{ matrix.service }}
+          if [ "${{ matrix.build_tool }}" = "maven" ]; then
+            mvn clean package -DskipTests
+          else
+            ./gradlew build -x test
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.service }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest
+
+      - name: Build and push Docker image for ${{ matrix.service }}
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Generate deployment manifest for ${{ matrix.service }}
+        run: |
+          cat > docker-compose-${{ matrix.service }}.yml << EOF
+          version: '3.8'
+          services:
+            ${{ matrix.service }}:
+              image: ghcr.io/${{ github.repository_owner }}/${{ matrix.service }}:latest
+              environment:
+                - SPRING_PROFILES_ACTIVE=prod
+              ports:
+                - "8080:8080"
+              depends_on:
+                - postgres
+                - redis
+            postgres:
+              image: postgres:15-alpine
+              environment:
+                - POSTGRES_DB=postgres
+                - POSTGRES_USER=postgres
+                - POSTGRES_PASSWORD=postgres
+            redis:
+              image: redis:7-alpine
+          EOF
+
+      - name: Upload Docker artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-artifacts
+          path: |
+            docker-compose-*.yml
+          retention-days: 30
