@@ -19,6 +19,8 @@ target/
 *.iml
 *.ipr
 
+.env
+
 user-service/.mvn/
 
 ### NetBeans ###

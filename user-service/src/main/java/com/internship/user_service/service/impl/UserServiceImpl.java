@@ -59,7 +59,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(key = "#email", unless = "#result == null")
+    @Cacheable(key = "'email:' + #email", unless = "#result == null")
     public UserResponseDTO getUserByEmail(String email) {
 
         User user = userRepository.findByEmail(email)

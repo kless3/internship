@@ -7,6 +7,7 @@ import java.util.List;
 
 @Data
 public class UserResponseDTO {
+    private Long id;
     private String name;
     private String surname;
     private LocalDate birthDate;

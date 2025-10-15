@@ -1,6 +1,6 @@
 package com.internship.user_service.interceptor;
 
-import com.internship.user_service.service.AuthServiceClient;
+import com.internship.user_service.client.AuthServiceClient;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;

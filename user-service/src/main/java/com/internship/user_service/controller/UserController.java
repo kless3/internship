@@ -35,8 +35,8 @@ public class UserController {
         return ResponseEntity.ok(user);
     }
 
-    @GetMapping("/email")
-    public ResponseEntity<UserResponseDTO> getUserByEmail(@RequestParam String email) {
+    @GetMapping("/email/{email}")
+    public ResponseEntity<UserResponseDTO> getUserByEmail(@PathVariable String email) {
         UserResponseDTO user = userService.getUserByEmail(email);
         if (user == null) {
             throw new ResourceNotFoundException("User not found with email: " + email);
