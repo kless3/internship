@@ -1,62 +1,27 @@
-name: User Service CI Pipeline
+name: CI Pipeline for Order Service Branch
 
 on:
   push:
-    branches: [ user-service, dev ]
+    branches: [ order-service ]
   pull_request:
-    branches: [ user-service, dev ]
+    branches: [ order-service ]
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build:
-    name: Build
+  build-and-test:
+    name: Build and Test Services
     runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-          cache: 'maven'
-
-      - name: Cache Maven dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
-
-      - name: Build with Maven
-        run: |
-          if [ -d "user-service" ]; then
-            cd user-service
-            mvn clean compile -DskipTests
-          else
-            mvn clean compile -DskipTests
-          fi
-
-  test:
-    name: Testing
-    runs-on: ubuntu-latest
-    needs: build
 
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:15-alpine
         env:
-          POSTGRES_DB: shopdb
-          POSTGRES_USER: shop_user
-          POSTGRES_PASSWORD: shop_password
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -66,7 +31,7 @@ jobs:
           - 5432:5432
 
       redis:
-        image: redis:7.2-alpine
+        image: redis:7-alpine
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 10s
@@ -75,186 +40,229 @@ jobs:
         ports:
           - 6379:6379
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    strategy:
+      matrix:
+        service: [ userservice, authenticationservice, orderservice ]
 
-      - name: Set up JDK 21
+    steps:
+      - name: Checkout code from order-service branch
+        uses: actions/checkout@v4
+        with:
+          ref: order-service
+          fetch-depth: 0
+
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
-          distribution: 'temurin'
-          cache: 'maven'
+          java-version: '17'
+          distribution: 'zulu'
+
+      - name: Create separate databases for each service
+        run: |
+          psql postgresql://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE auth;"
+          psql postgresql://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE internship;"
+          psql postgresql://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE order_db;"
+          echo "Databases created successfully"
 
       - name: Cache Maven dependencies
-        uses: actions/cache@v3
+        if: matrix.service == 'userservice' || matrix.service == 'authenticationservice'
+        uses: actions/cache@v4
         with:
-          path: ~/.m2/repository
+          path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Run unit tests
+      - name: Cache Gradle dependencies
+        if: matrix.service == 'orderservice'
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
+          restore-keys: ${{ runner.os }}-gradle
+
+      - name: Build ${{ matrix.service }}
         run: |
-          if [ -d "user-service" ]; then
-            cd user-service
-            mvn test -DskipITs
-          else
-            mvn test -DskipITs
+          cd ${{ matrix.service }}
+          if [ -f "pom.xml" ]; then
+            echo "Building Maven project: ${{ matrix.service }}"
+            mvn clean compile -DskipTests
+          elif [ -f "build.gradle" ]; then
+            echo "Building Gradle project: ${{ matrix.service }}"
+            ./gradlew clean build -x test --info
           fi
-        env:
-          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/shopdb
-          DATABASE_USERNAME: shop_user
-          DATABASE_PASSWORD: shop_password
-          SPRING_DATA_REDIS_HOST: localhost
-          SPRING_DATA_REDIS_PORT: 6379
+
+      - name: Run Unit Tests for ${{ matrix.service }}
+        run: |
+          cd ${{ matrix.service }}
+          if [ -f "pom.xml" ]; then
+            echo "Running Maven tests: ${{ matrix.service }}"
+            mvn test jacoco:report
+          elif [ -f "build.gradle" ]; then
+            echo "Running Gradle tests: ${{ matrix.service }}"
+            ./gradlew test jacocoTestReport --info
+          fi
+
+      - name: Verify test results for ${{ matrix.service }}
+        run: |
+          cd ${{ matrix.service }}
+          echo "=== Test Results for ${{ matrix.service }} ==="
+          if [ -f "pom.xml" ]; then
+            ls -la target/surefire-reports/ || echo "No Maven test reports"
+            ls -la target/site/jacoco/ || echo "No Maven JaCoCo reports"
+          elif [ -f "build.gradle" ]; then
+            ls -la build/test-results/test/ || echo "No Gradle test results"
+            ls -la build/reports/jacoco/ || echo "No Gradle JaCoCo reports"
+          fi
 
       - name: Upload test results
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: test-results
+          name: test-results-${{ matrix.service }}-order-service
           path: |
-            **/target/surefire-reports/
-            **/target/failsafe-reports/
+            ${{ matrix.service }}/target/surefire-reports/
+            ${{ matrix.service }}/target/site/jacoco/
+            ${{ matrix.service }}/build/test-results/
+            ${{ matrix.service }}/build/reports/
           retention-days: 30
-          if-no-files-found: warn
 
-  sonarqube-analysis:
+  sonar-analysis:
     name: SonarQube Analysis
     runs-on: ubuntu-latest
-    needs: test
+    needs: build-and-test
 
     steps:
-      - name: Checkout code
+      - name: Checkout code from order-service branch
         uses: actions/checkout@v4
         with:
+          ref: order-service
           fetch-depth: 0
 
-      - name: Set up JDK 21
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
-          distribution: 'temurin'
-          cache: 'maven'
+          java-version: '17'
+          distribution: 'zulu'
+
+      - name: Cache SonarQube packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar-order-service
+          restore-keys: ${{ runner.os }}-sonar-order-service
 
       - name: Cache Maven dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
-          path: ~/.m2/repository
+          path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Run analysis without organization
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle') }}
+          restore-keys: ${{ runner.os }}-gradle
+
+      - name: Run Sonar analysis for all services
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          if [ -d "user-service" ] && [ -f "user-service/pom.xml" ]; then
-            cd user-service
-          fi
+          echo "Running Sonar analysis from order-service branch..."
           
-          mvn clean verify sonar:sonar \
-            -Dsonar.projectKey=kless3_internship \
-            -Dsonar.projectName="User Service" \
+          # User Service (Maven)
+          echo "Analyzing User Service..."
+          cd userservice
+          mvn sonar:sonar \
+            -Dsonar.projectKey=kless3_internship_userservice \
+            -Dsonar.organization=kless31332 \
             -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.login=$SONAR_TOKEN
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
+            -Dsonar.branch.name=order-service
+          
+          # Authentication Service (Maven)
+          echo "Analyzing Authentication Service..."
+          cd ../authenticationservice
+          mvn sonar:sonar \
+            -Dsonar.projectKey=kless3_internship_authenticationservice \
+            -Dsonar.organization=kless31332 \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
+            -Dsonar.branch.name=order-service
 
-  docker-build:
-    name: Artifact Creation (Docker Image)
+          # Order Service (Gradle)
+          echo "Analyzing Order Service..."
+          cd ../orderservice
+          ./gradlew sonar \
+            -Dsonar.branch.name=order-service \
+            --info
+
+  artifact-creation:
+    name: Create Artifacts
     runs-on: ubuntu-latest
-    needs: sonarqube-analysis
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/user-service' || github.ref == 'refs/heads/dev')
+    needs: sonar-analysis
+    if: github.ref == 'refs/heads/order-service'
 
-    permissions:
-      contents: read
-      packages: write
+    strategy:
+      matrix:
+        service: [ userservice, authenticationservice, orderservice ]
 
     steps:
-      - name: Checkout code
+      - name: Checkout code from order-service branch
         uses: actions/checkout@v4
+        with:
+          ref: order-service
 
-      - name: Set up JDK 21
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
-          distribution: 'temurin'
-          cache: 'maven'
+          java-version: '17'
+          distribution: 'zulu'
 
-      - name: Cache Maven dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
-
-      - name: Build application
+      - name: Build JAR for ${{ matrix.service }}
         run: |
-          cd user-service
-          mvn clean package -DskipTests
+          cd ${{ matrix.service }}
+          if [ -f "pom.xml" ]; then
+            echo "Building Maven JAR: ${{ matrix.service }}"
+            mvn clean package -DskipTests
+          elif [ -f "build.gradle" ]; then
+            echo "Building Gradle JAR: ${{ matrix.service }}"
+            ./gradlew clean build -x test --info
+          fi
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix={{branch}}-
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./user-service
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Generate deployment manifest
-        run: |
-          cat > docker-compose.ci.yml << EOF
-          version: '3.8'
-          services:
-            app:
-              image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-              environment:
-                - SPRING_PROFILES_ACTIVE=prod
-                - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/shopdb
-                - DATABASE_USERNAME=shop_user
-                - DATABASE_PASSWORD=shop_password
-                - SPRING_DATA_REDIS_HOST=redis
-              ports:
-                - "8080:8080"
-            postgres:
-              image: postgres:16-alpine
-              environment:
-                - POSTGRES_DB=shopdb
-                - POSTGRES_USER=shop_user
-                - POSTGRES_PASSWORD=shop_password
-            redis:
-              image: redis:7.2-alpine
-          EOF
-
-      - name: Upload Docker artifacts
+      - name: Upload JAR artifacts from order-service branch
         uses: actions/upload-artifact@v4
         with:
-          name: docker-artifacts
+          name: ${{ matrix.service }}-jar-order-service
           path: |
-            docker-compose.ci.yml
+            ${{ matrix.service }}/target/*.jar
+            ${{ matrix.service }}/build/libs/*.jar
+          retention-days: 30
+
+      - name: Create deployment package
+        run: |
+          cd ${{ matrix.service }}
+          mkdir -p deployment
+          
+          if [ -f "pom.xml" ]; then
+            cp target/*.jar deployment/
+            cp -r src/main/resources/* deployment/ 2>/dev/null || true
+          elif [ -f "build.gradle" ]; then
+            cp build/libs/*.jar deployment/
+            cp -r src/main/resources/* deployment/ 2>/dev/null || true
+          fi
+          
+          echo "Service: ${{ matrix.service }}" > deployment/version.txt
+          echo "Branch: order-service" >> deployment/version.txt
+          echo "Build: ${{ github.sha }}" >> deployment/version.txt
+          echo "Date: $(date)" >> deployment/version.txt
+
+      - name: Upload deployment packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.service }}-deployment-order-service
+          path: ${{ matrix.service }}/deployment/**
           retention-days: 30
