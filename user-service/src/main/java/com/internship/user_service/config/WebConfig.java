@@ -18,6 +18,6 @@ public class WebConfig implements WebMvcConfigurer {
                 .addPathPatterns("/api/v1/users/**")
                 .excludePathPatterns("/api/v1/users/*/exists")
                 .excludePathPatterns("/api/v1/users")
-                .excludePathPatterns("/api/v1/users/email/*/exists");
+                .excludePathPatterns("/api/v1/users/email/*");
     }
 }

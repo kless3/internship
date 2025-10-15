@@ -2,22 +2,57 @@ version: '3.8'
 
 services:
   user-service:
-    build: user-service
+    build: ./user-service
     container_name: user-service
-    ports:
-      - "8080:8080"
+    ports: ["8080:8080"]
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/internship
       - SPRING_DATASOURCE_USERNAME=postgres
       - SPRING_DATASOURCE_PASSWORD=postgres
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_DATA_REDIS_PORT=6379
-      - SPRING_LIQUIBASE_ENABLED=true
+      - AUTH_SERVICE_URL=http://auth-service:8081
     depends_on:
-      - postgres
-      - redis
-    networks:
-      - internship-network
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      db-setup:
+        condition: service_completed_successfully
+    networks: [internship-network]
+    restart: unless-stopped
+
+  auth-service:
+    build: ./auth-service
+    container_name: auth-service
+    ports: ["8081:8081"]
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/auth
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - USER_SERVICE_URL=http://user-service:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      db-setup:
+        condition: service_completed_successfully
+    networks: [internship-network]
+    restart: unless-stopped
+
+  order-service:
+    build: ./order-service
+    container_name: order-service
+    ports: ["8082:8082"]
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/order_db
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+      db-setup:
+        condition: service_completed_successfully
+    networks: [internship-network]
     restart: unless-stopped
 
   postgres:
@@ -27,25 +62,50 @@ services:
       - POSTGRES_DB=internship
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-    ports:
-      - "5432:5432"
+    ports: ["5432:5432"]
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - internship-network
+    networks: [internship-network]
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  db-setup:
+    image: postgres:15-alpine
+    container_name: db-setup
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - PGHOST=postgres
+      - PGPORT=5432
+      - PGUSER=postgres
+      - PGPASSWORD=postgres
+    command: |
+      sh -c "
+        echo 'Waiting for PostgreSQL to be ready...'
+        until psql -c 'SELECT 1;' 2>/dev/null; do
+          sleep 2
+        done
+      
+        echo 'Creating databases...'
+        psql -c 'CREATE DATABASE auth;' || echo 'Database auth already exists'
+        psql -c 'CREATE DATABASE order_db;' || echo 'Database order_db already exists'
+        echo 'All databases created successfully!'
+      "
+    networks: [internship-network]
+    restart: "no"
 
   redis:
     image: redis:7-alpine
     container_name: redis-cache
-    ports:
-      - "6379:6379"
+    ports: ["6379:6379"]
     command: redis-server --requirepass ""
-    volumes:
-      - redis_data:/data
-    networks:
-      - internship-network
+    volumes: [redis_data:/data]
+    networks: [internship-network]
     restart: unless-stopped
 
 volumes:

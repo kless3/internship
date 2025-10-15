@@ -4,7 +4,6 @@ import com.internship.user_service.dto.CardInfoRequestDTO;
 import com.internship.user_service.dto.CardInfoResponseDTO;
 import com.internship.user_service.exception.DuplicateResourceException;
 import com.internship.user_service.exception.ResourceNotFoundException;
-//import com.internship.user_service.service.CardServiceImpl;
 import com.internship.user_service.service.CardInfoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

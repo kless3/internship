@@ -1,4 +1,4 @@
-package com.internship.user_service.service;
+package com.internship.user_service.client;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
