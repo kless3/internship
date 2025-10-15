@@ -111,8 +111,8 @@ jobs:
         run: |
           echo "Testing connection to database: ${{ matrix.db_name }}"
           psql postgresql://postgres:postgres@localhost:5432/${{ matrix.db_name }} -c "SELECT current_database(), current_schema();"
-          
-          
+  
+  
 
   code-analysis:
     name: Code Analysis
@@ -135,7 +135,7 @@ jobs:
         run: |
           cd user-service && mvn clean verify -DskipTests
           cd ../auth-service && mvn clean verify -DskipTests
-          
+
 
       - name: SonarQube Analysis
         env:
