@@ -259,6 +259,7 @@ jobs:
           cd ${{ matrix.service.path }}
           mkdir -p deployment
           
+          
           if [ -f "pom.xml" ]; then
             cp target/*.jar deployment/
             cp -r src/main/resources/* deployment/ 2>/dev/null || true
