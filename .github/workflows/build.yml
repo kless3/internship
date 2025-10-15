@@ -48,12 +48,15 @@ jobs:
           - service: auth-service
             db_name: auth
             db_schema: auth_schema
+            build_tool: maven
           - service: user-service
             db_name: internship
             db_schema: user_schema
+            build_tool: maven
           - service: order-service
             db_name: order_db
             db_schema: order_schema
+            build_tool: gradle
 
     steps:
       - name: Checkout code
@@ -64,7 +67,7 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-          cache: maven
+          cache: ${{ matrix.build_tool }}
 
       - name: Install PostgreSQL client
         run: |
@@ -80,15 +83,23 @@ jobs:
           psql postgresql://postgres:postgres@localhost:5432/postgres -c "\l" | grep ${{ matrix.db_name }}
           psql postgresql://postgres:postgres@localhost:5432/${{ matrix.db_name }} -c "\dn" | grep ${{ matrix.db_schema }}
 
-      - name: Build ${{ matrix.service }}
+      - name: Build ${{ matrix.service }} with ${{ matrix.build_tool }}
         run: |
           cd ${{ matrix.service }}
-          mvn clean compile -DskipTests
+          if [ "${{ matrix.build_tool }}" = "maven" ]; then
+            mvn clean compile -DskipTests
+          else
+            ./gradlew compileJava -x test
+          fi
 
       - name: Run tests with JaCoCo for ${{ matrix.service }}
         run: |
           cd ${{ matrix.service }}
-          mvn clean test jacoco:report -Djacoco.destDir=target/site/jacoco
+          if [ "${{ matrix.build_tool }}" = "maven" ]; then
+            mvn clean test jacoco:report -Djacoco.destDir=target/site/jacoco
+          else
+            ./gradlew test jacocoTestReport
+          fi
 
       - name: Verify database connectivity for ${{ matrix.service }}
         run: |
