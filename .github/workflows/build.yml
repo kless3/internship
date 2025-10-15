@@ -179,12 +179,15 @@ jobs:
           - service: auth-service
             build_tool: maven
             context: ./auth-service
+            port: 8081
           - service: user-service
             build_tool: maven
             context: ./user-service
+            port: 8080
           - service: order-service
             build_tool: gradle
             context: ./order-service
+            port: 8082
 
     steps:
       - name: Checkout code
@@ -253,7 +256,7 @@ jobs:
               environment:
                 - SPRING_PROFILES_ACTIVE=prod
               ports:
-                - "8080:8080"
+                - "${{ matrix.port }}:8080"
               depends_on:
                 - postgres
                 - redis
@@ -267,10 +270,9 @@ jobs:
               image: redis:7-alpine
           EOF
 
-      - name: Upload Docker artifacts
+      - name: Upload Docker artifacts for ${{ matrix.service }}
         uses: actions/upload-artifact@v4
         with:
-          name: docker-artifacts
-          path: |
-            docker-compose-*.yml
+          name: docker-artifacts-${{ matrix.service }}
+          path: docker-compose-${{ matrix.service }}.yml
           retention-days: 30
