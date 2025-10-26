@@ -1,19 +1,13 @@
-package com.internship.order_service.config;
+package com.internship.auth_service.config;
 
-import com.internship.order_service.interceptor.FeignJwtInterceptor;
-import feign.Logger;
+import com.internship.auth_service.interceptor.FeignJwtInterceptor;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@EnableFeignClients(basePackages = "com.internship.order_service.client")
+@EnableFeignClients
 public class FeignConfig {
-
-    @Bean
-    Logger.Level feignLoggerLevel() {
-        return Logger.Level.FULL;
-    }
 
     @Bean
     public FeignJwtInterceptor feignJwtInterceptor() {
