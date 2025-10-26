@@ -36,10 +36,11 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/v1/auth/**"
+                                "/api/v1/auth/login",
+                                "/api/v1/auth/register"
                         ).permitAll()
-                        .anyRequest().authenticated()
-                )
+                        .anyRequest()
+                        .authenticated())
                 .addFilterBefore(new JwtTokenFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(jwtAuthenticationEntryPoint())

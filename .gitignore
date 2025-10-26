@@ -20,7 +20,7 @@ target/
 *.ipr
 
 .env
-
+.gradle
 user-service/.mvn/
 
 ### NetBeans ###
@@ -32,10 +32,10 @@ user-service/.mvn/
 build/
 !**/src/main/**/build/
 !**/src/test/**/build/
-
+.mvn/
 .mvn/*
 mvnw*
 mvnw.cmd
-
+order-service/.gradle/*
 ### VS Code ###
 .vscode/

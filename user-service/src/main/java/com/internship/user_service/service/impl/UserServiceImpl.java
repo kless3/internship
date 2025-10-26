@@ -118,7 +118,6 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    @CacheEvict(key = "{'all', #id}")
     public void deleteUser(Long id) {
 
         if (!userRepository.existsById(id)) {
@@ -127,6 +126,16 @@ public class UserServiceImpl implements UserService {
 
         userRepository.deleteById(id);
 
+    }
+
+    @Override
+    @Transactional
+    @CacheEvict(allEntries = true)
+    public void deleteUserByEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new EntityNotFoundException(USER_NOT_FOUND_WITH_EMAIL + email));
+
+        userRepository.delete(user);
     }
 
     @Override

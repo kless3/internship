@@ -1,36 +1,23 @@
 package com.internship.auth_service.client;
 
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
-import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
+import com.internship.auth_service.config.FeignConfig;
+import com.internship.auth_service.dto.UserServiceRequest;
+import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
-import java.util.Map;
+@FeignClient(
+        name = "user-service",
+        url = "${user.service.url:http://user-service:8080}",
+        configuration = FeignConfig.class
+)
+public interface UserServiceClient {
 
-@Component
-@RequiredArgsConstructor
-public class UserServiceClient {
+    @PostMapping("/api/v1/users")
+    void registerUser(@RequestBody UserServiceRequest userRequestDTO);
 
-    private final RestTemplate restTemplate;
-
-    @Value("${user.service.url:http://localhost:8080}")
-    private String userServiceUrl;
-
-    public boolean createUserProfile(Map<String, Object> userData) {
-        try {
-            String url = userServiceUrl + "/api/v1/users";
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-
-            HttpEntity<Map<String, Object>> request = new HttpEntity<>(userData, headers);
-
-            ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
-
-            return response.getStatusCode() == HttpStatus.CREATED;
-        } catch (Exception e) {
-            return false;
-        }
-    }
+    @DeleteMapping("/api/v1/users/email/{email}")
+    void deleteUserByEmail(@PathVariable String email);
 }
