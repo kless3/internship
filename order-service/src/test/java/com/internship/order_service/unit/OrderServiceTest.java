@@ -78,9 +78,7 @@ class OrderServiceTest {
         order.setCreationDate(LocalDateTime.now());
 
         userInfoDTO = new UserInfoDTO();
-        userInfoDTO.setName("John");
-        userInfoDTO.setSurname("Doe");
-        userInfoDTO.setBirthDate(LocalDate.of(1990, 1, 1));
+
         userInfoDTO.setEmail("test@example.com");
 
         orderResponseDTO = new OrderResponseDTO();

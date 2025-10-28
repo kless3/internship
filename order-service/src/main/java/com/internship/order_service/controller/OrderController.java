@@ -24,7 +24,7 @@ public class OrderController {
         return new ResponseEntity<>(orderService.getOrderById(id), HttpStatus.OK);
     }
 
-    @GetMapping("/byIds")
+    @GetMapping("/ids")
     public ResponseEntity<List<OrderResponseDTO>> getOrdersByIds(@RequestParam List<Long> ids){
         return new ResponseEntity<>(orderService.getOrdersByIds(ids), HttpStatus.OK);
     }

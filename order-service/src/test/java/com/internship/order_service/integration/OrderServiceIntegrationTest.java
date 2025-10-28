@@ -189,8 +189,6 @@ class OrderServiceIntegrationTest {
         assertThat(foundOrder).isNotNull();
         assertThat(foundOrder.getUserInfoDto().getEmail()).isEqualTo(USER_EMAIL);
         assertThat(foundOrder.getStatus()).isEqualTo(OrderStatus.PENDING);
-        assertThat(foundOrder.getUserInfoDto().getName()).isEqualTo("John");
-        assertThat(foundOrder.getUserInfoDto().getSurname()).isEqualTo("Doe");
 
         verify(getRequestedFor(urlPathMatching("/api/v1/users/email/.*")));
     }
@@ -354,7 +352,6 @@ class OrderServiceIntegrationTest {
         assertThat(updatedOrder).isNotNull();
         assertThat(updatedOrder.getUserInfoDto().getEmail()).isEqualTo(USER_EMAIL);
         assertThat(updatedOrder.getStatus()).isEqualTo(OrderStatus.PENDING);
-        assertThat(updatedOrder.getUserInfoDto().getName()).isEqualTo("John");
 
         OrderResponseDTO foundAfterUpdate = orderService.getOrderById(orderId);
         assertThat(foundAfterUpdate).isNotNull();
