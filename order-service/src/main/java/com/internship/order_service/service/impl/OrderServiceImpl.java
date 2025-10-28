@@ -27,8 +27,6 @@ public class OrderServiceImpl implements OrderService {
     private static final String ORDER_NOT_FOUND_WITH_IDS = "Orders not found with ids: ";
     private static final String ORDER_NOT_FOUND_WITH_STATUS = "Orders not found with status: ";
     private static final String USER_SERVICE_UNAVAILABLE = "User service is currently unavailable";
-    private static final String ORDER_ITEMS_EMPTY = "Order must contain at least one item";
-    private static final String USER_EMAIL_REQUIRED = "User email is required";
     private static final String ORDER_STATUS_NULL = "Order status cannot be null";
     private static final String FAILED_TO_CREATE_ORDER = "Failed to create order";
     private static final String FAILED_TO_UPDATE_ORDER = "Failed to update order";
@@ -41,7 +39,6 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public OrderResponseDTO createOrder(OrderRequestDTO orderRequestDTO) {
         try {
-            validateOrderRequest(orderRequestDTO);
 
             Order order = orderMapper.toEntity(orderRequestDTO);
 
@@ -146,16 +143,6 @@ public class OrderServiceImpl implements OrderService {
         OrderResponseDTO orderResponseDTO = orderMapper.toDTO(order);
         orderResponseDTO.setUserInfoDto(userServiceClient.getUserInfoByEmail(order.getUserEmail()));
         return orderResponseDTO;
-    }
-
-    private void validateOrderRequest(OrderRequestDTO orderRequestDTO) {
-        if (orderRequestDTO.getOrderItems().isEmpty()) {
-            throw new OrderValidationException(ORDER_ITEMS_EMPTY);
-        }
-
-        if (orderRequestDTO.getUserEmail() == null || orderRequestDTO.getUserEmail().trim().isEmpty()) {
-            throw new OrderValidationException(USER_EMAIL_REQUIRED);
-        }
     }
 
     private void validateOrderStatus(OrderStatus status) {

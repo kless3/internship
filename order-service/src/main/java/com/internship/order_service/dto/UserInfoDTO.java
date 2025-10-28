@@ -9,8 +9,6 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @NoArgsConstructor
 public class UserInfoDTO {
-    private String name;
-    private String surname;
-    private LocalDate birthDate;
+    private Long id;
     private String email;
 }
