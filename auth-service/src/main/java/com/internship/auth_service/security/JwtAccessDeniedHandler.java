@@ -14,7 +14,7 @@ import java.util.Map;
 
 public class JwtAccessDeniedHandler implements AccessDeniedHandler {
 
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response,

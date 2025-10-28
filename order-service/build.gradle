@@ -4,6 +4,7 @@ plugins {
 	id 'io.spring.dependency-management' version '1.1.7'
 	id 'jacoco'
 	id "org.sonarqube" version "6.3.1.5724"
+	id 'com.github.ben-manes.versions' version '0.51.0'
 }
 
 sonar {
@@ -14,7 +15,6 @@ sonar {
 }
 
 group = 'com.internship'
-version = '0.0.1-SNAPSHOT'
 description = 'Order service for Innowise internship'
 
 java {
@@ -35,11 +35,23 @@ repositories {
 
 ext {
 	set('springCloudVersion', "2023.0.0")
+
+	projectVersion = '0.0.1-SNAPSHOT'
+
+	mapstructVersion = '1.5.5.Final'
+	lombokMapstructBindingVersion = '0.2.0'
+	wiremockVersion = '2.35.0'
+	wiremock3Version = '3.3.1'
+	awaitilityVersion = '4.2.0'
+	dotenvVersion = '2.3.2'
 }
+
+version = "${projectVersion}"
+
 dependencies {
 	implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
-	implementation 'org.mapstruct:mapstruct:1.5.5.Final'
-	annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
+	implementation "org.mapstruct:mapstruct:${mapstructVersion}"
+	annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
@@ -47,18 +59,20 @@ dependencies {
 	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'org.postgresql:postgresql'
 	annotationProcessor 'org.projectlombok:lombok'
-	annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
+	annotationProcessor "org.projectlombok:lombok-mapstruct-binding:${lombokMapstructBindingVersion}"
+	
+	implementation "io.github.cdimascio:dotenv-java:${dotenvVersion}"
 
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.boot:spring-boot-testcontainers'
 	testImplementation 'org.testcontainers:junit-jupiter'
 	testImplementation 'org.testcontainers:postgresql'
-	testImplementation 'com.github.tomakehurst:wiremock-jre8-standalone:2.35.0'
-	testImplementation('org.wiremock:wiremock:3.3.1') {
+	testImplementation "com.github.tomakehurst:wiremock-jre8-standalone:${wiremockVersion}"
+	testImplementation("org.wiremock:wiremock:${wiremock3Version}") {
 		exclude group: 'org.eclipse.jetty'
 		exclude group: 'org.eclipse.jetty.http2'
 	}
-	testImplementation 'org.awaitility:awaitility:4.2.0'
+	testImplementation "org.awaitility:awaitility:${awaitilityVersion}"
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
