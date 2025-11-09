@@ -19,13 +19,15 @@ public class JwtGlobalFilter implements GlobalFilter, Ordered {
 
     private final JwtProperties jwtProperties;
 
+    private static final String AUTH_PATH = "/api/v1/auth/";
+    private static final String USER_PATH = "/api/v1/users";
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         String path = exchange.getRequest().getPath().value();
 
-        if (path.startsWith("/api/v1/auth/") ||
-                path.equals("/api/v1/users")) {
+        if (path.startsWith(AUTH_PATH) ||
+                path.equals(USER_PATH)) {
             return chain.filter(exchange);
         }
 
