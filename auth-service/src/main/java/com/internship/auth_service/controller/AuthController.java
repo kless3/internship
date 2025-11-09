@@ -1,6 +1,12 @@
 package com.internship.auth_service.controller;
 
-import com.internship.auth_service.dto.*;
+
+import com.internship.auth_service.dto.LoginRequest;
+import com.internship.auth_service.dto.TokenValidationResponse;
+import com.internship.auth_service.dto.RegisterRequest;
+import com.internship.auth_service.dto.RefreshTokenRequest;
+import com.internship.auth_service.dto.TokenResponse;
+import com.internship.auth_service.dto.ValidateTokenRequest;
 import com.internship.auth_service.service.AuthService;
 import com.internship.auth_service.service.TokenManagementService;
 import jakarta.validation.Valid;

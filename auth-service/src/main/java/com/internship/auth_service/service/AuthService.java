@@ -1,6 +1,6 @@
 package com.internship.auth_service.service;
 
-import com.internship.auth_service.dto.*;
+import com.internship.auth_service.dto.RegisterRequest;
 
 public interface AuthService {
 
