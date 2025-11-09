@@ -12,23 +12,32 @@ import org.springframework.context.annotation.Configuration;
 @RequiredArgsConstructor
 public class GatewayConfig {
 
+    private static final String AUTH_SERVICE_ROUTE = "auth-service";
+    private static final String ORDER_SERVICE_ROUTE = "order-service";
+    private static final String USER_SERVICE_PUBLIC_ROUTE = "user-service-public";
+    private static final String USER_SERVICE_SECURED_ROUTE = "user-service-secured";
+    private static final String AUTH_SERVICE_PATH = "/api/v1/auth/**";
+    private static final String ORDER_SERVICE_PATH = "/api/v1/orders/**";
+    private static final String USER_SERVICE_PUBLIC_PATH = "/api/v1/users";
+    private static final String USER_SERVICE_SECURED_PATH = "/api/v1/users/**";
+
     private final JwtGlobalFilter jwtFilter;
     private final ServiceProperties serviceProperties;
 
     @Bean
     public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
         return builder.routes()
-                .route("auth-service", r -> r
-                        .path("/api/v1/auth/**")
+                .route(AUTH_SERVICE_ROUTE, r -> r
+                        .path(AUTH_SERVICE_PATH)
                         .uri(serviceProperties.getAuthService()))
-                .route("order-service", r -> r
-                        .path("/api/v1/orders/**")
+                .route(ORDER_SERVICE_ROUTE, r -> r
+                        .path(ORDER_SERVICE_PATH)
                         .uri(serviceProperties.getOrderService()))
-                .route("user-service-public", r -> r
-                        .path("/api/v1/users")
+                .route(USER_SERVICE_PUBLIC_ROUTE, r -> r
+                        .path(USER_SERVICE_PUBLIC_PATH)
                         .uri(serviceProperties.getUserService()))
-                .route("user-service-secured", r -> r
-                        .path("/api/v1/users/**")
+                .route(USER_SERVICE_SECURED_ROUTE, r -> r
+                        .path(USER_SERVICE_SECURED_PATH)
                         .uri(serviceProperties.getUserService()))
                 .build();
     }
