@@ -72,38 +72,41 @@ class CardServiceIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        UserRequestDTO userRequest = new UserRequestDTO();
-        userRequest.setName("Card");
-        userRequest.setSurname("User");
-        userRequest.setEmail("card.user@example.com");
+        UserRequestDTO userRequest = new UserRequestDTO(
+                "Card",
+                "User",
+                LocalDate.of(1990, 1, 1),
+                "card.user@example.com"
+        );
         testUser = userService.createUser(userRequest);
 
-        testCardRequest = new CardInfoRequestDTO();
-        testCardRequest.setNumber("4111111111111111");
-        testCardRequest.setHolder("CARD USER");
-        testCardRequest.setExpirationDate(LocalDate.of(2025, 12, 1));
+        testCardRequest = new CardInfoRequestDTO(
+                "4111111111111111",
+                "CARD USER",
+                LocalDate.of(2025, 12, 1)
+        );
     }
 
     @Test
     @DisplayName("Create card - should create card successfully")
     @Sql(scripts = "/cleanup.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
     void createCard_ShouldCreateCardSuccessfully() {
-        CardInfoResponseDTO createdCard = cardInfoService.createCard(testUser.getId(), testCardRequest);
+        CardInfoResponseDTO createdCard = cardInfoService.createCard(testUser.id(), testCardRequest);
 
-        assertNotNull(createdCard.getId());
-        assertEquals(testCardRequest.getNumber(), createdCard.getNumber());
-        assertEquals(testCardRequest.getHolder(), createdCard.getHolder());
-        assertEquals(testUser.getId(), createdCard.getUserId());
+        assertNotNull(createdCard.id());
+        assertEquals(testCardRequest.number(), createdCard.number());
+        assertEquals(testCardRequest.holder(), createdCard.holder());
+        assertEquals(testUser.id(), createdCard.userId());
     }
 
     @Test
     @DisplayName("Create card with existing number - should throw exception")
     @Sql(scripts = "/cleanup.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
     void createCard_WithExistingNumber_ShouldThrowException() {
-        cardInfoService.createCard(testUser.getId(), testCardRequest);
+        cardInfoService.createCard(testUser.id(), testCardRequest);
 
         assertThrows(IllegalArgumentException.class, () -> {
-            cardInfoService.createCard(testUser.getId(), testCardRequest);
+            cardInfoService.createCard(testUser.id(), testCardRequest);
         });
     }
 
@@ -119,42 +122,43 @@ class CardServiceIntegrationTest {
     @DisplayName("Get card by ID - should return card")
     @Sql(scripts = "/cleanup.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
     void getCardById_ShouldReturnCard() {
-        CardInfoResponseDTO createdCard = cardInfoService.createCard(testUser.getId(), testCardRequest);
+        CardInfoResponseDTO createdCard = cardInfoService.createCard(testUser.id(), testCardRequest);
 
-        CardInfoResponseDTO foundCard = cardInfoService.getCardById(createdCard.getId());
+        CardInfoResponseDTO foundCard = cardInfoService.getCardById(createdCard.id());
 
         assertNotNull(foundCard);
-        assertEquals(createdCard.getId(), foundCard.getId());
-        assertEquals(createdCard.getNumber(), foundCard.getNumber());
+        assertEquals(createdCard.id(), foundCard.id());
+        assertEquals(createdCard.number(), foundCard.number());
     }
 
     @Test
     @DisplayName("Get card by number - should return card")
     @Sql(scripts = "/cleanup.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
     void getCardByNumber_ShouldReturnCard() {
-        CardInfoResponseDTO createdCard = cardInfoService.createCard(testUser.getId(), testCardRequest);
+        CardInfoResponseDTO createdCard = cardInfoService.createCard(testUser.id(), testCardRequest);
 
-        CardInfoResponseDTO foundCard = cardInfoService.getCardByNumber(createdCard.getNumber());
+        CardInfoResponseDTO foundCard = cardInfoService.getCardByNumber(createdCard.number());
 
         assertNotNull(foundCard);
-        assertEquals(createdCard.getId(), foundCard.getId());
-        assertEquals(createdCard.getNumber(), foundCard.getNumber());
+        assertEquals(createdCard.id(), foundCard.id());
+        assertEquals(createdCard.number(), foundCard.number());
     }
 
     @Test
     @DisplayName("Get cards by user ID - should return user cards")
     @Sql(scripts = "/cleanup.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
     void getCardsByUserId_ShouldReturnUserCards() {
-        cardInfoService.createCard(testUser.getId(), testCardRequest);
+        cardInfoService.createCard(testUser.id(), testCardRequest);
 
-        CardInfoRequestDTO anotherCard = new CardInfoRequestDTO();
-        anotherCard.setNumber("4222222222222222");
-        anotherCard.setHolder("CARD USER");
-        anotherCard.setExpirationDate(LocalDate.of(2024, 11, 1));
+        CardInfoRequestDTO anotherCard = new CardInfoRequestDTO(
+                "4222222222222222",
+                "CARD USER",
+                LocalDate.of(2024, 11, 1)
+        );
 
-        cardInfoService.createCard(testUser.getId(), anotherCard);
+        cardInfoService.createCard(testUser.id(), anotherCard);
 
-        List<CardInfoResponseDTO> userCards = cardInfoService.getCardsByUserId(testUser.getId());
+        List<CardInfoResponseDTO> userCards = cardInfoService.getCardsByUserId(testUser.id());
 
         assertEquals(2, userCards.size());
     }
@@ -163,53 +167,53 @@ class CardServiceIntegrationTest {
     @DisplayName("Update card - should update card successfully")
     @Sql(scripts = "/cleanup.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
     void updateCard_ShouldUpdateCardSuccessfully() {
-        CardInfoResponseDTO createdCard = cardInfoService.createCard(testUser.getId(), testCardRequest);
+        CardInfoResponseDTO createdCard = cardInfoService.createCard(testUser.id(), testCardRequest);
 
-        CardInfoRequestDTO updateRequest = new CardInfoRequestDTO();
-        updateRequest.setNumber("4333333333333333");
-        updateRequest.setHolder("UPDATED USER");
-        updateRequest.setExpirationDate(LocalDate.of(2026, 10, 1));
+        CardInfoRequestDTO updateRequest = new CardInfoRequestDTO(
+                "4333333333333333",
+                "UPDATED USER",
+                LocalDate.of(2026, 10, 1)
+        );
 
+        CardInfoResponseDTO updatedCard = cardInfoService.updateCard(createdCard.id(), updateRequest);
 
-        CardInfoResponseDTO updatedCard = cardInfoService.updateCard(createdCard.getId(), updateRequest);
-
-        assertEquals(createdCard.getId(), updatedCard.getId());
-        assertEquals("4333333333333333", updatedCard.getNumber());
-        assertEquals("UPDATED USER", updatedCard.getHolder());
+        assertEquals(createdCard.id(), updatedCard.id());
+        assertEquals("4333333333333333", updatedCard.number());
+        assertEquals("UPDATED USER", updatedCard.holder());
     }
 
     @Test
     @DisplayName("Delete card - should delete card successfully")
     @Sql(scripts = "/cleanup.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
     void deleteCard_ShouldDeleteCardSuccessfully() {
-        CardInfoResponseDTO createdCard = cardInfoService.createCard(testUser.getId(), testCardRequest);
+        CardInfoResponseDTO createdCard = cardInfoService.createCard(testUser.id(), testCardRequest);
 
-        cardInfoService.deleteCard(createdCard.getId());
+        cardInfoService.deleteCard(createdCard.id());
 
         assertThrows(EntityNotFoundException.class, () -> {
-            cardInfoService.getCardById(createdCard.getId());
+            cardInfoService.getCardById(createdCard.id());
         });
-        assertFalse(cardInfoService.cardExists(createdCard.getId()));
+        assertFalse(cardInfoService.cardExists(createdCard.id()));
     }
 
     @Test
     @DisplayName("Get cards by IDs - should return multiple cards")
     @Sql(scripts = "/cleanup.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
     void getCardsByIds_ShouldReturnMultipleCards() {
-        CardInfoResponseDTO card1 = cardInfoService.createCard(testUser.getId(), testCardRequest);
+        CardInfoResponseDTO card1 = cardInfoService.createCard(testUser.id(), testCardRequest);
 
-        CardInfoRequestDTO card2Request = new CardInfoRequestDTO();
-        card2Request.setNumber("4222222222222222");
-        card2Request.setHolder("SECOND CARD");
-        card2Request.setExpirationDate(LocalDate.of(2024, 11, 1));
+        CardInfoRequestDTO card2Request = new CardInfoRequestDTO(
+                "4222222222222222",
+                "SECOND CARD",
+                LocalDate.of(2024, 11, 1)
+        );
 
-        CardInfoResponseDTO card2 = cardInfoService.createCard(testUser.getId(), card2Request);
+        CardInfoResponseDTO card2 = cardInfoService.createCard(testUser.id(), card2Request);
 
-        List<CardInfoResponseDTO> cards = cardInfoService.getCardsByIds(List.of(card1.getId(), card2.getId()));
+        List<CardInfoResponseDTO> cards = cardInfoService.getCardsByIds(List.of(card1.id(), card2.id()));
 
         assertEquals(2, cards.size());
-        assertTrue(cards.stream().anyMatch(c -> c.getId().equals(card1.getId())));
-        assertTrue(cards.stream().anyMatch(c -> c.getId().equals(card2.getId())));
+        assertTrue(cards.stream().anyMatch(c -> c.id().equals(card1.id())));
+        assertTrue(cards.stream().anyMatch(c -> c.id().equals(card2.id())));
     }
 }
-

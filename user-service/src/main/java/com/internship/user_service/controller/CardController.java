@@ -4,7 +4,6 @@ import com.internship.user_service.dto.CardInfoRequestDTO;
 import com.internship.user_service.dto.CardInfoResponseDTO;
 import com.internship.user_service.exception.DuplicateResourceException;
 import com.internship.user_service.exception.ResourceNotFoundException;
-//import com.internship.user_service.service.CardServiceImpl;
 import com.internship.user_service.service.CardInfoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -77,7 +76,7 @@ public class CardController {
         } catch (ResourceNotFoundException e) {
             throw new ResourceNotFoundException("User not found with id: " + userId);
         } catch (DuplicateResourceException e) {
-            throw new DuplicateResourceException("Card with number " + cardInfoRequestDTO.getNumber() + " already exists");
+            throw new DuplicateResourceException("Card with number " + cardInfoRequestDTO.number() + " already exists");
         }
     }
 
@@ -89,7 +88,7 @@ public class CardController {
         } catch (ResourceNotFoundException e) {
             throw new ResourceNotFoundException("Card not found with id: " + id);
         } catch (DuplicateResourceException e) {
-            throw new DuplicateResourceException("Card number " + cardInfoRequestDTO.getNumber() + " already exists");
+            throw new DuplicateResourceException("Card number " + cardInfoRequestDTO.number() + " already exists");
         }
     }
 
@@ -102,5 +101,4 @@ public class CardController {
             throw new ResourceNotFoundException("Card not found with id: " + id);
         }
     }
-
 }

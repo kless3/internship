@@ -36,8 +36,8 @@ public class UserServiceImpl implements UserService {
     @CacheEvict(allEntries = true)
     public UserResponseDTO createUser(UserRequestDTO userRequestDTO) {
 
-        if (userRepository.existsByEmail(userRequestDTO.getEmail())) {
-            throw new IllegalArgumentException(String.format(USER_ALREADY_EXISTS_WITH_EMAIL, userRequestDTO.getEmail()));
+        if (userRepository.existsByEmail(userRequestDTO.email())) {
+            throw new IllegalArgumentException(String.format(USER_ALREADY_EXISTS_WITH_EMAIL, userRequestDTO.email()));
         }
 
         User user = userMapper.toEntity(userRequestDTO);
@@ -105,9 +105,9 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(USER_NOT_FOUND_WITH_ID + id));
 
-        if (!user.getEmail().equals(userRequestDTO.getEmail()) &&
-                userRepository.existsByEmail(userRequestDTO.getEmail())) {
-            throw new IllegalArgumentException(String.format(EMAIL_ALREADY_EXISTS, userRequestDTO.getEmail()));
+        if (!user.getEmail().equals(userRequestDTO.email()) &&
+                userRepository.existsByEmail(userRequestDTO.email())) {
+            throw new IllegalArgumentException(String.format(EMAIL_ALREADY_EXISTS, userRequestDTO.email()));
         }
 
         userMapper.updateEntityFromDTO(userRequestDTO, user);

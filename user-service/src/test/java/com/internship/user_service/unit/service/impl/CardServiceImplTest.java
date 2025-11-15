@@ -17,6 +17,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -57,19 +58,26 @@ class CardServiceImplTest {
         cardInfo.setNumber("1234567890123456");
         cardInfo.setUser(user);
 
-        cardInfoRequestDTO = new CardInfoRequestDTO();
-        cardInfoRequestDTO.setNumber("1234567890123456");
+        cardInfoRequestDTO = new CardInfoRequestDTO(
+                "1234567890123456",
+                "CARD USER",
+                LocalDate.of(2025, 12, 1)
+        );
 
-        cardInfoResponseDTO = new CardInfoResponseDTO();
-        cardInfoResponseDTO.setId(1L);
-        cardInfoResponseDTO.setNumber("1234567890123456");
+        cardInfoResponseDTO = new CardInfoResponseDTO(
+                1L,
+                "1234567890123456",
+                "CARD USER",
+                LocalDate.of(2025, 12, 1),
+                1L
+        );
     }
 
     @Test
     @DisplayName("Create card - success")
     void createCard_Success() {
-        when(userService.getUserEntityById(1L)).thenReturn(null);
-        when(cardInfoRepository.existsByNumber(cardInfoRequestDTO.getNumber())).thenReturn(false);
+        when(userService.getUserEntityById(1L)).thenReturn(user);
+        when(cardInfoRepository.existsByNumber(cardInfoRequestDTO.number())).thenReturn(false);
         when(cardInfoMapper.toEntity(cardInfoRequestDTO)).thenReturn(cardInfo);
         when(cardInfoRepository.save(cardInfo)).thenReturn(cardInfo);
         when(cardInfoMapper.toDTO(cardInfo)).thenReturn(cardInfoResponseDTO);
@@ -77,15 +85,15 @@ class CardServiceImplTest {
         CardInfoResponseDTO result = cardService.createCard(1L, cardInfoRequestDTO);
 
         assertNotNull(result);
-        assertEquals(cardInfoResponseDTO.getNumber(), result.getNumber());
+        assertEquals(cardInfoResponseDTO.number(), result.number());
         verify(cardInfoRepository, times(1)).save(cardInfo);
     }
 
     @Test
     @DisplayName("Create card - card number exists, should throw exception")
     void createCard_CardNumberExists_ThrowsException() {
-        when(userService.getUserEntityById(1L)).thenReturn(null);
-        when(cardInfoRepository.existsByNumber(cardInfoRequestDTO.getNumber())).thenReturn(true);
+        when(userService.getUserEntityById(1L)).thenReturn(user);
+        when(cardInfoRepository.existsByNumber(cardInfoRequestDTO.number())).thenReturn(true);
 
         assertThrows(IllegalArgumentException.class, () ->
                 cardService.createCard(1L, cardInfoRequestDTO));
@@ -100,7 +108,7 @@ class CardServiceImplTest {
         CardInfoResponseDTO result = cardService.getCardById(1L);
 
         assertNotNull(result);
-        assertEquals(cardInfoResponseDTO.getId(), result.getId());
+        assertEquals(cardInfoResponseDTO.id(), result.id());
     }
 
     @Test
@@ -121,7 +129,7 @@ class CardServiceImplTest {
         CardInfoResponseDTO result = cardService.getCardByNumber("1234567890123456");
 
         assertNotNull(result);
-        assertEquals(cardInfoResponseDTO.getNumber(), result.getNumber());
+        assertEquals(cardInfoResponseDTO.number(), result.number());
     }
 
     @Test
@@ -133,7 +141,7 @@ class CardServiceImplTest {
         List<CardInfoResponseDTO> result = cardService.getCardsByUserId(1L);
 
         assertEquals(1, result.size());
-        assertEquals(cardInfoResponseDTO.getId(), result.get(0).getId());
+        assertEquals(cardInfoResponseDTO.id(), result.get(0).id());
     }
 
     @Test
@@ -178,8 +186,11 @@ class CardServiceImplTest {
     @Test
     @DisplayName("Update card - number exists, should throw exception")
     void updateCard_NumberExists_ThrowsException() {
-        CardInfoRequestDTO updateRequest = new CardInfoRequestDTO();
-        updateRequest.setNumber("9999999999999999");
+        CardInfoRequestDTO updateRequest = new CardInfoRequestDTO(
+                "9999999999999999",
+                "UPDATED USER",
+                LocalDate.of(2026, 10, 1)
+        );
 
         when(cardInfoRepository.findById(1L)).thenReturn(Optional.of(cardInfo));
         when(cardInfoRepository.existsByNumber("9999999999999999")).thenReturn(true);

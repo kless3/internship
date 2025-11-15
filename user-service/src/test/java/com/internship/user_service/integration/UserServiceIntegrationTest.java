@@ -19,6 +19,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -68,10 +69,12 @@ class UserServiceIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        testUserRequest = new UserRequestDTO();
-        testUserRequest.setName("John");
-        testUserRequest.setSurname("Doe");
-        testUserRequest.setEmail("john.doe@example.com");
+        testUserRequest = new UserRequestDTO(
+                "John",
+                "Doe",
+                LocalDate.of(1990, 1, 1),
+                "john.doe@example.com"
+        );
     }
 
     @Test
@@ -80,10 +83,10 @@ class UserServiceIntegrationTest {
     void createUser_ShouldCreateUserSuccessfully() {
         UserResponseDTO createdUser = userService.createUser(testUserRequest);
 
-        assertNotNull(createdUser.getId());
-        assertEquals(testUserRequest.getName(), createdUser.getName());
-        assertEquals(testUserRequest.getSurname(), createdUser.getSurname());
-        assertEquals(testUserRequest.getEmail(), createdUser.getEmail());
+        assertNotNull(createdUser.id());
+        assertEquals(testUserRequest.name(), createdUser.name());
+        assertEquals(testUserRequest.surname(), createdUser.surname());
+        assertEquals(testUserRequest.email(), createdUser.email());
     }
 
     @Test
@@ -103,11 +106,11 @@ class UserServiceIntegrationTest {
     void getUserById_ShouldReturnUser() {
         UserResponseDTO createdUser = userService.createUser(testUserRequest);
 
-        UserResponseDTO foundUser = userService.getUserById(createdUser.getId());
+        UserResponseDTO foundUser = userService.getUserById(createdUser.id());
 
         assertNotNull(foundUser);
-        assertEquals(createdUser.getId(), foundUser.getId());
-        assertEquals(createdUser.getEmail(), foundUser.getEmail());
+        assertEquals(createdUser.id(), foundUser.id());
+        assertEquals(createdUser.email(), foundUser.email());
     }
 
     @Test
@@ -124,11 +127,11 @@ class UserServiceIntegrationTest {
     void getUserByEmail_ShouldReturnUser() {
         UserResponseDTO createdUser = userService.createUser(testUserRequest);
 
-        UserResponseDTO foundUser = userService.getUserByEmail(createdUser.getEmail());
+        UserResponseDTO foundUser = userService.getUserByEmail(createdUser.email());
 
         assertNotNull(foundUser);
-        assertEquals(createdUser.getId(), foundUser.getId());
-        assertEquals(createdUser.getEmail(), foundUser.getEmail());
+        assertEquals(createdUser.id(), foundUser.id());
+        assertEquals(createdUser.email(), foundUser.email());
     }
 
     @Test
@@ -137,17 +140,19 @@ class UserServiceIntegrationTest {
     void updateUser_ShouldUpdateUserSuccessfully() {
         UserResponseDTO createdUser = userService.createUser(testUserRequest);
 
-        UserRequestDTO updateRequest = new UserRequestDTO();
-        updateRequest.setName("Jane");
-        updateRequest.setSurname("Smith");
-        updateRequest.setEmail("jane.smith@example.com");
+        UserRequestDTO updateRequest = new UserRequestDTO(
+                "Jane",
+                "Smith",
+                LocalDate.of(1991, 2, 1),
+                "jane.smith@example.com"
+        );
 
-        UserResponseDTO updatedUser = userService.updateUser(createdUser.getId(), updateRequest);
+        UserResponseDTO updatedUser = userService.updateUser(createdUser.id(), updateRequest);
 
-        assertEquals(createdUser.getId(), updatedUser.getId());
-        assertEquals("Jane", updatedUser.getName());
-        assertEquals("Smith", updatedUser.getSurname());
-        assertEquals("jane.smith@example.com", updatedUser.getEmail());
+        assertEquals(createdUser.id(), updatedUser.id());
+        assertEquals("Jane", updatedUser.name());
+        assertEquals("Smith", updatedUser.surname());
+        assertEquals("jane.smith@example.com", updatedUser.email());
     }
 
     @Test
@@ -156,10 +161,12 @@ class UserServiceIntegrationTest {
     void getAllUsers_ShouldReturnAllUsers() {
         userService.createUser(testUserRequest);
 
-        UserRequestDTO anotherUser = new UserRequestDTO();
-        anotherUser.setName("Alice");
-        anotherUser.setSurname("Johnson");
-        anotherUser.setEmail("alice@example.com");
+        UserRequestDTO anotherUser = new UserRequestDTO(
+                "Alice",
+                "Johnson",
+                LocalDate.of(1992, 3, 1),
+                "alice@example.com"
+        );
         userService.createUser(anotherUser);
 
         List<UserResponseDTO> users = userService.getAllUsers();
@@ -173,11 +180,11 @@ class UserServiceIntegrationTest {
     void deleteUser_ShouldDeleteUserSuccessfully() {
         UserResponseDTO createdUser = userService.createUser(testUserRequest);
 
-        userService.deleteUser(createdUser.getId());
+        userService.deleteUser(createdUser.id());
 
         assertThrows(EntityNotFoundException.class, () -> {
-            userService.getUserById(createdUser.getId());
+            userService.getUserById(createdUser.id());
         });
-        assertFalse(userService.userExists(createdUser.getId()));
+        assertFalse(userService.userExists(createdUser.id()));
     }
 }

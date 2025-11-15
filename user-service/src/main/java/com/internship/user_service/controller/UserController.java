@@ -68,7 +68,7 @@ public class UserController {
             UserResponseDTO createdUser = userService.createUser(userRequest);
             return new ResponseEntity<>(createdUser, HttpStatus.CREATED);
         } catch (DuplicateResourceException e) {
-            throw new DuplicateResourceException("User with email " + userRequest.getEmail() + " already exists");
+            throw new DuplicateResourceException("User with email " + userRequest.email() + " already exists");
         }
     }
 
@@ -80,7 +80,7 @@ public class UserController {
         } catch (ResourceNotFoundException e) {
             throw new ResourceNotFoundException("User not found with id: " + id);
         } catch (DuplicateResourceException e) {
-            throw new DuplicateResourceException("Email " + updateRequest.getEmail() + " already exists");
+            throw new DuplicateResourceException("Email " + updateRequest.email() + " already exists");
         }
     }
 
@@ -93,5 +93,4 @@ public class UserController {
             throw new ResourceNotFoundException("User not found with id: " + id);
         }
     }
-
 }

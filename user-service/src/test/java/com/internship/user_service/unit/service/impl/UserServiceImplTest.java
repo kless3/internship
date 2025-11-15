@@ -15,6 +15,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -47,23 +48,29 @@ class UserServiceImplTest {
         user.setEmail("test@example.com");
         user.setName("John");
         user.setSurname("Doe");
+        user.setBirthDate(LocalDate.of(1990, 1, 1));
 
-        userRequestDTO = new UserRequestDTO();
-        userRequestDTO.setEmail("test@example.com");
-        userRequestDTO.setName("John");
-        userRequestDTO.setSurname("Doe");
+        userRequestDTO = new UserRequestDTO(
+                "John",
+                "Doe",
+                LocalDate.of(1990, 1, 1),
+                "test@example.com"
+        );
 
-        userResponseDTO = new UserResponseDTO();
-        userResponseDTO.setId(1L);
-        userResponseDTO.setEmail("test@example.com");
-        userResponseDTO.setName("John");
-        userResponseDTO.setSurname("Doe");
+        userResponseDTO = new UserResponseDTO(
+                1L,
+                "John",
+                "Doe",
+                LocalDate.of(1990, 1, 1),
+                "test@example.com",
+                null
+        );
     }
 
     @Test
     @DisplayName("Create user - success")
     void createUser_Success() {
-        when(userRepository.existsByEmail(userRequestDTO.getEmail())).thenReturn(false);
+        when(userRepository.existsByEmail(userRequestDTO.email())).thenReturn(false);
         when(userMapper.toEntity(userRequestDTO)).thenReturn(user);
         when(userRepository.save(user)).thenReturn(user);
         when(userMapper.toDTO(user)).thenReturn(userResponseDTO);
@@ -71,15 +78,15 @@ class UserServiceImplTest {
         UserResponseDTO result = userService.createUser(userRequestDTO);
 
         assertNotNull(result);
-        assertEquals(userResponseDTO.getId(), result.getId());
-        assertEquals(userResponseDTO.getEmail(), result.getEmail());
+        assertEquals(userResponseDTO.id(), result.id());
+        assertEquals(userResponseDTO.email(), result.email());
         verify(userRepository, times(1)).save(user);
     }
 
     @Test
     @DisplayName("Create user - email exists, should throw exception")
     void createUser_EmailExists_ThrowsException() {
-        when(userRepository.existsByEmail(userRequestDTO.getEmail())).thenReturn(true);
+        when(userRepository.existsByEmail(userRequestDTO.email())).thenReturn(true);
 
         assertThrows(IllegalArgumentException.class, () ->
                 userService.createUser(userRequestDTO));
@@ -94,7 +101,7 @@ class UserServiceImplTest {
         UserResponseDTO result = userService.getUserById(1L);
 
         assertNotNull(result);
-        assertEquals(userResponseDTO.getId(), result.getId());
+        assertEquals(userResponseDTO.id(), result.id());
     }
 
     @Test
@@ -115,7 +122,7 @@ class UserServiceImplTest {
         UserResponseDTO result = userService.getUserByEmail("test@example.com");
 
         assertNotNull(result);
-        assertEquals(userResponseDTO.getEmail(), result.getEmail());
+        assertEquals(userResponseDTO.email(), result.email());
     }
 
     @Test
@@ -135,10 +142,12 @@ class UserServiceImplTest {
     @Test
     @DisplayName("Update user - email exists, should throw exception")
     void updateUser_EmailExists_ThrowsException() {
-        UserRequestDTO updateRequest = new UserRequestDTO();
-        updateRequest.setEmail("different@example.com");
-        updateRequest.setName("John");
-        updateRequest.setSurname("Doe");
+        UserRequestDTO updateRequest = new UserRequestDTO(
+                "John",
+                "Doe",
+                LocalDate.of(1990, 1, 1),
+                "different@example.com"
+        );
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(userRepository.existsByEmail("different@example.com")).thenReturn(true);

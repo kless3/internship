@@ -1,16 +1,13 @@
 package com.internship.user_service.dto;
 
-import lombok.Data;
-
 import java.time.LocalDate;
 import java.util.List;
 
-@Data
-public class UserResponseDTO {
-    private Long id;
-    private String name;
-    private String surname;
-    private LocalDate birthDate;
-    private String email;
-    private List<CardInfoResponseDTO> cards;
-}
+public record UserResponseDTO(
+        Long id,
+        String name,
+        String surname,
+        LocalDate birthDate,
+        String email,
+        List<CardInfoResponseDTO> cards
+) {}

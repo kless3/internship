@@ -10,7 +10,11 @@ import com.internship.user_service.service.CardInfoService;
 import com.internship.user_service.service.UserService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.*;
+import org.springframework.cache.annotation.CacheConfig;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,8 +43,8 @@ public class CardServiceImpl implements CardInfoService {
 
         User user = userService.getUserEntityById(userId);
 
-        if (cardInfoRepository.existsByNumber(cardInfoRequestDTO.getNumber())) {
-            throw new IllegalArgumentException(String.format(CARD_ALREADY_EXISTS_WITH_NUMBER, cardInfoRequestDTO.getNumber()));
+        if (cardInfoRepository.existsByNumber(cardInfoRequestDTO.number())) {
+            throw new IllegalArgumentException(String.format(CARD_ALREADY_EXISTS_WITH_NUMBER, cardInfoRequestDTO.number()));
         }
 
         CardInfo cardInfo = cardInfoMapper.toEntity(cardInfoRequestDTO);
@@ -116,9 +120,9 @@ public class CardServiceImpl implements CardInfoService {
         CardInfo cardInfo = cardInfoRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(CARD_NOT_FOUND_WITH_ID + id));
 
-        if (!cardInfo.getNumber().equals(cardInfoRequestDTO.getNumber()) &&
-                cardInfoRepository.existsByNumber(cardInfoRequestDTO.getNumber())) {
-            throw new IllegalArgumentException(String.format(CARD_ALREADY_EXISTS_WITH_NUMBER, cardInfoRequestDTO.getNumber()));
+        if (!cardInfo.getNumber().equals(cardInfoRequestDTO.number()) &&
+                cardInfoRepository.existsByNumber(cardInfoRequestDTO.number())) {
+            throw new IllegalArgumentException(String.format(CARD_ALREADY_EXISTS_WITH_NUMBER, cardInfoRequestDTO.number()));
         }
 
         cardInfoMapper.updateEntityFromDTO(cardInfoRequestDTO, cardInfo);
