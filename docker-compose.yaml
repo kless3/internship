@@ -1,51 +1,137 @@
 version: '3.8'
 
 services:
-  user-service:
-    build: user-service
-    container_name: user-service
-    ports:
-      - "8080:8080"
-    environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/internship
-      - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_DATASOURCE_PASSWORD=postgres
-      - SPRING_DATA_REDIS_HOST=redis
-      - SPRING_DATA_REDIS_PORT=6379
-      - SPRING_LIQUIBASE_ENABLED=true
-    depends_on:
-      - postgres
-      - redis
-    networks:
-      - internship-network
-    restart: unless-stopped
-
   postgres:
     image: postgres:15-alpine
     container_name: postgres-db
     environment:
-      - POSTGRES_DB=internship
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-    ports:
-      - "5432:5432"
+    ports: ["5432:5432"]
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - internship-network
-    restart: unless-stopped
+    command: >
+      sh -c "
+        docker-entrypoint.sh postgres &
+        sleep 10
+        until pg_isready -U postgres; do sleep 2; done
+        psql -U postgres -c 'CREATE DATABASE internship;'
+        psql -U postgres -c 'CREATE DATABASE auth;' 
+        psql -U postgres -c 'CREATE DATABASE order_db;'
+        wait
+      "
+    networks: [internship-network]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis:7-alpine
     container_name: redis-cache
-    ports:
-      - "6379:6379"
-    command: redis-server --requirepass ""
-    volumes:
-      - redis_data:/data
-    networks:
-      - internship-network
+    ports: ["6379:6379"]
+    command: redis-server --appendonly yes
+    volumes: [redis_data:/data]
+    networks: [internship-network]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    ports: ["8080:8083"]
+    environment:
+      - SPRING_APPLICATION_NAME=api-gateway
+      - SERVER_PORT=8083
+      - JWT_SECRET=mySuperSecretKeyForJWTGenerationThatIsAtLeast32BytesLong123!
+      - USER_SERVICE_URL=http://user-service:8080
+      - AUTH_SERVICE_URL=http://auth-service:8081
+      - ORDER_SERVICE_URL=http://order-service:8082
+    depends_on:
+      user-service:
+        condition: service_started
+      auth-service:
+        condition: service_started
+      order-service:
+        condition: service_started
+    networks: [internship-network]
+    restart: unless-stopped
+
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    container_name: user-service
+    ports: ["8083:8080"]
+    environment:
+      - SPRING_APPLICATION_NAME=user-service
+      - SERVER_PORT=8080
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/internship
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=validate
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - AUTH_SERVICE_URL=http://auth-service:8081
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks: [internship-network]
+    restart: unless-stopped
+
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    ports: ["8081:8081"]
+    environment:
+      - SPRING_APPLICATION_NAME=auth-service
+      - SERVER_PORT=8081
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/auth
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - USER_SERVICE_URL=http://user-service:8080
+      - JWT_SECRET=mySuperSecretKeyForJWTGenerationThatIsAtLeast32BytesLong123!
+      - JWT_ACCESS_TOKEN_EXPIRATION=3600000
+      - JWT_REFRESH_TOKEN_EXPIRATION=2592000000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      user-service:
+        condition: service_started
+    networks: [internship-network]
+    restart: unless-stopped
+
+  order-service:
+    build:
+      context: ./order-service
+      dockerfile: Dockerfile
+    container_name: order-service
+    ports: ["8082:8082"]
+    environment:
+      - SPRING_APPLICATION_NAME=order-service
+      - SERVER_PORT=8082
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/order_db
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=validate
+      - USER_SERVICE_URL=http://user-service:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+      user-service:
+        condition: service_started
+    networks: [internship-network]
     restart: unless-stopped
 
 volumes:

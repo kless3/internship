@@ -43,8 +43,13 @@ public class CardServiceImpl implements CardInfoService {
 
         User user = userService.getUserEntityById(userId);
 
+<<<<<<< HEAD
         if (cardInfoRepository.existsByNumber(cardInfoRequestDTO.number())) {
             throw new IllegalArgumentException(String.format(CARD_ALREADY_EXISTS_WITH_NUMBER, cardInfoRequestDTO.number()));
+=======
+        if (cardInfoRepository.existsByNumber(cardInfoRequestDTO.getNumber())) {
+            throw new IllegalArgumentException(String.format(CARD_ALREADY_EXISTS_WITH_NUMBER, cardInfoRequestDTO.getNumber()));
+>>>>>>> cb502b9d97038324e9805283d3b773639cf86286
         }
 
         CardInfo cardInfo = cardInfoMapper.toEntity(cardInfoRequestDTO);
@@ -120,9 +125,15 @@ public class CardServiceImpl implements CardInfoService {
         CardInfo cardInfo = cardInfoRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(CARD_NOT_FOUND_WITH_ID + id));
 
+<<<<<<< HEAD
         if (!cardInfo.getNumber().equals(cardInfoRequestDTO.number()) &&
                 cardInfoRepository.existsByNumber(cardInfoRequestDTO.number())) {
             throw new IllegalArgumentException(String.format(CARD_ALREADY_EXISTS_WITH_NUMBER, cardInfoRequestDTO.number()));
+=======
+        if (!cardInfo.getNumber().equals(cardInfoRequestDTO.getNumber()) &&
+                cardInfoRepository.existsByNumber(cardInfoRequestDTO.getNumber())) {
+            throw new IllegalArgumentException(String.format(CARD_ALREADY_EXISTS_WITH_NUMBER, cardInfoRequestDTO.getNumber()));
+>>>>>>> cb502b9d97038324e9805283d3b773639cf86286
         }
 
         cardInfoMapper.updateEntityFromDTO(cardInfoRequestDTO, cardInfo);

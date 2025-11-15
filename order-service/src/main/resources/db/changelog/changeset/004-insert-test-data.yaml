@@ -1,0 +1,209 @@
+databaseChangeLog:
+  - changeSet:
+      id: 004-insert-test-data
+      author: Yafimchyk
+      changes:
+        - insert:
+            tableName: items
+            columns:
+              - column:
+                  name: name
+                  value: "Laptop"
+              - column:
+                  name: price
+                  value: 1500.00
+
+        - insert:
+            tableName: items
+            columns:
+              - column:
+                  name: name
+                  value: "Smartphone"
+              - column:
+                  name: price
+                  value: 800.00
+
+        - insert:
+            tableName: items
+            columns:
+              - column:
+                  name: name
+                  value: "Headphones"
+              - column:
+                  name: price
+                  value: 150.00
+
+        - insert:
+            tableName: items
+            columns:
+              - column:
+                  name: name
+                  value: "Tablet"
+              - column:
+                  name: price
+                  value: 600.00
+
+        - insert:
+            tableName: items
+            columns:
+              - column:
+                  name: name
+                  value: "Monitor"
+              - column:
+                  name: price
+                  value: 300.00
+
+        - insert:
+            tableName: orders
+            columns:
+              - column:
+                  name: user_id
+                  value: 1
+              - column:
+                  name: status
+                  value: "DELIVERED"
+              - column:
+                  name: creation_date
+                  value: "2024-01-15T10:30:00"
+              - column:
+                  name: user_email
+                  value: "ryhor.kisly@example.com"
+
+        - insert:
+            tableName: orders
+            columns:
+              - column:
+                  name: user_id
+                  value: 1
+              - column:
+                  name: status
+                  value: "PENDING"
+              - column:
+                  name: creation_date
+                  value: "2024-01-16T14:45:00"
+              - column:
+                  name: user_email
+                  value: "ryhor.kisly@example.com"
+
+        - insert:
+            tableName: orders
+            columns:
+              - column:
+                  name: user_id
+                  value: 2
+              - column:
+                  name: status
+                  value: "DELIVERED"
+              - column:
+                  name: creation_date
+                  value: "2024-01-17T09:15:00"
+              - column:
+                  name: user_email
+                  value: "maks.yafimchyk@example.com"
+
+        - insert:
+            tableName: orders
+            columns:
+              - column:
+                  name: user_id
+                  value: 3
+              - column:
+                  name: status
+                  value: "CANCELLED"
+              - column:
+                  name: creation_date
+                  value: "2024-01-18T16:20:00"
+              - column:
+                  name: user_email
+                  value: "bob.wilson@example.com"
+
+        - insert:
+            tableName: order_items
+            columns:
+              - column:
+                  name: order_id
+                  value: 1
+              - column:
+                  name: item_id
+                  value: 1
+              - column:
+                  name: quantity
+                  value: 1
+
+        - insert:
+            tableName: order_items
+            columns:
+              - column:
+                  name: order_id
+                  value: 1
+              - column:
+                  name: item_id
+                  value: 3
+              - column:
+                  name: quantity
+                  value: 2
+
+        - insert:
+            tableName: order_items
+            columns:
+              - column:
+                  name: order_id
+                  value: 2
+              - column:
+                  name: item_id
+                  value: 2
+              - column:
+                  name: quantity
+                  value: 1
+
+        - insert:
+            tableName: order_items
+            columns:
+              - column:
+                  name: order_id
+                  value: 2
+              - column:
+                  name: item_id
+                  value: 5
+              - column:
+                  name: quantity
+                  value: 1
+
+        - insert:
+            tableName: order_items
+            columns:
+              - column:
+                  name: order_id
+                  value: 3
+              - column:
+                  name: item_id
+                  value: 4
+              - column:
+                  name: quantity
+                  value: 1
+
+        - insert:
+            tableName: order_items
+            columns:
+              - column:
+                  name: order_id
+                  value: 3
+              - column:
+                  name: item_id
+                  value: 3
+              - column:
+                  name: quantity
+                  value: 1
+
+        - insert:
+            tableName: order_items
+            columns:
+              - column:
+                  name: order_id
+                  value: 4
+              - column:
+                  name: item_id
+                  value: 2
+              - column:
+                  name: quantity
+                  value: 2
