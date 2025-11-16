@@ -107,12 +107,11 @@ class OrderServiceIntegrationTest {
                 List.of(new OrderItemDTO(
                         new ItemDTO(1L, "Laptop", new BigDecimal(70)), 1L)));
 
-
         OrderResponseDTO orderResponse = orderService.createOrder(orderRequest);
 
-        assertThat(orderResponse.getUserId()).isNotNull();
-        assertThat(orderResponse.getUserInfoDto().getEmail()).isEqualTo(USER_EMAIL);
-        assertThat(orderResponse.getStatus()).isEqualTo(OrderStatus.PENDING);
+        assertThat(orderResponse.userId()).isNotNull();
+        assertThat(orderResponse.userInfoDto().email()).isEqualTo(USER_EMAIL);
+        assertThat(orderResponse.status()).isEqualTo(OrderStatus.PENDING);
 
         verify(getRequestedFor(urlPathMatching("/api/v1/users/email/.*")));
 
@@ -139,7 +138,6 @@ class OrderServiceIntegrationTest {
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining(ORDER_NOT_FOUND_MESSAGE + 999);
     }
-
 
     @Test
     @DisplayName("Should get order by id when order exists")
@@ -187,12 +185,11 @@ class OrderServiceIntegrationTest {
         OrderResponseDTO foundOrder = orderService.getOrderById(orderId);
 
         assertThat(foundOrder).isNotNull();
-        assertThat(foundOrder.getUserInfoDto().getEmail()).isEqualTo(USER_EMAIL);
-        assertThat(foundOrder.getStatus()).isEqualTo(OrderStatus.PENDING);
+        assertThat(foundOrder.userInfoDto().email()).isEqualTo(USER_EMAIL);
+        assertThat(foundOrder.status()).isEqualTo(OrderStatus.PENDING);
 
         verify(getRequestedFor(urlPathMatching("/api/v1/users/email/.*")));
     }
-
 
     @Test
     @DisplayName("Should get orders by ids when orders exist")
@@ -231,10 +228,10 @@ class OrderServiceIntegrationTest {
         List<OrderResponseDTO> foundOrders = orderService.getOrdersByIds(orderIds);
 
         assertThat(foundOrders).hasSize(2);
-        assertThat(foundOrders).extracting(OrderResponseDTO::getStatus)
+        assertThat(foundOrders).extracting(OrderResponseDTO::status)
                 .containsOnly(OrderStatus.PENDING);
 
-        assertThat(foundOrders).allMatch(order -> order.getUserInfoDto() != null);
+        assertThat(foundOrders).allMatch(order -> order.userInfoDto() != null);
     }
 
     @Test
@@ -296,8 +293,8 @@ class OrderServiceIntegrationTest {
         List<OrderResponseDTO> foundOrders = orderService.getOrdersByStatus(OrderStatus.PENDING);
 
         assertThat(foundOrders).isNotEmpty();
-        assertThat(foundOrders).allMatch(order -> order.getStatus() == OrderStatus.PENDING);
-        assertThat(foundOrders).extracting(OrderResponseDTO::getUserId)
+        assertThat(foundOrders).allMatch(order -> order.status() == OrderStatus.PENDING);
+        assertThat(foundOrders).extracting(OrderResponseDTO::userId)
                 .contains(123L, 124L);
     }
 
@@ -350,12 +347,12 @@ class OrderServiceIntegrationTest {
         OrderResponseDTO updatedOrder = orderService.updateOrderById(orderId, updateRequest);
 
         assertThat(updatedOrder).isNotNull();
-        assertThat(updatedOrder.getUserInfoDto().getEmail()).isEqualTo(USER_EMAIL);
-        assertThat(updatedOrder.getStatus()).isEqualTo(OrderStatus.PENDING);
+        assertThat(updatedOrder.userInfoDto().email()).isEqualTo(USER_EMAIL);
+        assertThat(updatedOrder.status()).isEqualTo(OrderStatus.PENDING);
 
         OrderResponseDTO foundAfterUpdate = orderService.getOrderById(orderId);
         assertThat(foundAfterUpdate).isNotNull();
-        assertThat(foundAfterUpdate.getUserInfoDto().getEmail()).isEqualTo(USER_EMAIL);
+        assertThat(foundAfterUpdate.userInfoDto().email()).isEqualTo(USER_EMAIL);
     }
 
     @Test
@@ -403,5 +400,4 @@ class OrderServiceIntegrationTest {
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining(ORDER_NOT_FOUND_MESSAGE + 999);
     }
-
 }

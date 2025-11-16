@@ -43,15 +43,15 @@ public class TokenManagementServiceImpl implements TokenManagementService {
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
-                            loginRequest.getLogin(),
-                            loginRequest.getPassword()
+                            loginRequest.login(),
+                            loginRequest.password()
                     )
             );
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
-            String accessToken = jwtTokenProvider.generateAccessToken(loginRequest.getLogin());
-            String refreshToken = jwtTokenProvider.generateRefreshToken(loginRequest.getLogin());
+            String accessToken = jwtTokenProvider.generateAccessToken(loginRequest.login());
+            String refreshToken = jwtTokenProvider.generateRefreshToken(loginRequest.login());
 
             return new TokenResponse(accessToken, refreshToken, jwtTokenProvider.getAccessTokenExpiration());
 
@@ -66,11 +66,11 @@ public class TokenManagementServiceImpl implements TokenManagementService {
     @Transactional(readOnly = true)
     public TokenResponse refreshToken(RefreshTokenRequest refreshTokenRequest) {
         try {
-            if (!jwtTokenProvider.validateToken(refreshTokenRequest.getRefreshToken())) {
+            if (!jwtTokenProvider.validateToken(refreshTokenRequest.refreshToken())) {
                 throw new InvalidTokenException(INVALID_REFRESH_TOKEN);
             }
 
-            String login = jwtTokenProvider.getUsernameFromToken(refreshTokenRequest.getRefreshToken());
+            String login = jwtTokenProvider.getUsernameFromToken(refreshTokenRequest.refreshToken());
 
             if (!authService.userExists(login)) {
                 throw new UserNotFoundException(login);
@@ -92,11 +92,11 @@ public class TokenManagementServiceImpl implements TokenManagementService {
     @Transactional(readOnly = true)
     public TokenValidationResponse validateToken(ValidateTokenRequest validateTokenRequest) {
         try {
-            if (!jwtTokenProvider.validateToken(validateTokenRequest.getToken())) {
+            if (!jwtTokenProvider.validateToken(validateTokenRequest.token())) {
                 return new TokenValidationResponse(false, null, INVALID_REFRESH_TOKEN);
             }
 
-            String login = jwtTokenProvider.getUsernameFromToken(validateTokenRequest.getToken());
+            String login = jwtTokenProvider.getUsernameFromToken(validateTokenRequest.token());
 
             if (!authService.userExists(login)) {
                 return new TokenValidationResponse(false, null, USER_NOT_FOUND_MESSAGE);

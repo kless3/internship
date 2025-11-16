@@ -1,19 +1,10 @@
 package com.internship.user_service.dto;
 
-<<<<<<< HEAD
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Size;
-=======
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Past;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.Size;
-import lombok.Data;
->>>>>>> cb502b9d97038324e9805283d3b773639cf86286
 
 import java.time.LocalDate;
 

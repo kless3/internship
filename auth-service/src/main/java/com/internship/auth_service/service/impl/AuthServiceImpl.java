@@ -33,28 +33,29 @@ public class AuthServiceImpl implements AuthService {
     public void registerUser(RegisterRequest registerRequest) {
         String sagaId = UUID.randomUUID().toString();
 
-        if (userCredentialsRepository.existsByLogin(registerRequest.getLogin())) {
-            throw new DuplicateLoginException(registerRequest.getLogin());
+        if (userCredentialsRepository.existsByLogin(registerRequest.login())) {
+            throw new DuplicateLoginException(registerRequest.login());
         }
 
         try {
-            UserServiceRequest userRequestDTO = new UserServiceRequest();
-            userRequestDTO.setName(registerRequest.getName());
-            userRequestDTO.setSurname(registerRequest.getSurname());
-            userRequestDTO.setBirthDate(registerRequest.getBirthDate());
-            userRequestDTO.setEmail(registerRequest.getEmail());
+            UserServiceRequest userRequestDTO = new UserServiceRequest(
+                    registerRequest.name(),
+                    registerRequest.surname(),
+                    registerRequest.birthDate(),
+                    registerRequest.email()
+            );
 
             userServiceClient.registerUser(userRequestDTO);
 
             UserCredentials userCredentials = new UserCredentials();
-            userCredentials.setLogin(registerRequest.getLogin());
-            userCredentials.setPasswordHash(passwordEncoder.encode(registerRequest.getPassword()));
+            userCredentials.setLogin(registerRequest.login());
+            userCredentials.setPasswordHash(passwordEncoder.encode(registerRequest.password()));
             userCredentials.setEnabled(true);
 
             UserCredentials savedUser = userCredentialsRepository.save(userCredentials);
 
         } catch (Exception e) {
-            initiateUserServiceRollback(sagaId, registerRequest.getEmail(),
+            initiateUserServiceRollback(sagaId, registerRequest.email(),
                     AUTH_SERVICE_ERROR + e.getMessage());
             throw new UserServiceException(USER_SERVICE_ERROR + e.getMessage());
         }

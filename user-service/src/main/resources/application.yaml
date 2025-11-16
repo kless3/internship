@@ -4,9 +4,9 @@ spring:
   application:
     name: user-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/internship
-    username: postgres
-    password: postgres
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -18,10 +18,10 @@ spring:
     enabled: true
   data:
     redis:
-      host: localhost
-      port: 6379
-      password:
-      database: 0
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD}
+      database: ${REDIS_DATABASE}
       timeout: 60000
   cache:
     type: redis
@@ -30,11 +30,7 @@ spring:
       cache-null-values: false
 
 server:
-  port: 8080
-
-auth:
-  service:
-    url: http://localhost:8081
+  port: ${SERVER_PORT}
 
 logging:
   level:

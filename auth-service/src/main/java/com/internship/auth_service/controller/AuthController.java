@@ -21,6 +21,9 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AuthController {
 
+    private static final String USER_REGISTRATION_SUCCESS = "User registered successfully";
+    private static final String SERVICE_HEALTHY = "Auth Service is healthy";
+
     private final AuthService authService;
     private final TokenManagementService tokenManagementService;
 
@@ -45,7 +48,7 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<Map<String, String>> registerUser(@Valid @RequestBody RegisterRequest registerRequest) {
         authService.registerUser(registerRequest);
-        return ResponseEntity.ok(Map.of("message", "User registered successfully"));
+        return ResponseEntity.ok(Map.of("message", USER_REGISTRATION_SUCCESS));
     }
 
     @GetMapping("/check/{login}")
@@ -56,6 +59,6 @@ public class AuthController {
 
     @GetMapping("/health")
     public ResponseEntity<Map<String, String>> health() {
-        return ResponseEntity.ok(Map.of("status", "Auth Service is healthy"));
+        return ResponseEntity.ok(Map.of("status", SERVICE_HEALTHY));
     }
 }

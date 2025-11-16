@@ -19,7 +19,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collections;
@@ -56,19 +55,9 @@ class OrderServiceTest {
 
     @BeforeEach
     void setUp() {
-        itemDTO = new ItemDTO();
-        itemDTO.setId(1L);
-        itemDTO.setName("Test Item");
-        itemDTO.setPrice(new BigDecimal("29.99"));
-
-        orderItemDTO = new OrderItemDTO();
-        orderItemDTO.setItem(itemDTO);
-        orderItemDTO.setQuantity(2L);
-
-        orderRequestDTO = new OrderRequestDTO();
-        orderRequestDTO.setUserId(1L);
-        orderRequestDTO.setUserEmail("test@example.com");
-        orderRequestDTO.setOrderItems(List.of(orderItemDTO));
+        itemDTO = new ItemDTO(1L, "Test Item", new BigDecimal("29.99"));
+        orderItemDTO = new OrderItemDTO(itemDTO, 2L);
+        orderRequestDTO = new OrderRequestDTO(1L, "test@example.com", List.of(orderItemDTO));
 
         order = new Order();
         order.setId(1L);
@@ -77,16 +66,8 @@ class OrderServiceTest {
         order.setStatus(OrderStatus.PENDING);
         order.setCreationDate(LocalDateTime.now());
 
-        userInfoDTO = new UserInfoDTO();
-
-        userInfoDTO.setEmail("test@example.com");
-
-        orderResponseDTO = new OrderResponseDTO();
-        orderResponseDTO.setUserId(1L);
-        orderResponseDTO.setStatus(OrderStatus.PENDING);
-        orderResponseDTO.setCreationDate(LocalDateTime.now());
-        orderResponseDTO.setOrderItems(List.of(orderItemDTO));
-        orderResponseDTO.setUserInfoDto(userInfoDTO);
+        userInfoDTO = new UserInfoDTO(1L, "test@example.com");
+        orderResponseDTO = new OrderResponseDTO(1L, OrderStatus.PENDING, LocalDateTime.now(), List.of(orderItemDTO), userInfoDTO);
     }
 
     @Test
@@ -100,8 +81,8 @@ class OrderServiceTest {
         OrderResponseDTO result = orderService.createOrder(orderRequestDTO);
 
         assertNotNull(result);
-        assertEquals(orderResponseDTO.getUserId(), result.getUserId());
-        assertEquals(orderResponseDTO.getUserInfoDto().getEmail(), result.getUserInfoDto().getEmail());
+        assertEquals(orderResponseDTO.userId(), result.userId());
+        assertEquals(orderResponseDTO.userInfoDto().email(), result.userInfoDto().email());
         verify(orderMapper).toEntity(orderRequestDTO);
         verify(orderRepository).save(order);
         verify(orderMapper).toDTO(order);
@@ -114,7 +95,6 @@ class OrderServiceTest {
         OrderItem orderItem = new OrderItem();
         orderItem.setId(1L);
         orderItem.setQuantity(2L);
-
 
         order.setOrderItems(List.of(orderItem));
         when(orderMapper.toEntity(orderRequestDTO)).thenReturn(order);
@@ -140,7 +120,7 @@ class OrderServiceTest {
         OrderResponseDTO result = orderService.getOrderById(orderId);
 
         assertNotNull(result);
-        assertEquals(orderResponseDTO.getUserId(), result.getUserId());
+        assertEquals(orderResponseDTO.userId(), result.userId());
         verify(orderRepository).findById(orderId);
         verify(orderMapper).toDTO(order);
         verify(userServiceClient).getUserInfoByEmail(order.getUserEmail());
@@ -171,9 +151,7 @@ class OrderServiceTest {
         order2.setUserEmail("test2@example.com");
         List<Order> orders = Arrays.asList(order, order2);
 
-        OrderResponseDTO orderResponseDTO2 = new OrderResponseDTO();
-        orderResponseDTO2.setUserId(2L);
-        orderResponseDTO2.setUserInfoDto(userInfoDTO);
+        OrderResponseDTO orderResponseDTO2 = new OrderResponseDTO(2L, OrderStatus.PENDING, LocalDateTime.now(), List.of(orderItemDTO), userInfoDTO);
 
         when(orderRepository.findByIdIn(orderIds)).thenReturn(orders);
         when(orderMapper.toDTO(order)).thenReturn(orderResponseDTO);
@@ -219,7 +197,7 @@ class OrderServiceTest {
 
         assertNotNull(result);
         assertEquals(1, result.size());
-        assertEquals(status, result.get(0).getStatus());
+        assertEquals(status, result.get(0).status());
         verify(orderRepository).findByStatus(status);
         verify(orderMapper).toDTO(order);
         verify(userServiceClient).getUserInfoByEmail(order.getUserEmail());
@@ -244,10 +222,7 @@ class OrderServiceTest {
     @DisplayName("Should update order successfully")
     void updateOrderById_ShouldReturnUpdatedOrderResponseDTO() {
         Long orderId = 1L;
-        OrderRequestDTO updateRequest = new OrderRequestDTO();
-        updateRequest.setUserId(1L);
-        updateRequest.setUserEmail("updated@example.com");
-        updateRequest.setOrderItems(List.of(orderItemDTO));
+        OrderRequestDTO updateRequest = new OrderRequestDTO(1L, "updated@example.com", List.of(orderItemDTO));
 
         Order updatedOrder = new Order();
         updatedOrder.setId(orderId);
@@ -255,10 +230,7 @@ class OrderServiceTest {
         updatedOrder.setUserEmail("updated@example.com");
         updatedOrder.setStatus(OrderStatus.DELIVERED);
 
-        OrderResponseDTO updatedResponse = new OrderResponseDTO();
-        updatedResponse.setUserId(orderId);
-        updatedResponse.setStatus(OrderStatus.DELIVERED);
-        updatedResponse.setUserInfoDto(userInfoDTO);
+        OrderResponseDTO updatedResponse = new OrderResponseDTO(orderId, OrderStatus.DELIVERED, LocalDateTime.now(), List.of(orderItemDTO), userInfoDTO);
 
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
         when(orderRepository.save(order)).thenReturn(updatedOrder);
@@ -268,8 +240,8 @@ class OrderServiceTest {
         OrderResponseDTO result = orderService.updateOrderById(orderId, updateRequest);
 
         assertNotNull(result);
-        assertEquals(updatedResponse.getUserId(), result.getUserId());
-        assertEquals(updatedResponse.getStatus(), result.getStatus());
+        assertEquals(updatedResponse.userId(), result.userId());
+        assertEquals(updatedResponse.status(), result.status());
 
         verify(orderRepository).findById(orderId);
         verify(orderMapper).updateEntityFromDTO(updateRequest, order);
@@ -282,7 +254,7 @@ class OrderServiceTest {
     @DisplayName("Should throw ResourceNotFoundException when updating non-existent order")
     void updateOrderById_WhenOrderNotFound_ShouldThrowException() {
         Long orderId = 999L;
-        OrderRequestDTO updateRequest = new OrderRequestDTO();
+        OrderRequestDTO updateRequest = new OrderRequestDTO(1L, "test@example.com", List.of(orderItemDTO));
         when(orderRepository.findById(orderId)).thenReturn(Optional.empty());
 
         OrderProcessingException exception = assertThrows(OrderProcessingException.class,

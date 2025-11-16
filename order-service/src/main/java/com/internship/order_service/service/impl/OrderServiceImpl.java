@@ -3,6 +3,7 @@ package com.internship.order_service.service.impl;
 import com.internship.order_service.client.UserServiceClient;
 import com.internship.order_service.dto.OrderRequestDTO;
 import com.internship.order_service.dto.OrderResponseDTO;
+import com.internship.order_service.dto.UserInfoDTO;
 import com.internship.order_service.exception.OrderProcessingException;
 import com.internship.order_service.exception.ResourceNotFoundException;
 import com.internship.order_service.exception.InvalidOrderStatusException;
@@ -144,8 +145,14 @@ public class OrderServiceImpl implements OrderService {
 
     private OrderResponseDTO toOrderResponseDTO(Order order) {
         OrderResponseDTO orderResponseDTO = orderMapper.toDTO(order);
-        orderResponseDTO.setUserInfoDto(userServiceClient.getUserInfoByEmail(order.getUserEmail()));
-        return orderResponseDTO;
+        UserInfoDTO userInfo = userServiceClient.getUserInfoByEmail(order.getUserEmail());
+        return new OrderResponseDTO(
+                orderResponseDTO.userId(),
+                orderResponseDTO.status(),
+                orderResponseDTO.creationDate(),
+                orderResponseDTO.orderItems(),
+                userInfo
+        );
     }
 
     private void validateOrderStatus(OrderStatus status) {
@@ -153,5 +160,4 @@ public class OrderServiceImpl implements OrderService {
             throw new InvalidOrderStatusException(ORDER_STATUS_NULL);
         }
     }
-
 }

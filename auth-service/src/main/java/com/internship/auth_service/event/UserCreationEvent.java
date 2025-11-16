@@ -30,10 +30,10 @@ public class UserCreationEvent {
     public static UserCreationEvent fromRegisterRequest(RegisterRequest request, String sagaId) {
         return UserCreationEvent.of(
                 sagaId,
-                request.getEmail(),
-                request.getName(),
-                request.getSurname(),
-                request.getBirthDate()
+                request.email(),
+                request.name(),
+                request.surname(),
+                request.birthDate()
         );
     }
 }

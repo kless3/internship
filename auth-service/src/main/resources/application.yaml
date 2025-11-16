@@ -5,9 +5,9 @@ spring:
     name: auth-service
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/auth
-    username: postgres
-    password: postgres
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -28,18 +28,18 @@ spring:
       platform: postgres
 
 server:
-  port: 8081
+  port: ${SERVER_PORT}
 
 user:
   service:
-    url: http://localhost:8080
+    url: ${USER_SERVICE_URL}
 
 jwt:
   secret: ${JWT_SECRET}
   access-token:
-    expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:3600000}
+    expiration: ${JWT_ACCESS_TOKEN_EXPIRATION}
   refresh-token:
-    expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:2592000000}
+    expiration: ${JWT_REFRESH_TOKEN_EXPIRATION}
 
 logging:
   level:

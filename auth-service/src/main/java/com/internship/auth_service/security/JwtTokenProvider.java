@@ -5,16 +5,16 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
 import java.util.List;
 
 @Component
-@Slf4j
 @RequiredArgsConstructor
 public class JwtTokenProvider {
+
+    private static final String INVALID_JWT = "Invalid JWT token";
 
     private final JwtProperties jwtProperties;
 
@@ -44,7 +44,6 @@ public class JwtTokenProvider {
                     .parseClaimsJws(token);
             return true;
         } catch (Exception e) {
-            log.error("Token validation error: {}", e.getMessage());
             return false;
         }
     }
@@ -57,8 +56,7 @@ public class JwtTokenProvider {
                     .getBody()
                     .getSubject();
         } catch (Exception e) {
-            log.error("Error extracting username from token: {}", e.getMessage());
-            throw new com.internship.auth_service.exception.AuthenticationException("Invalid JWT token");
+            throw new com.internship.auth_service.exception.AuthenticationException(INVALID_JWT);
         }
     }
 
@@ -70,8 +68,7 @@ public class JwtTokenProvider {
                     .getBody();
             return claims.getExpiration();
         } catch (Exception e) {
-            log.error("Error extracting expiration from token: {}", e.getMessage());
-            throw new com.internship.auth_service.exception.AuthenticationException("Invalid JWT token");
+            throw new com.internship.auth_service.exception.AuthenticationException(INVALID_JWT);
         }
     }
 
@@ -84,8 +81,7 @@ public class JwtTokenProvider {
                     .getBody()
                     .get("authorities", List.class);
         } catch (Exception e) {
-            log.error("Error extracting authorities from token: {}", e.getMessage());
-            throw new com.internship.auth_service.exception.AuthenticationException("Invalid JWT token");
+            throw new com.internship.auth_service.exception.AuthenticationException(INVALID_JWT);
         }
     }
 

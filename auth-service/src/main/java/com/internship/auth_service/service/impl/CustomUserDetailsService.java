@@ -16,15 +16,19 @@ import java.util.Collections;
 @RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {
 
+    private static final String USER_NOT_FOUND_WITH_LOGIN = "User not found with login: ";
+    private static final String USER_ACCOUNT_DISABLED = "User account is disabled: ";
+
+
     private final UserCredentialsRepository userCredentialsRepository;
 
     @Override
     public UserDetails loadUserByUsername(String login) throws UsernameNotFoundException {
         UserCredentials userCredentials = userCredentialsRepository.findByLogin(login)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with login: " + login));
+                .orElseThrow(() -> new UsernameNotFoundException(USER_NOT_FOUND_WITH_LOGIN + login));
 
         if (!userCredentials.isEnabled()) {
-            throw new UsernameNotFoundException("User account is disabled: " + login);
+            throw new UsernameNotFoundException(USER_ACCOUNT_DISABLED + login);
         }
 
         return User.builder()
