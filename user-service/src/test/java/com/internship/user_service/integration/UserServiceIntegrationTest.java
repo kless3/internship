@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @DisplayName("Integration Tests for UserServiceImpl")
-class UserServiceIntegrationTest extends BaseIntegrationTest {
+class UserServiceIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private UserService userService;

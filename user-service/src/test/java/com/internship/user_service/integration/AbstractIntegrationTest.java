@@ -10,7 +10,7 @@ import org.testcontainers.utility.DockerImageName;
 
 @Testcontainers
 @ActiveProfiles("test")
-public abstract class BaseIntegrationTest {
+public abstract class AbstractIntegrationTest {
 
     protected static final PostgreSQLContainer<?> postgreSQLContainer;
     protected static final GenericContainer<?> redisContainer;

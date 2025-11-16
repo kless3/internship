@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @DisplayName("Integration Tests for CardServiceImpl")
-class CardServiceIntegrationTest extends BaseIntegrationTest {
+class CardServiceIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private CardInfoService cardInfoService;
