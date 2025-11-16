@@ -11,29 +11,36 @@ import com.internship.order_service.model.Order;
 import com.internship.order_service.model.enums.OrderStatus;
 import com.internship.order_service.repository.OrderRepository;
 import com.internship.order_service.service.impl.OrderServiceImpl;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
+import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatNoException;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 @SpringBootTest
-@Testcontainers
 @DisplayName("Order Service Integration Tests")
-class OrderServiceIntegrationTest {
+class OrderServiceIntegrationTest extends AbstractIntegrationTest {
 
     private static final String USER_EMAIL = "test@example.com";
     private static final String ORDER_NOT_FOUND_MESSAGE = "Order not found with id: ";
@@ -46,22 +53,10 @@ class OrderServiceIntegrationTest {
 
     private static WireMockServer wireMockServer;
 
-    @Container
-    private static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(
-            "postgres:15-alpine")
-            .withDatabaseName("testdb")
-            .withUsername("test")
-            .withPassword("test");
-
     @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-
+    static void configureWireMockProperties(DynamicPropertyRegistry registry) {
         String wireMockUrl = "http://localhost:" + wireMockServer.port();
         registry.add("user.service.url", () -> wireMockUrl);
-
     }
 
     @BeforeAll
@@ -88,7 +83,6 @@ class OrderServiceIntegrationTest {
     @Test
     @DisplayName("Should create order when user exists")
     void shouldCreateOrderWhenUserExists() {
-
         stubFor(get(urlPathMatching("/api/v1/users/email/.*"))
                 .willReturn(aResponse()
                         .withStatus(200)
@@ -114,7 +108,6 @@ class OrderServiceIntegrationTest {
         assertThat(orderResponse.status()).isEqualTo(OrderStatus.PENDING);
 
         verify(getRequestedFor(urlPathMatching("/api/v1/users/email/.*")));
-
     }
 
     @Test

@@ -1,4 +1,4 @@
-package com.internship.user_service.unit.service.impl;
+package com.internship.user_service.unit;
 
 import com.internship.user_service.dto.CardInfoRequestDTO;
 import com.internship.user_service.dto.CardInfoResponseDTO;

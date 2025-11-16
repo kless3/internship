@@ -4,23 +4,16 @@ import com.internship.user_service.dto.CardInfoRequestDTO;
 import com.internship.user_service.dto.CardInfoResponseDTO;
 import com.internship.user_service.dto.UserRequestDTO;
 import com.internship.user_service.dto.UserResponseDTO;
+import com.internship.user_service.exception.DuplicateResourceException;
+import com.internship.user_service.exception.ResourceNotFoundException;
 import com.internship.user_service.service.CardInfoService;
 import com.internship.user_service.service.UserService;
-import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.jdbc.Sql;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -28,10 +21,8 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
-@Testcontainers
-@ActiveProfiles("test")
 @DisplayName("Integration Tests for CardServiceImpl")
-class CardServiceIntegrationTest {
+class CardServiceIntegrationTest extends BaseIntegrationTest {
 
     @Autowired
     private CardInfoService cardInfoService;
@@ -41,34 +32,6 @@ class CardServiceIntegrationTest {
 
     private UserResponseDTO testUser;
     private CardInfoRequestDTO testCardRequest;
-
-    @Container
-    private static GenericContainer<?> redisContainer = new GenericContainer<>(
-            DockerImageName.parse("redis:7-alpine"))
-            .withExposedPorts(6379)
-            .withReuse(false);
-
-    @Container
-    private static PostgreSQLContainer<?> postgreSQLContainer = new PostgreSQLContainer<>("postgres:15-alpine")
-            .withDatabaseName("internship_test2")
-            .withUsername("postgres")
-            .withPassword("postgres")
-            .withReuse(false);
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgreSQLContainer::getJdbcUrl);
-        registry.add("spring.datasource.username", postgreSQLContainer::getUsername);
-        registry.add("spring.datasource.password", postgreSQLContainer::getPassword);
-
-        registry.add("spring.data.redis.host", redisContainer::getHost);
-        registry.add("spring.data.redis.port", () -> redisContainer.getMappedPort(6379));
-        registry.add("spring.data.redis.timeout", () -> "10000ms");
-
-        registry.add("spring.liquibase.enabled", () -> "false");
-
-        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
-    }
 
     @BeforeEach
     void setUp() {
@@ -105,7 +68,7 @@ class CardServiceIntegrationTest {
     void createCard_WithExistingNumber_ShouldThrowException() {
         cardInfoService.createCard(testUser.id(), testCardRequest);
 
-        assertThrows(IllegalArgumentException.class, () -> {
+        assertThrows(DuplicateResourceException.class, () -> {
             cardInfoService.createCard(testUser.id(), testCardRequest);
         });
     }
@@ -113,7 +76,7 @@ class CardServiceIntegrationTest {
     @Test
     @DisplayName("Create card with non-existing user - should throw exception")
     void createCard_WithNonExistingUser_ShouldThrowException() {
-        assertThrows(EntityNotFoundException.class, () -> {
+        assertThrows(ResourceNotFoundException.class, () -> {
             cardInfoService.createCard(999L, testCardRequest);
         });
     }
@@ -190,7 +153,7 @@ class CardServiceIntegrationTest {
 
         cardInfoService.deleteCard(createdCard.id());
 
-        assertThrows(EntityNotFoundException.class, () -> {
+        assertThrows(ResourceNotFoundException.class, () -> {
             cardInfoService.getCardById(createdCard.id());
         });
         assertFalse(cardInfoService.cardExists(createdCard.id()));
