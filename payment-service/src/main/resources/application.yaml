@@ -1,20 +1,22 @@
 spring:
+  config:
+    import: optional:file:.env[.properties]
   application:
     name: payment-service
 
   data:
     mongodb:
-      host: localhost
-      port: 27017
-      database: payment
+      host: ${MONGODB_HOST:localhost}
+      port: ${MONGODB_PORT:27017}
+      database: ${MONGODB_DATABASE:payment}
 
   liquibase-mongodb:
-    enabled: true
-    change-log: db/changelog/db.changelog-master.xml
+    enabled: ${LIQUIBASE_ENABLED:true}
+    change-log: ${LIQUIBASE_CHANGE_LOG:db/changelog/db.changelog-master.xml}
 
   kafka:
-    bootstrap-servers: localhost:9092
-    consumer-group-id: payment-service
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer-group-id: ${KAFKA_CONSUMER_GROUP_ID:payment-service}
     trusted-packages: "*"
     default-type: com.internship.payment_service.dto.event.OrderCreatedEvent
 
@@ -25,8 +27,8 @@ logging:
     org.mongodb.driver: DEBUG
 
 server:
-  port: 8084
+  port: ${SERVER_PORT:8084}
 
 external:
   api:
-    url: https://www.random.org/integers/?num=1&min=1&max=1000&col=1&base=10&format=plain&rnd=new
+    url: ${EXTERNAL_URL}
