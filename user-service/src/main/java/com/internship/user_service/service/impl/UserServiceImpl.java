@@ -2,11 +2,12 @@ package com.internship.user_service.service.impl;
 
 import com.internship.user_service.dto.UserRequestDTO;
 import com.internship.user_service.dto.UserResponseDTO;
+import com.internship.user_service.exception.DuplicateResourceException;
+import com.internship.user_service.exception.ResourceNotFoundException;
 import com.internship.user_service.mapper.UserMapper;
 import com.internship.user_service.model.User;
 import com.internship.user_service.repository.UserRepository;
 import com.internship.user_service.service.UserService;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheConfig;
 import org.springframework.cache.annotation.CacheEvict;
@@ -36,8 +37,8 @@ public class UserServiceImpl implements UserService {
     @CacheEvict(allEntries = true)
     public UserResponseDTO createUser(UserRequestDTO userRequestDTO) {
 
-        if (userRepository.existsByEmail(userRequestDTO.getEmail())) {
-            throw new IllegalArgumentException(String.format(USER_ALREADY_EXISTS_WITH_EMAIL, userRequestDTO.getEmail()));
+        if (userRepository.existsByEmail(userRequestDTO.email())) {
+            throw new DuplicateResourceException(String.format(USER_ALREADY_EXISTS_WITH_EMAIL, userRequestDTO.email()));
         }
 
         User user = userMapper.toEntity(userRequestDTO);
@@ -52,18 +53,18 @@ public class UserServiceImpl implements UserService {
     public UserResponseDTO getUserById(Long id) {
 
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException(USER_NOT_FOUND_WITH_ID + id));
+                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND_WITH_ID + id));
 
         return userMapper.toDTO(user);
     }
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(key = "#email", unless = "#result == null")
+    @Cacheable(key = "'email:' + #email", unless = "#result == null")
     public UserResponseDTO getUserByEmail(String email) {
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new EntityNotFoundException(USER_NOT_FOUND_WITH_EMAIL + email));
+                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND_WITH_EMAIL + email));
 
         return userMapper.toDTO(user);
     }
@@ -82,7 +83,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public User getUserEntityById(Long id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException(USER_NOT_FOUND_WITH_ID_ENTITY + id));
+                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND_WITH_ID_ENTITY + id));
     }
 
     @Override
@@ -103,11 +104,11 @@ public class UserServiceImpl implements UserService {
     public UserResponseDTO updateUser(Long id, UserRequestDTO userRequestDTO) {
 
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException(USER_NOT_FOUND_WITH_ID + id));
+                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND_WITH_ID + id));
 
-        if (!user.getEmail().equals(userRequestDTO.getEmail()) &&
-                userRepository.existsByEmail(userRequestDTO.getEmail())) {
-            throw new IllegalArgumentException(String.format(EMAIL_ALREADY_EXISTS, userRequestDTO.getEmail()));
+        if (!user.getEmail().equals(userRequestDTO.email()) &&
+                userRepository.existsByEmail(userRequestDTO.email())) {
+            throw new DuplicateResourceException(String.format(EMAIL_ALREADY_EXISTS, userRequestDTO.email()));
         }
 
         userMapper.updateEntityFromDTO(userRequestDTO, user);
@@ -118,15 +119,24 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    @CacheEvict(key = "{'all', #id}")
+    @CacheEvict(allEntries = true)
     public void deleteUser(Long id) {
 
         if (!userRepository.existsById(id)) {
-            throw new EntityNotFoundException(USER_NOT_FOUND_WITH_ID + id);
+            throw new ResourceNotFoundException(USER_NOT_FOUND_WITH_ID + id);
         }
 
         userRepository.deleteById(id);
+    }
 
+    @Override
+    @Transactional
+    @CacheEvict(allEntries = true)
+    public void deleteUserByEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException(USER_NOT_FOUND_WITH_EMAIL + email));
+
+        userRepository.delete(user);
     }
 
     @Override

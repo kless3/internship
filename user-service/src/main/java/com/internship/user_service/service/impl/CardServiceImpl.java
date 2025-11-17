@@ -2,6 +2,8 @@ package com.internship.user_service.service.impl;
 
 import com.internship.user_service.dto.CardInfoRequestDTO;
 import com.internship.user_service.dto.CardInfoResponseDTO;
+import com.internship.user_service.exception.DuplicateResourceException;
+import com.internship.user_service.exception.ResourceNotFoundException;
 import com.internship.user_service.mapper.CardInfoMapper;
 import com.internship.user_service.model.CardInfo;
 import com.internship.user_service.model.User;
@@ -10,7 +12,11 @@ import com.internship.user_service.service.CardInfoService;
 import com.internship.user_service.service.UserService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.*;
+import org.springframework.cache.annotation.CacheConfig;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,8 +45,8 @@ public class CardServiceImpl implements CardInfoService {
 
         User user = userService.getUserEntityById(userId);
 
-        if (cardInfoRepository.existsByNumber(cardInfoRequestDTO.getNumber())) {
-            throw new IllegalArgumentException(String.format(CARD_ALREADY_EXISTS_WITH_NUMBER, cardInfoRequestDTO.getNumber()));
+        if (cardInfoRepository.existsByNumber(cardInfoRequestDTO.number())) {
+            throw new DuplicateResourceException(String.format(CARD_ALREADY_EXISTS_WITH_NUMBER, cardInfoRequestDTO.number()));
         }
 
         CardInfo cardInfo = cardInfoMapper.toEntity(cardInfoRequestDTO);
@@ -57,7 +63,7 @@ public class CardServiceImpl implements CardInfoService {
     public CardInfoResponseDTO getCardById(Long id) {
 
         CardInfo cardInfo = cardInfoRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException(CARD_NOT_FOUND_WITH_ID + id));
+                .orElseThrow(() -> new ResourceNotFoundException(CARD_NOT_FOUND_WITH_ID + id));
 
         return cardInfoMapper.toDTO(cardInfo);
     }
@@ -68,7 +74,7 @@ public class CardServiceImpl implements CardInfoService {
     public CardInfoResponseDTO getCardByNumber(String number) {
 
         CardInfo cardInfo = cardInfoRepository.findByNumber(number)
-                .orElseThrow(() -> new EntityNotFoundException(CARD_NOT_FOUND_WITH_NUMBER + number));
+                .orElseThrow(() -> new ResourceNotFoundException(CARD_NOT_FOUND_WITH_NUMBER + number));
 
         return cardInfoMapper.toDTO(cardInfo);
     }
@@ -116,9 +122,9 @@ public class CardServiceImpl implements CardInfoService {
         CardInfo cardInfo = cardInfoRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(CARD_NOT_FOUND_WITH_ID + id));
 
-        if (!cardInfo.getNumber().equals(cardInfoRequestDTO.getNumber()) &&
-                cardInfoRepository.existsByNumber(cardInfoRequestDTO.getNumber())) {
-            throw new IllegalArgumentException(String.format(CARD_ALREADY_EXISTS_WITH_NUMBER, cardInfoRequestDTO.getNumber()));
+        if (!cardInfo.getNumber().equals(cardInfoRequestDTO.number()) &&
+                cardInfoRepository.existsByNumber(cardInfoRequestDTO.number())) {
+            throw new DuplicateResourceException(String.format(CARD_ALREADY_EXISTS_WITH_NUMBER, cardInfoRequestDTO.number()));
         }
 
         cardInfoMapper.updateEntityFromDTO(cardInfoRequestDTO, cardInfo);
@@ -136,7 +142,7 @@ public class CardServiceImpl implements CardInfoService {
     public void deleteCard(Long id) {
 
         if (!cardInfoRepository.existsById(id)) {
-            throw new EntityNotFoundException(CARD_NOT_FOUND_WITH_ID + id);
+            throw new ResourceNotFoundException(CARD_NOT_FOUND_WITH_ID + id);
         }
         cardInfoRepository.deleteById(id);
     }

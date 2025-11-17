@@ -2,9 +2,9 @@ name: User Service CI Pipeline
 
 on:
   push:
-    branches: [ user-service, dev ]
+    branches: [ user-service, dev, payment-service ]
   pull_request:
-    branches: [ user-service, dev ]
+    branches: [ user-service, dev, payment-service ]
 
 env:
   REGISTRY: ghcr.io
