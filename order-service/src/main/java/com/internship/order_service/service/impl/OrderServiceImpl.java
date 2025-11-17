@@ -8,6 +8,7 @@ import com.internship.order_service.exception.OrderProcessingException;
 import com.internship.order_service.exception.ResourceNotFoundException;
 import com.internship.order_service.exception.InvalidOrderStatusException;
 import com.internship.order_service.exception.UserServiceUnavailableException;
+import com.internship.order_service.kafka.OrderEventProducer;
 import com.internship.order_service.mapper.OrderMapper;
 import com.internship.order_service.model.Order;
 import com.internship.order_service.model.enums.OrderStatus;
@@ -38,6 +39,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final OrderMapper orderMapper;
     private final UserServiceClient userServiceClient;
+    private final OrderEventProducer orderEventProducer;
 
     @Override
     @Transactional
@@ -51,6 +53,7 @@ public class OrderServiceImpl implements OrderService {
             }
 
             Order savedOrder = orderRepository.save(order);
+            orderEventProducer.sendOrderCreatedEvent(savedOrder);
             return toOrderResponseDTO(savedOrder);
 
         } catch (FeignException e) {
