@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.13.xsd
+                      http://www.liquibase.org/xml/ns/dbchangelog-ext
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <changeSet id="002-insert-sample-payments" author="Yafimchyk">
+        <ext:insertMany collectionName="payment">
+            <ext:documents>
+                [
+                {
+                "order_id": 1,
+                "user_id": 1,
+                "status": "COMPLETED",
+                "timestamp": "2025-01-15T10:30:00Z",
+                "payment_amount": 99.99
+                },
+                {
+                "order_id": 2,
+                "user_id": 1,
+                "status": "PENDING",
+                "timestamp": "2025-01-15T11:15:00Z",
+                "payment_amount": 149.50
+                },
+                {
+                "order_id": 4,
+                "user_id": 3,
+                "status": "FAILED",
+                "timestamp": "2025-01-14T14:20:00Z",
+                "payment_amount": 75.00
+                }
+                ]
+            </ext:documents>
+        </ext:insertMany>
+    </changeSet>
+</databaseChangeLog>

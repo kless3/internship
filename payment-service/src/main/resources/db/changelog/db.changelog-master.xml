@@ -1,0 +1,12 @@
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.13.xsd">
+
+    <include file="db/changelog/changeset/001-create-payment-collection.xml"/>
+    <include file="db/changelog/changeset/002-insert-sample-payments.xml"/>
+
+</databaseChangeLog>
+
+
