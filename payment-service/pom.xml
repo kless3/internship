@@ -22,6 +22,8 @@
 		<mapstruct.version>1.5.5.Final</mapstruct.version>
 		<lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
 		<wiremock3.version>3.3.1</wiremock3.version>
+		<awaitility.version>4.2.0</awaitility.version>
+		<wiremock-standalone.version>3.3.1</wiremock-standalone.version>
 	</properties>
 
 	<dependencies>
@@ -57,26 +59,10 @@
 			<groupId>org.springframework.kafka</groupId>
 			<artifactId>spring-kafka</artifactId>
 		</dependency>
-<!--		<dependency>-->
-<!--			<groupId>org.wiremock</groupId>-->
-<!--			<artifactId>wiremock</artifactId>-->
-<!--			<version>${wiremock3.version}</version>-->
-<!--			<scope>test</scope>-->
-<!--			<exclusions>-->
-<!--				<exclusion>-->
-<!--					<groupId>org.eclipse.jetty</groupId>-->
-<!--					<artifactId>*</artifactId>-->
-<!--				</exclusion>-->
-<!--				<exclusion>-->
-<!--					<groupId>org.eclipse.jetty.http2</groupId>-->
-<!--					<artifactId>*</artifactId>-->
-<!--				</exclusion>-->
-<!--			</exclusions>-->
-<!--		</dependency>-->
 		<dependency>
 			<groupId>org.wiremock</groupId>
 			<artifactId>wiremock-standalone</artifactId>
-			<version>3.3.1</version>
+			<version>${wiremock-standalone.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
@@ -85,12 +71,6 @@
 			<version>${lombok.version}</version>
 			<scope>provided</scope>
 		</dependency>
-<!--		<dependency>-->
-<!--			<groupId>com.github.tomakehurst</groupId>-->
-<!--			<artifactId>wiremock</artifactId>-->
-<!--			<version>3.0.1</version>-->
-<!--			<scope>test</scope>-->
-<!--		</dependency>-->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
@@ -140,7 +120,7 @@
 		<dependency>
 			<groupId>org.awaitility</groupId>
 			<artifactId>awaitility</artifactId>
-			<version>4.2.0</version>
+			<version>${awaitility.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
