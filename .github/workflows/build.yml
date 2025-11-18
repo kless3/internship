@@ -41,6 +41,29 @@ jobs:
         ports:
           - 6379:6379
 
+      kafka:
+        image: apache/kafka:3.7.0
+        env:
+          KAFKA_NODE_ID: 1
+          KAFKA_PROCESS_ROLES: broker,controller
+          KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+          KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+          KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+          KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+          KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+          KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+          KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+          KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+          KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+          KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+        ports:
+          - 9092:9092
+        options: >-
+          --health-cmd "nc -z localhost 9092"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
     strategy:
       matrix:
         service: [ api-gateway, user-service, auth-service, order-service, payment-service ]
@@ -124,6 +147,16 @@ jobs:
           done
           echo "MongoDB is ready!"
 
+      - name: Wait for Kafka to be ready
+        if: matrix.service == 'payment-service'
+        run: |
+          echo "Waiting for Kafka..."
+          until nc -z localhost 9092; do
+            echo "Kafka not ready yet, waiting..."
+            sleep 2
+          done
+          echo "Kafka is ready!"
+
       - name: Build ${{ matrix.service }} with ${{ matrix.build_tool }}
         run: |
           cd ${{ matrix.service }}
@@ -139,6 +172,16 @@ jobs:
           cd order-service
           ./gradlew test --tests "com.internship.order_service.unit.*"
 
+      - name: Run all tests for payment-service with external services
+        if: matrix.service == 'payment-service'
+        run: |
+          cd payment-service
+          # Устанавливаем свойства для использования внешних сервисов вместо Testcontainers
+          mvn test -Dspring.data.mongodb.uri=mongodb://admin:password@localhost:27017/payment \
+                   -Dspring.kafka.bootstrap-servers=localhost:9092 \
+                   -Dexternal.api.url=http://localhost:8089/integers \
+                   -Dspring.main.lazy-initialization=true
+
       - name: Run tests with JaCoCo for ${{ matrix.service }}
         if: matrix.service == 'user-service' || matrix.service == 'auth-service'
         run: |
@@ -149,8 +192,8 @@ jobs:
             ./gradlew test jacocoTestReport
           fi
 
-      - name: Run tests without JaCoCo for ${{ matrix.service }}
-        if: matrix.service != 'user-service' && matrix.service != 'auth-service' && matrix.service != 'api-gateway' && matrix.service != 'order-service'
+      - name: Run tests without JaCoCo for other services
+        if: matrix.service != 'user-service' && matrix.service != 'auth-service' && matrix.service != 'api-gateway' && matrix.service != 'order-service' && matrix.service != 'payment-service'
         run: |
           cd ${{ matrix.service }}
           if [ "${{ matrix.build_tool }}" = "maven" ]; then
