@@ -124,13 +124,23 @@ jobs:
           fi
 
       - name: Run tests with JaCoCo for ${{ matrix.service }}
-        if: matrix.service != 'api-gateway'
+        if: matrix.service == 'user-service' || matrix.service == 'auth-service'
         run: |
           cd ${{ matrix.service }}
           if [ "${{ matrix.build_tool }}" = "maven" ]; then
             mvn clean test jacoco:report -Djacoco.destDir=target/site/jacoco
           else
             ./gradlew test jacocoTestReport
+          fi
+
+      - name: Run tests without JaCoCo for ${{ matrix.service }}
+        if: matrix.service != 'user-service' && matrix.service != 'auth-service' && matrix.service != 'api-gateway'
+        run: |
+          cd ${{ matrix.service }}
+          if [ "${{ matrix.build_tool }}" = "maven" ]; then
+            mvn clean test -DskipTests=false
+          else
+            ./gradlew test
           fi
 
       - name: Verify database connectivity for ${{ matrix.service }}
