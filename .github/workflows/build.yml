@@ -41,16 +41,6 @@ jobs:
         ports:
           - 6379:6379
 
-      mongodb:
-        image: mongo:7.0
-        options: >-
-          --health-cmd "echo 'db.runCommand(\"ping\").ok' | mongosh localhost:27017/test --quiet"
-          --health-interval 10s
-          --health-timeout 10s
-          --health-retries 5
-        ports:
-          - 27017:27017
-
     strategy:
       matrix:
         service: [ api-gateway, user-service, auth-service, order-service, payment-service ]
@@ -72,6 +62,7 @@ jobs:
           - service: payment-service
             db_name: payment
             build_tool: maven
+            needs_mongo: true
 
     steps:
       - name: Checkout code
@@ -95,8 +86,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y postgresql-client
 
+      - name: Start MongoDB for payment-service
+        if: matrix.service == 'payment-service'
+        run: |
+          docker run -d --name mongodb -p 27017:27017 \
+            -e MONGO_INITDB_ROOT_USERNAME=admin \
+            -e MONGO_INITDB_ROOT_PASSWORD=password \
+            mongo:7.0
+          sleep 10
+
       - name: Create database and schema for ${{ matrix.service }}
-        if: matrix.service != 'payment-service' && matrix.service != 'api-gateway'
+        if: matrix.service != 'api-gateway' && matrix.service != 'payment-service'
         run: |
           psql postgresql://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE ${{ matrix.db_name }};"
           
@@ -105,11 +105,17 @@ jobs:
           psql postgresql://postgres:postgres@localhost:5432/postgres -c "\l" | grep ${{ matrix.db_name }}
           psql postgresql://postgres:postgres@localhost:5432/${{ matrix.db_name }} -c "\dn" | grep ${{ matrix.db_schema }}
 
+      - name: Create database for payment-service
+        if: matrix.service == 'payment-service'
+        run: |
+          psql postgresql://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE ${{ matrix.db_name }};"
+          psql postgresql://postgres:postgres@localhost:5432/postgres -c "\l" | grep ${{ matrix.db_name }}
+
       - name: Wait for MongoDB to be ready (for payment-service)
         if: matrix.service == 'payment-service'
         run: |
           echo "Waiting for MongoDB..."
-          until echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet; do
+          until echo 'db.runCommand("ping").ok' | mongosh localhost:27017/admin --username admin --password password --quiet; do
             sleep 2
           done
           echo "MongoDB is ready!"
@@ -144,7 +150,7 @@ jobs:
           fi
 
       - name: Verify database connectivity for ${{ matrix.service }}
-        if: matrix.service != 'payment-service' && matrix.service != 'api-gateway'
+        if: matrix.service != 'api-gateway' && matrix.service != 'payment-service'
         run: |
           echo "Testing connection to database: ${{ matrix.db_name }}"
           psql postgresql://postgres:postgres@localhost:5432/${{ matrix.db_name }} -c "SELECT current_database(), current_schema();"
@@ -153,7 +159,7 @@ jobs:
         if: matrix.service == 'payment-service'
         run: |
           echo "Testing connection to MongoDB"
-          echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+          echo 'db.runCommand("ping").ok' | mongosh localhost:27017/admin --username admin --password password --quiet
 
   code-analysis:
     name: Code Analysis
