@@ -70,6 +70,7 @@ jobs:
             db_schema: order_schema
             build_tool: gradle
           - service: payment-service
+            db_name: payment
             build_tool: maven
 
     steps:
@@ -95,7 +96,7 @@ jobs:
           sudo apt-get install -y postgresql-client
 
       - name: Create database and schema for ${{ matrix.service }}
-        if: matrix.service == 'user-service' || matrix.service == 'auth-service' || matrix.service == 'order-service'
+        if: matrix.service != 'payment-service' && matrix.service != 'api-gateway'
         run: |
           psql postgresql://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE ${{ matrix.db_name }};"
           
@@ -122,19 +123,28 @@ jobs:
             ./gradlew compileJava -x test
           fi
 
-      - name: Run ALL tests for ${{ matrix.service }}
+      - name: Run tests with JaCoCo for ${{ matrix.service }}
+        if: matrix.service == 'user-service' || matrix.service == 'auth-service'
         run: |
           cd ${{ matrix.service }}
           if [ "${{ matrix.build_tool }}" = "maven" ]; then
-            # Запускаем ВСЕ тесты включая интеграционные
             mvn clean test jacoco:report -Djacoco.destDir=target/site/jacoco
           else
-            # Для Gradle (order-service) запускаем все тесты
             ./gradlew test jacocoTestReport
           fi
 
+      - name: Run tests without JaCoCo for ${{ matrix.service }}
+        if: matrix.service != 'user-service' && matrix.service != 'auth-service' && matrix.service != 'api-gateway'
+        run: |
+          cd ${{ matrix.service }}
+          if [ "${{ matrix.build_tool }}" = "maven" ]; then
+            mvn clean test -DskipTests=false
+          else
+            ./gradlew test
+          fi
+
       - name: Verify database connectivity for ${{ matrix.service }}
-        if: matrix.service == 'user-service' || matrix.service == 'auth-service' || matrix.service == 'order-service'
+        if: matrix.service != 'payment-service' && matrix.service != 'api-gateway'
         run: |
           echo "Testing connection to database: ${{ matrix.db_name }}"
           psql postgresql://postgres:postgres@localhost:5432/${{ matrix.db_name }} -c "SELECT current_database(), current_schema();"
