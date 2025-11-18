@@ -41,11 +41,10 @@ jobs:
         ports:
           - 6379:6379
 
-      # ДОБАВЛЕНО: MongoDB для payment-service
       mongodb:
         image: mongo:6.0
         options: >-
-          --health-cmd "echo 'db.runCommand(\"ping\").ok' | mongosh localhost:27017/test --quiet"
+          --health-cmd "mongosh --eval \"db.adminCommand('ping')\""
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -81,7 +80,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Make gradlew executable (for order-service)
+      - name: Make gradlew executable
         if: matrix.service == 'order-service'
         run: |
           cd order-service
@@ -104,7 +103,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y postgresql-client
 
-      # ОБНОВЛЕНО: Добавлена проверка MongoDB
+      - name: Install MongoDB client tools
+        if: matrix.service == 'payment-service'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget gnupg
+          wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo apt-key add -
+          echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/6.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list
+          sudo apt-get update
+          sudo apt-get install -y mongodb-mongosh
+
       - name: Wait for MongoDB to be ready
         if: matrix.service == 'payment-service'
         run: |
@@ -112,7 +120,7 @@ jobs:
           timeout 30s bash -c 'until echo > /dev/tcp/localhost/27017; do sleep 1; done' || exit 1
           echo "MongoDB is ready!"
 
-      - name: Create database and schema for ${{ matrix.service }}
+      - name: Create database and schema
         if: matrix.service != 'api-gateway' && matrix.service != 'payment-service'
         run: |
           psql postgresql://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE ${{ matrix.db_name }};"
@@ -126,7 +134,7 @@ jobs:
           psql postgresql://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE ${{ matrix.db_name }};"
           psql postgresql://postgres:postgres@localhost:5432/postgres -c "\l" | grep ${{ matrix.db_name }}
 
-      - name: Build ${{ matrix.service }} with ${{ matrix.build_tool }}
+      - name: Build service
         run: |
           cd ${{ matrix.service }}
           if [ "${{ matrix.build_tool }}" = "maven" ]; then
@@ -135,26 +143,22 @@ jobs:
             ./gradlew compileJava -x test
           fi
 
-      - name: Run unit tests only for order-service
+      - name: Run unit tests for order-service
         if: matrix.service == 'order-service'
         run: |
           cd order-service
           ./gradlew test --tests "com.internship.order_service.unit.*"
 
-      # ОБНОВЛЕНО: Улучшенная конфигурация для payment-service тестов
-      - name: Run tests for payment-service with Testcontainers
+      - name: Run integration tests for payment-service
         if: matrix.service == 'payment-service'
         run: |
           cd payment-service
-          # Увеличиваем лимиты памяти и времени для Testcontainers
           export MAVEN_OPTS="-Xmx2g -XX:MaxMetaspaceSize=1g -Dspring.test.timeout=300000"
-          # Запускаем только интеграционные тесты
           mvn test -Dtest=*IntegrationTest \
                    -Dspring.test.timeout=300000 \
                    -Dspring.main.lazy-initialization=true \
                    -Dmaven.test.failure.ignore=false \
-                   -Dtestcontainers.reuse.enable=true \
-                   -Dtestcontainers.ryuk.container.privileged=true
+                   -Dtestcontainers.reuse.enable=true
 
       - name: Run unit tests for payment-service
         if: matrix.service == 'payment-service'
@@ -162,7 +166,7 @@ jobs:
           cd payment-service
           mvn test -Dtest=!*IntegrationTest
 
-      - name: Run tests with JaCoCo for ${{ matrix.service }}
+      - name: Run tests with JaCoCo
         if: matrix.service == 'user-service' || matrix.service == 'auth-service'
         run: |
           cd ${{ matrix.service }}
@@ -172,7 +176,7 @@ jobs:
             ./gradlew test jacocoTestReport
           fi
 
-      - name: Run tests without JaCoCo for other services
+      - name: Run tests without JaCoCo
         if: matrix.service != 'user-service' && matrix.service != 'auth-service' && matrix.service != 'api-gateway' && matrix.service != 'order-service' && matrix.service != 'payment-service'
         run: |
           cd ${{ matrix.service }}
@@ -182,18 +186,17 @@ jobs:
             ./gradlew test
           fi
 
-      - name: Verify database connectivity for ${{ matrix.service }}
+      - name: Verify database connectivity
         if: matrix.service != 'api-gateway' && matrix.service != 'payment-service'
         run: |
           echo "Testing connection to database: ${{ matrix.db_name }}"
           psql postgresql://postgres:postgres@localhost:5432/${{ matrix.db_name }} -c "SELECT current_database(), current_schema();"
 
-      # ДОБАВЛЕНО: Проверка подключения к MongoDB для payment-service
-      - name: Verify MongoDB connectivity for payment-service
+      - name: Verify MongoDB connectivity
         if: matrix.service == 'payment-service'
         run: |
           echo "Testing connection to MongoDB"
-          mongosh --eval "db.runCommand({ping:1})" localhost:27017/payment
+          mongosh --eval "db.runCommand({ping:1})" mongodb://localhost:27017/payment
 
   code-analysis:
     name: Code Analysis
@@ -243,7 +246,7 @@ jobs:
             -Dsonar.issue.ignore.multicriteria.e1.resourceKey=**/*
 
   docker-build:
-    name: Artifact Creation (Docker Images)
+    name: Artifact Creation
     runs-on: ubuntu-latest
     needs: code-analysis
     if: github.event_name == 'push' && github.ref == 'refs/heads/payment-service'
@@ -288,13 +291,13 @@ jobs:
           distribution: 'temurin'
           cache: ${{ matrix.build_tool }}
 
-      - name: Make gradlew executable (for order-service)
+      - name: Make gradlew executable
         if: matrix.service == 'order-service'
         run: |
           cd order-service
           chmod +x ./gradlew
 
-      - name: Build ${{ matrix.service }} with ${{ matrix.build_tool }}
+      - name: Build service
         run: |
           cd ${{ matrix.service }}
           if [ "${{ matrix.build_tool }}" = "maven" ]; then
@@ -324,7 +327,7 @@ jobs:
             type=sha,prefix={{branch}}-
             type=raw,value=latest
 
-      - name: Build and push Docker image for ${{ matrix.service }}
+      - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: ${{ matrix.context }}
@@ -334,7 +337,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Upload Docker artifacts for ${{ matrix.service }}
+      - name: Upload Docker artifacts
         uses: actions/upload-artifact@v4
         with:
           name: docker-image-${{ matrix.service }}
