@@ -122,21 +122,16 @@ jobs:
             ./gradlew compileJava -x test
           fi
 
-      - name: Run tests with JaCoCo for ${{ matrix.service }}
-        if: matrix.service == 'user-service' || matrix.service == 'auth-service' || matrix.service == 'order-service'
+      - name: Run ALL tests for ${{ matrix.service }}
         run: |
           cd ${{ matrix.service }}
           if [ "${{ matrix.build_tool }}" = "maven" ]; then
+            # Запускаем ВСЕ тесты включая интеграционные
             mvn clean test jacoco:report -Djacoco.destDir=target/site/jacoco
           else
+            # Для Gradle (order-service) запускаем все тесты
             ./gradlew test jacocoTestReport
           fi
-
-      - name: Run tests for payment-service
-        if: matrix.service == 'payment-service'
-        run: |
-          cd payment-service
-          mvn clean test
 
       - name: Verify database connectivity for ${{ matrix.service }}
         if: matrix.service == 'user-service' || matrix.service == 'auth-service' || matrix.service == 'order-service'
