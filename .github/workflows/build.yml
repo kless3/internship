@@ -129,6 +129,12 @@ jobs:
             ./gradlew compileJava -x test
           fi
 
+      - name: Run unit tests for order-service
+        if: matrix.service == 'order-service'
+        run: |
+          cd order-service
+          ./gradlew test -x integrationTest
+
       - name: Run tests with JaCoCo for ${{ matrix.service }}
         if: matrix.service == 'user-service' || matrix.service == 'auth-service'
         run: |
@@ -140,7 +146,7 @@ jobs:
           fi
 
       - name: Run tests without JaCoCo for ${{ matrix.service }}
-        if: matrix.service != 'user-service' && matrix.service != 'auth-service' && matrix.service != 'api-gateway'
+        if: matrix.service != 'user-service' && matrix.service != 'auth-service' && matrix.service != 'api-gateway' && matrix.service != 'order-service'
         run: |
           cd ${{ matrix.service }}
           if [ "${{ matrix.build_tool }}" = "maven" ]; then
