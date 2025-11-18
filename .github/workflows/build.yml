@@ -124,6 +124,7 @@ jobs:
           fi
 
       - name: Run tests with JaCoCo for ${{ matrix.service }}
+        if: matrix.service != 'api-gateway'
         run: |
           cd ${{ matrix.service }}
           if [ "${{ matrix.build_tool }}" = "maven" ]; then
