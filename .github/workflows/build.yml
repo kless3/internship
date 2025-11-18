@@ -41,29 +41,6 @@ jobs:
         ports:
           - 6379:6379
 
-      kafka:
-        image: apache/kafka:3.7.0
-        env:
-          KAFKA_NODE_ID: 1
-          KAFKA_PROCESS_ROLES: broker,controller
-          KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-          KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-          KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-          KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-          KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-          KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-          KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-          KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-          KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-          KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-        ports:
-          - 9092:9092
-        options: >-
-          --health-cmd "nc -z localhost 9092"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
-
     strategy:
       matrix:
         service: [ api-gateway, user-service, auth-service, order-service, payment-service ]
@@ -104,24 +81,15 @@ jobs:
           distribution: 'temurin'
           cache: ${{ matrix.build_tool }}
 
-      - name: Install PostgreSQL client and MongoDB tools
+      - name: Setup Testcontainers
+        run: |
+          echo "TESTCONTAINERS_RYUK_DISABLED=true" >> $GITHUB_ENV
+          echo "TESTCONTAINERS_CHECKS_DISABLE=true" >> $GITHUB_ENV
+
+      - name: Install PostgreSQL client
         run: |
           sudo apt-get update
           sudo apt-get install -y postgresql-client
-          # Установка mongosh
-          curl -fsSL https://pgp.mongodb.com/server-7.0.asc | sudo gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor
-          echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
-          sudo apt-get update
-          sudo apt-get install -y mongodb-mongosh
-
-      - name: Start MongoDB for payment-service
-        if: matrix.service == 'payment-service'
-        run: |
-          docker run -d --name mongodb -p 27017:27017 \
-            -e MONGO_INITDB_ROOT_USERNAME=admin \
-            -e MONGO_INITDB_ROOT_PASSWORD=password \
-            mongo:7.0
-          sleep 10
 
       - name: Create database and schema for ${{ matrix.service }}
         if: matrix.service != 'api-gateway' && matrix.service != 'payment-service'
@@ -136,26 +104,6 @@ jobs:
         run: |
           psql postgresql://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE ${{ matrix.db_name }};"
           psql postgresql://postgres:postgres@localhost:5432/postgres -c "\l" | grep ${{ matrix.db_name }}
-
-      - name: Wait for MongoDB to be ready (for payment-service)
-        if: matrix.service == 'payment-service'
-        run: |
-          echo "Waiting for MongoDB..."
-          until echo 'db.runCommand("ping").ok' | mongosh localhost:27017/admin --username admin --password password --quiet; do
-            echo "MongoDB not ready yet, waiting..."
-            sleep 2
-          done
-          echo "MongoDB is ready!"
-
-      - name: Wait for Kafka to be ready
-        if: matrix.service == 'payment-service'
-        run: |
-          echo "Waiting for Kafka..."
-          until nc -z localhost 9092; do
-            echo "Kafka not ready yet, waiting..."
-            sleep 2
-          done
-          echo "Kafka is ready!"
 
       - name: Build ${{ matrix.service }} with ${{ matrix.build_tool }}
         run: |
@@ -172,15 +120,22 @@ jobs:
           cd order-service
           ./gradlew test --tests "com.internship.order_service.unit.*"
 
-      - name: Run all tests for payment-service with external services
+      - name: Run tests for payment-service with Testcontainers
         if: matrix.service == 'payment-service'
         run: |
           cd payment-service
-          # Устанавливаем свойства для использования внешних сервисов вместо Testcontainers
-          mvn test -Dspring.data.mongodb.uri=mongodb://admin:password@localhost:27017/payment \
-                   -Dspring.kafka.bootstrap-servers=localhost:9092 \
-                   -Dexternal.api.url=http://localhost:8089/integers \
-                   -Dspring.main.lazy-initialization=true
+          # Даем больше времени и памяти для Testcontainers
+          export MAVEN_OPTS="-Xmx2g -XX:MaxMetaspaceSize=1g"
+          mvn test -Dtest=*IntegrationTest \
+                   -Dspring.test.timeout=300000 \
+                   -Dspring.main.lazy-initialization=true \
+                   -Dmaven.test.failure.ignore=false
+
+      - name: Run unit tests for payment-service
+        if: matrix.service == 'payment-service'
+        run: |
+          cd payment-service
+          mvn test -Dtest=!*IntegrationTest
 
       - name: Run tests with JaCoCo for ${{ matrix.service }}
         if: matrix.service == 'user-service' || matrix.service == 'auth-service'
@@ -207,12 +162,6 @@ jobs:
         run: |
           echo "Testing connection to database: ${{ matrix.db_name }}"
           psql postgresql://postgres:postgres@localhost:5432/${{ matrix.db_name }} -c "SELECT current_database(), current_schema();"
-
-      - name: Verify MongoDB connectivity for payment-service
-        if: matrix.service == 'payment-service'
-        run: |
-          echo "Testing connection to MongoDB"
-          echo 'db.runCommand("ping").ok' | mongosh localhost:27017/admin --username admin --password password --quiet
 
   code-analysis:
     name: Code Analysis
