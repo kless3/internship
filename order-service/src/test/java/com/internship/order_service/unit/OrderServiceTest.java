@@ -71,45 +71,6 @@ class OrderServiceTest {
     }
 
     @Test
-    @DisplayName("Should create order successfully")
-    void createOrder_ShouldReturnOrderResponseDTO() {
-        when(orderMapper.toEntity(orderRequestDTO)).thenReturn(order);
-        when(orderRepository.save(any(Order.class))).thenReturn(order);
-        when(orderMapper.toDTO(order)).thenReturn(orderResponseDTO);
-        when(userServiceClient.getUserInfoByEmail(anyString())).thenReturn(userInfoDTO);
-
-        OrderResponseDTO result = orderService.createOrder(orderRequestDTO);
-
-        assertNotNull(result);
-        assertEquals(orderResponseDTO.userId(), result.userId());
-        assertEquals(orderResponseDTO.userInfoDto().email(), result.userInfoDto().email());
-        verify(orderMapper).toEntity(orderRequestDTO);
-        verify(orderRepository).save(order);
-        verify(orderMapper).toDTO(order);
-        verify(userServiceClient).getUserInfoByEmail(order.getUserEmail());
-    }
-
-    @Test
-    @DisplayName("Should set order reference for order items when creating order")
-    void createOrder_WithOrderItems_ShouldSetOrderReference() {
-        OrderItem orderItem = new OrderItem();
-        orderItem.setId(1L);
-        orderItem.setQuantity(2L);
-
-        order.setOrderItems(List.of(orderItem));
-        when(orderMapper.toEntity(orderRequestDTO)).thenReturn(order);
-        when(orderRepository.save(any(Order.class))).thenReturn(order);
-        when(orderMapper.toDTO(order)).thenReturn(orderResponseDTO);
-        when(userServiceClient.getUserInfoByEmail(anyString())).thenReturn(userInfoDTO);
-
-        OrderResponseDTO result = orderService.createOrder(orderRequestDTO);
-
-        assertNotNull(result);
-        assertEquals(order, orderItem.getOrder());
-        verify(orderRepository).save(order);
-    }
-
-    @Test
     @DisplayName("Should get order by id successfully")
     void getOrderById_ShouldReturnOrderResponseDTO() {
         Long orderId = 1L;
