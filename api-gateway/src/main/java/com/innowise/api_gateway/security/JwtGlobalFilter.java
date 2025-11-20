@@ -3,6 +3,7 @@ package com.innowise.api_gateway.security;
 import com.innowise.api_gateway.property.JwtProperties;
 import io.jsonwebtoken.Jwts;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -15,7 +16,7 @@ import reactor.core.publisher.Mono;
 
 @Component
 @RequiredArgsConstructor
-public class JwtGlobalFilter implements GlobalFilter, Ordered {
+public class JwtGlobalFilter implements GlobalFilter, Ordered, GatewayFilter {
 
     private final JwtProperties jwtProperties;
 

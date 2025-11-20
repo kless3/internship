@@ -2,6 +2,7 @@ package com.innowise.api_gateway.config;
 
 import com.innowise.api_gateway.property.ServiceProperties;
 import com.innowise.api_gateway.security.JwtGlobalFilter;
+import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.route.RouteLocator;
 import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
 import org.springframework.context.annotation.Bean;
@@ -12,7 +13,7 @@ public class GatewayConfig {
 
     private static final String AUTH_SERVICE_ROUTE = "auth-service";
     private static final String ORDER_SERVICE_ROUTE = "order-service";
-    private static final String PAYMENT_SERVICE_ROUTE = "order-service";
+    private static final String PAYMENT_SERVICE_ROUTE = "payment-service";
     private static final String USER_SERVICE_PUBLIC_ROUTE = "user-service-public";
     private static final String USER_SERVICE_SECURED_ROUTE = "user-service-secured";
     private static final String AUTH_SERVICE_PATH = "/api/v1/auth/**";
@@ -37,15 +38,18 @@ public class GatewayConfig {
                         .uri(serviceProperties.getAuthService()))
                 .route(ORDER_SERVICE_ROUTE, r -> r
                         .path(ORDER_SERVICE_PATH)
+                        .filters(f -> f.filter(jwtFilter))
                         .uri(serviceProperties.getOrderService()))
                 .route(USER_SERVICE_PUBLIC_ROUTE, r -> r
                         .path(USER_SERVICE_PUBLIC_PATH)
                         .uri(serviceProperties.getUserService()))
                 .route(USER_SERVICE_SECURED_ROUTE, r -> r
                         .path(USER_SERVICE_SECURED_PATH)
+                        .filters(f -> f.filter(jwtFilter))
                         .uri(serviceProperties.getUserService()))
                 .route(PAYMENT_SERVICE_ROUTE, r -> r
                         .path(PAYMENT_SERVICE_PATH)
+                        .filters(f -> f.filter(jwtFilter))
                         .uri(serviceProperties.getPaymentService()))
                 .build();
     }
