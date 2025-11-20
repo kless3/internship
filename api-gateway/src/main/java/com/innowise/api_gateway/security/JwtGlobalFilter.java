@@ -5,7 +5,6 @@ import io.jsonwebtoken.Jwts;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
-import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -16,22 +15,12 @@ import reactor.core.publisher.Mono;
 
 @Component
 @RequiredArgsConstructor
-public class JwtGlobalFilter implements GlobalFilter, Ordered, GatewayFilter {
+public class JwtGlobalFilter implements GatewayFilter, Ordered {
 
     private final JwtProperties jwtProperties;
 
-    private static final String AUTH_PATH = "/api/v1/auth/";
-    private static final String USER_PATH = "/api/v1/users";
-
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        String path = exchange.getRequest().getPath().value();
-
-        if (path.startsWith(AUTH_PATH) ||
-                path.equals(USER_PATH)) {
-            return chain.filter(exchange);
-        }
-
         String token = extractToken(exchange.getRequest());
 
         if (!StringUtils.hasText(token)) {

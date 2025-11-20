@@ -2,13 +2,14 @@ package com.innowise.api_gateway.config;
 
 import com.innowise.api_gateway.property.ServiceProperties;
 import com.innowise.api_gateway.security.JwtGlobalFilter;
-import org.springframework.cloud.gateway.filter.GatewayFilter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.cloud.gateway.route.RouteLocator;
 import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
+@RequiredArgsConstructor
 public class GatewayConfig {
 
     private static final String AUTH_SERVICE_ROUTE = "auth-service";
@@ -24,11 +25,6 @@ public class GatewayConfig {
 
     private final JwtGlobalFilter jwtFilter;
     private final ServiceProperties serviceProperties;
-
-    public GatewayConfig(JwtGlobalFilter jwtFilter, ServiceProperties serviceProperties) {
-        this.jwtFilter = jwtFilter;
-        this.serviceProperties = serviceProperties;
-    }
 
     @Bean
     public RouteLocator customRouteLocator(RouteLocatorBuilder builder) {
