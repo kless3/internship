@@ -20,14 +20,13 @@ public class ExternalApiClient {
     private static final String FAILED_TO_GET_RANDOM_NUMBER = "Failed to get random number. Status: ";
     private static final String EMPTY_RESPONSE_BODY = "Empty response body from external API";
     private static final String INVALID_NUMBER_FORMAT = "Invalid number format in response: ";
+    private static final String NULL_RESPONSE = "Response is null";
+    private static final String NULL_RESPONSE_BODY = "Response body is null";
 
     private final RestTemplate restTemplate;
     private final ExternalApiProperties externalApiProperties;
 
-    @Retryable(
-            retryFor = {HttpServerErrorException.class, ResourceAccessException.class},
-            maxAttempts = 3
-    )
+    @Retryable(retryFor = {HttpServerErrorException.class, ResourceAccessException.class}, maxAttempts = 3)
     public int getRandomNumber() {
         String url = externalApiProperties.getUrl();
 
@@ -40,17 +39,26 @@ public class ExternalApiClient {
     }
 
     private int parseResponse(ResponseEntity<String> response) {
+        if (response == null) {
+            throw new RuntimeException(NULL_RESPONSE);
+        }
+
         if (!response.getStatusCode().is2xxSuccessful()) {
             throw new RuntimeException(FAILED_TO_GET_RANDOM_NUMBER + response.getStatusCode());
         }
 
         String responseBody = response.getBody();
-        if (responseBody.trim().isEmpty()) {
+        if (responseBody == null) {
+            throw new RuntimeException(NULL_RESPONSE_BODY);
+        }
+
+        String trimmedBody = responseBody.trim();
+        if (trimmedBody.isEmpty()) {
             throw new RuntimeException(EMPTY_RESPONSE_BODY);
         }
 
         try {
-            return Integer.parseInt(responseBody.trim());
+            return Integer.parseInt(trimmedBody);
         } catch (NumberFormatException e) {
             throw new RuntimeException(INVALID_NUMBER_FORMAT + responseBody, e);
         }
