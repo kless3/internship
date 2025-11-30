@@ -2,6 +2,8 @@ package com.internship.user_service.unit;
 
 import com.internship.user_service.dto.UserRequestDTO;
 import com.internship.user_service.dto.UserResponseDTO;
+import com.internship.user_service.exception.DuplicateResourceException;
+import com.internship.user_service.exception.ResourceNotFoundException;
 import com.internship.user_service.mapper.UserMapper;
 import com.internship.user_service.model.User;
 import com.internship.user_service.repository.UserRepository;
@@ -88,7 +90,7 @@ class UserServiceImplTest {
     void createUser_EmailExists_ThrowsException() {
         when(userRepository.existsByEmail(userRequestDTO.email())).thenReturn(true);
 
-        assertThrows(IllegalArgumentException.class, () ->
+        assertThrows(DuplicateResourceException.class, () ->
                 userService.createUser(userRequestDTO));
     }
 
@@ -109,7 +111,7 @@ class UserServiceImplTest {
     void getUserById_NotFound_ThrowsException() {
         when(userRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertThrows(EntityNotFoundException.class, () ->
+        assertThrows(ResourceNotFoundException.class, () ->
                 userService.getUserById(1L));
     }
 
@@ -152,7 +154,7 @@ class UserServiceImplTest {
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(userRepository.existsByEmail("different@example.com")).thenReturn(true);
 
-        assertThrows(IllegalArgumentException.class, () ->
+        assertThrows(DuplicateResourceException.class, () ->
                 userService.updateUser(1L, updateRequest));
     }
 
@@ -184,7 +186,7 @@ class UserServiceImplTest {
     void deleteUser_NotFound_ThrowsException() {
         when(userRepository.existsById(1L)).thenReturn(false);
 
-        assertThrows(EntityNotFoundException.class, () ->
+        assertThrows(ResourceNotFoundException.class, () ->
                 userService.deleteUser(1L));
     }
 

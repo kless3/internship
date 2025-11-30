@@ -1,6 +1,29 @@
-version: '3.8'
-
 services:
+  kafka:
+    image: apache/kafka:3.7.0
+    container_name: kafka
+    ports: ["9092:9092"]
+    environment:
+      - KAFKA_NODE_ID=1
+      - KAFKA_PROCESS_ROLES=broker,controller
+      - KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0
+    networks: [internship-network]
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
   postgres:
     image: postgres:15-alpine
     container_name: postgres-db
@@ -40,6 +63,19 @@ services:
       timeout: 3s
       retries: 5
 
+  mongodb:
+    image: mongo:7.0
+    container_name: mongodb-payment
+    ports: ["27017:27017"]
+    volumes:
+      - mongodb_data:/data/db
+    networks: [internship-network]
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
   api-gateway:
     build:
       context: ./api-gateway
@@ -53,12 +89,15 @@ services:
       - USER_SERVICE_URL=http://user-service:8080
       - AUTH_SERVICE_URL=http://auth-service:8081
       - ORDER_SERVICE_URL=http://order-service:8082
+      - PAYMENT_SERVICE_URL=http://payment-service:8084
     depends_on:
       user-service:
         condition: service_started
       auth-service:
         condition: service_started
       order-service:
+        condition: service_started
+      payment-service:
         condition: service_started
     networks: [internship-network]
     restart: unless-stopped
@@ -78,6 +117,7 @@ services:
       - SPRING_JPA_HIBERNATE_DDL_AUTO=validate
       - SPRING_DATA_REDIS_HOST=redis
       - SPRING_DATA_REDIS_PORT=6379
+      - REDIS_DATABASE=0
       - AUTH_SERVICE_URL=http://auth-service:8081
     depends_on:
       postgres:
@@ -121,12 +161,16 @@ services:
     environment:
       - SPRING_APPLICATION_NAME=order-service
       - SERVER_PORT=8082
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/order_db
-      - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_DATASOURCE_PASSWORD=postgres
+      - DATASOURCE_URL=jdbc:postgresql://postgres:5432/order_db
+      - DATASOURCE_USERNAME=postgres
+      - DATASOURCE_PASSWORD=postgres
       - SPRING_JPA_HIBERNATE_DDL_AUTO=validate
       - USER_SERVICE_URL=http://user-service:8080
+      - BOOTSTRAP_SERVERS=kafka:9092
+      - CONSUMER_GROUP_ID=order-service
     depends_on:
+      kafka:
+        condition: service_started
       postgres:
         condition: service_healthy
       user-service:
@@ -134,9 +178,40 @@ services:
     networks: [internship-network]
     restart: unless-stopped
 
+  payment-service:
+    build:
+      context: ./payment-service
+      dockerfile: Dockerfile
+    container_name: payment-service
+    ports: ["8084:8084"]
+    environment:
+      - SPRING_APPLICATION_NAME=payment-service
+      - SERVER_PORT=8084
+      - MONGODB_HOST=mongodb
+      - MONGODB_PORT=27017
+      - MONGODB_DATABASE=payment
+      - LIQUIBASE_ENABLED=true
+      - LIQUIBASE_CHANGE_LOG=db/changelog/db.changelog-master.xml
+      - USER_SERVICE_URL=http://user-service:8080
+      - ORDER_SERVICE_URL=http://order-service:8082
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_CONSUMER_GROUP_ID=payment-service
+    depends_on:
+      kafka:
+        condition: service_started
+      mongodb:
+        condition: service_healthy
+      user-service:
+        condition: service_started
+      order-service:
+        condition: service_started
+    networks: [internship-network]
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:
+  mongodb_data:
 
 networks:
   internship-network:

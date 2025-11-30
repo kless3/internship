@@ -3,7 +3,11 @@ target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
-
+order-service/.gradle/**
+*/.gradle
+.gradle
+.env
+*.env
 ### STS ###
 .apt_generated
 .classpath
@@ -39,3 +43,5 @@ mvnw.cmd
 order-service/.gradle/*
 ### VS Code ###
 .vscode/
+.gradle/
+auth-service/.env

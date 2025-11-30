@@ -1,17 +1,18 @@
-FROM openjdk:21-jdk-slim
+FROM eclipse-temurin:21-jdk-alpine AS builder
 
 WORKDIR /app
 
-COPY gradlew /app/
-COPY gradle /app/gradle
-COPY build.gradle /app/
-COPY settings.gradle /app/
-COPY src /app/src
+COPY . .
 
 RUN chmod +x gradlew
+RUN ./gradlew clean build -x test --no-daemon --stacktrace
 
-RUN ./gradlew clean build -x test
+FROM eclipse-temurin:21-jre-alpine
+
+WORKDIR /app
+
+COPY --from=builder /app/build/libs/order-service-0.0.1-SNAPSHOT.jar app.jar
 
 EXPOSE 8082
 
-CMD ["java", "-jar", "build/libs/order-service-0.0.1-SNAPSHOT.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]

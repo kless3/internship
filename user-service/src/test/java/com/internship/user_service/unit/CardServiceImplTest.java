@@ -2,6 +2,8 @@ package com.internship.user_service.unit;
 
 import com.internship.user_service.dto.CardInfoRequestDTO;
 import com.internship.user_service.dto.CardInfoResponseDTO;
+import com.internship.user_service.exception.DuplicateResourceException;
+import com.internship.user_service.exception.ResourceNotFoundException;
 import com.internship.user_service.mapper.CardInfoMapper;
 import com.internship.user_service.model.CardInfo;
 import com.internship.user_service.model.User;
@@ -95,7 +97,7 @@ class CardServiceImplTest {
         when(userService.getUserEntityById(1L)).thenReturn(user);
         when(cardInfoRepository.existsByNumber(cardInfoRequestDTO.number())).thenReturn(true);
 
-        assertThrows(IllegalArgumentException.class, () ->
+        assertThrows(DuplicateResourceException.class, () ->
                 cardService.createCard(1L, cardInfoRequestDTO));
     }
 
@@ -116,7 +118,7 @@ class CardServiceImplTest {
     void getCardById_NotFound_ThrowsException() {
         when(cardInfoRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertThrows(EntityNotFoundException.class, () ->
+        assertThrows(ResourceNotFoundException.class, () ->
                 cardService.getCardById(1L));
     }
 
@@ -195,7 +197,7 @@ class CardServiceImplTest {
         when(cardInfoRepository.findById(1L)).thenReturn(Optional.of(cardInfo));
         when(cardInfoRepository.existsByNumber("9999999999999999")).thenReturn(true);
 
-        assertThrows(IllegalArgumentException.class, () ->
+        assertThrows(DuplicateResourceException.class, () ->
                 cardService.updateCard(1L, updateRequest));
     }
 
@@ -227,7 +229,7 @@ class CardServiceImplTest {
     void deleteCard_NotFound_ThrowsException() {
         when(cardInfoRepository.existsById(1L)).thenReturn(false);
 
-        assertThrows(EntityNotFoundException.class, () ->
+        assertThrows(ResourceNotFoundException.class, () ->
                 cardService.deleteCard(1L));
     }
 

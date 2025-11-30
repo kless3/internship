@@ -2,13 +2,13 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [ order-service ]
+    branches: [ payment-service ]
   pull_request:
-    branches: [ order-service ]
+    branches: [ payment-service ]
 
 env:
   REGISTRY: MaksimYafimchyk
-  SERVICES: "auth-service user-service order-service"
+  SERVICES: "api-gateway auth-service user-service order-service payment-service"
   IMAGE_NAME: MaksimYafimchyk/internship
 
 jobs:
@@ -41,10 +41,24 @@ jobs:
         ports:
           - 6379:6379
 
+      mongodb:
+        image: mongo:6.0
+        options: >-
+          --health-cmd "mongosh --eval \"db.adminCommand('ping')\""
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 27017:27017
+        env:
+          MONGO_INITDB_DATABASE: payment
+
     strategy:
       matrix:
-        service: [ user-service, auth-service, order-service ]
+        service: [ api-gateway, user-service, auth-service, order-service, payment-service ]
         include:
+          - service: api-gateway
+            build_tool: maven
           - service: auth-service
             db_name: auth
             db_schema: auth_schema
@@ -57,12 +71,16 @@ jobs:
             db_name: order_db
             db_schema: order_schema
             build_tool: gradle
+          - service: payment-service
+            db_name: payment
+            build_tool: maven
+            needs_mongo: true
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Make gradlew executable (for order-service)
+      - name: Make gradlew executable
         if: matrix.service == 'order-service'
         run: |
           cd order-service
@@ -75,21 +93,48 @@ jobs:
           distribution: 'temurin'
           cache: ${{ matrix.build_tool }}
 
+      - name: Setup Testcontainers
+        run: |
+          echo "TESTCONTAINERS_RYUK_DISABLED=true" >> $GITHUB_ENV
+          echo "TESTCONTAINERS_CHECKS_DISABLE=true" >> $GITHUB_ENV
+
       - name: Install PostgreSQL client
         run: |
           sudo apt-get update
           sudo apt-get install -y postgresql-client
 
-      - name: Create database and schema for ${{ matrix.service }}
+      - name: Install MongoDB client tools
+        if: matrix.service == 'payment-service'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget gnupg
+          wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo apt-key add -
+          echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/6.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list
+          sudo apt-get update
+          sudo apt-get install -y mongodb-mongosh
+
+      - name: Wait for MongoDB to be ready
+        if: matrix.service == 'payment-service'
+        run: |
+          echo "Waiting for MongoDB to be ready..."
+          timeout 30s bash -c 'until echo > /dev/tcp/localhost/27017; do sleep 1; done' || exit 1
+          echo "MongoDB is ready!"
+
+      - name: Create database and schema
+        if: matrix.service != 'api-gateway' && matrix.service != 'payment-service'
         run: |
           psql postgresql://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE ${{ matrix.db_name }};"
-          
           psql postgresql://postgres:postgres@localhost:5432/${{ matrix.db_name }} -c "CREATE SCHEMA IF NOT EXISTS ${{ matrix.db_schema }};"
-          
           psql postgresql://postgres:postgres@localhost:5432/postgres -c "\l" | grep ${{ matrix.db_name }}
           psql postgresql://postgres:postgres@localhost:5432/${{ matrix.db_name }} -c "\dn" | grep ${{ matrix.db_schema }}
 
-      - name: Build ${{ matrix.service }} with ${{ matrix.build_tool }}
+      - name: Create database for payment-service
+        if: matrix.service == 'payment-service'
+        run: |
+          psql postgresql://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE ${{ matrix.db_name }};"
+          psql postgresql://postgres:postgres@localhost:5432/postgres -c "\l" | grep ${{ matrix.db_name }}
+
+      - name: Build service
         run: |
           cd ${{ matrix.service }}
           if [ "${{ matrix.build_tool }}" = "maven" ]; then
@@ -98,7 +143,31 @@ jobs:
             ./gradlew compileJava -x test
           fi
 
-      - name: Run tests with JaCoCo for ${{ matrix.service }}
+      - name: Run unit tests for order-service
+        if: matrix.service == 'order-service'
+        run: |
+          cd order-service
+          ./gradlew test --tests "com.internship.order_service.unit.*"
+
+      - name: Run integration tests for payment-service
+        if: matrix.service == 'payment-service'
+        run: |
+          cd payment-service
+          export MAVEN_OPTS="-Xmx2g -XX:MaxMetaspaceSize=1g -Dspring.test.timeout=300000"
+          mvn test -Dtest=*IntegrationTest \
+                   -Dspring.test.timeout=300000 \
+                   -Dspring.main.lazy-initialization=true \
+                   -Dmaven.test.failure.ignore=false \
+                   -Dtestcontainers.reuse.enable=true
+
+      - name: Run unit tests for payment-service
+        if: matrix.service == 'payment-service'
+        run: |
+          cd payment-service
+          mvn test -Dtest=!*IntegrationTest
+
+      - name: Run tests with JaCoCo
+        if: matrix.service == 'user-service' || matrix.service == 'auth-service'
         run: |
           cd ${{ matrix.service }}
           if [ "${{ matrix.build_tool }}" = "maven" ]; then
@@ -107,12 +176,27 @@ jobs:
             ./gradlew test jacocoTestReport
           fi
 
-      - name: Verify database connectivity for ${{ matrix.service }}
+      - name: Run tests without JaCoCo
+        if: matrix.service != 'user-service' && matrix.service != 'auth-service' && matrix.service != 'api-gateway' && matrix.service != 'order-service' && matrix.service != 'payment-service'
+        run: |
+          cd ${{ matrix.service }}
+          if [ "${{ matrix.build_tool }}" = "maven" ]; then
+            mvn clean test -DskipTests=false
+          else
+            ./gradlew test
+          fi
+
+      - name: Verify database connectivity
+        if: matrix.service != 'api-gateway' && matrix.service != 'payment-service'
         run: |
           echo "Testing connection to database: ${{ matrix.db_name }}"
           psql postgresql://postgres:postgres@localhost:5432/${{ matrix.db_name }} -c "SELECT current_database(), current_schema();"
-  
-  
+
+      - name: Verify MongoDB connectivity
+        if: matrix.service == 'payment-service'
+        run: |
+          echo "Testing connection to MongoDB"
+          mongosh --eval "db.runCommand({ping:1})" mongodb://localhost:27017/payment
 
   code-analysis:
     name: Code Analysis
@@ -131,11 +215,10 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      - name: Build all services for Sonar
+      - name: Build services for Sonar
         run: |
           cd user-service && mvn clean verify -DskipTests
           cd ../auth-service && mvn clean verify -DskipTests
-
 
       - name: SonarQube Analysis
         env:
@@ -163,10 +246,10 @@ jobs:
             -Dsonar.issue.ignore.multicriteria.e1.resourceKey=**/*
 
   docker-build:
-    name: Artifact Creation (Docker Images)
+    name: Artifact Creation
     runs-on: ubuntu-latest
     needs: code-analysis
-    if: github.event_name == 'push' && github.ref == 'refs/heads/order-service'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/payment-service'
 
     permissions:
       contents: read
@@ -174,8 +257,12 @@ jobs:
 
     strategy:
       matrix:
-        service: [ user-service, auth-service, order-service ]
+        service: [ api-gateway, user-service, auth-service, order-service, payment-service ]
         include:
+          - service: api-gateway
+            build_tool: maven
+            context: ./api-gateway
+            port: 8080
           - service: auth-service
             build_tool: maven
             context: ./auth-service
@@ -183,11 +270,15 @@ jobs:
           - service: user-service
             build_tool: maven
             context: ./user-service
-            port: 8080
+            port: 8083
           - service: order-service
             build_tool: gradle
             context: ./order-service
             port: 8082
+          - service: payment-service
+            build_tool: maven
+            context: ./payment-service
+            port: 8084
 
     steps:
       - name: Checkout code
@@ -200,13 +291,13 @@ jobs:
           distribution: 'temurin'
           cache: ${{ matrix.build_tool }}
 
-      - name: Make gradlew executable (for order-service)
+      - name: Make gradlew executable
         if: matrix.service == 'order-service'
         run: |
           cd order-service
           chmod +x ./gradlew
 
-      - name: Build ${{ matrix.service }} with ${{ matrix.build_tool }}
+      - name: Build service
         run: |
           cd ${{ matrix.service }}
           if [ "${{ matrix.build_tool }}" = "maven" ]; then
@@ -246,33 +337,39 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Generate deployment manifest for ${{ matrix.service }}
-        run: |
-          cat > docker-compose-${{ matrix.service }}.yml << EOF
-          version: '3.8'
-          services:
-            ${{ matrix.service }}:
-              image: ghcr.io/${{ github.repository_owner }}/${{ matrix.service }}:latest
-              environment:
-                - SPRING_PROFILES_ACTIVE=prod
-              ports:
-                - "${{ matrix.port }}:8080"
-              depends_on:
-                - postgres
-                - redis
-            postgres:
-              image: postgres:15-alpine
-              environment:
-                - POSTGRES_DB=postgres
-                - POSTGRES_USER=postgres
-                - POSTGRES_PASSWORD=postgres
-            redis:
-              image: redis:7-alpine
-          EOF
-
-      - name: Upload Docker artifacts for ${{ matrix.service }}
+      - name: Upload Docker artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: docker-artifacts-${{ matrix.service }}
-          path: docker-compose-${{ matrix.service }}.yml
+          name: docker-image-${{ matrix.service }}
+          path: ${{ matrix.context }}
+          overwrite: true
+
+      - name: Generate deployment manifest
+        run: |
+          cat > docker-compose.prod.yml << EOF
+          version: '3.8'
+          services:
+            api-gateway:
+              image: ghcr.io/${{ github.repository_owner }}/api-gateway:latest
+              ports: ["8080:8080"]
+            user-service:
+              image: ghcr.io/${{ github.repository_owner }}/user-service:latest
+              ports: ["8083:8080"]
+            auth-service:
+              image: ghcr.io/${{ github.repository_owner }}/auth-service:latest
+              ports: ["8081:8081"]
+            order-service:
+              image: ghcr.io/${{ github.repository_owner }}/order-service:latest
+              ports: ["8082:8082"]
+            payment-service:
+              image: ghcr.io/${{ github.repository_owner }}/payment-service:latest
+              ports: ["8084:8084"]
+          EOF
+
+      - name: Upload deployment manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-manifest
+          path: docker-compose.prod.yml
           retention-days: 30
+          overwrite: true
