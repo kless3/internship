@@ -39,3 +39,5 @@ mvnw.cmd
 
 ### VS Code ###
 .vscode/
+.gradle/
+auth-service/.env
