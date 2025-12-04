@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: internship
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+      - name: api-gateway
+        image: api-gateway:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8083
+        env:
+        - name: SERVER_PORT
+          value: "8083"
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: JWT_SECRET
+        - name: SERVICES_AUTH_SERVICE
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: SERVICES_AUTH_SERVICE
+        - name: SERVICES_USER_SERVICE
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: SERVICES_USER_SERVICE
+        - name: SERVICES_ORDER_SERVICE
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: SERVICES_ORDER_SERVICE
+        - name: SERVICES_PAYMENT_SERVICE
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: SERVICES_PAYMENT_SERVICE
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8083
+          initialDelaySeconds: 90
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8083
+          initialDelaySeconds: 60
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 5
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+  namespace: internship
+spec:
+  selector:
+    app: api-gateway
+  ports:
+  - port: 8083
+    targetPort: 8083
+

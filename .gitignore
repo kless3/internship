@@ -22,11 +22,13 @@ order-service/.gradle/**
 *.iws
 *.iml
 *.ipr
-
+Makefile
+*.bat
+*.sh
 .env
 .gradle
 user-service/.mvn/
-
+*.md
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/
