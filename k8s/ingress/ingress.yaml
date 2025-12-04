@@ -11,7 +11,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: internship.local
+  - host: innowise-internship.com
     http:
       paths:
       - path: /
