@@ -1,5 +1,6 @@
 package com.internship.order_service.service;
 
+import com.internship.order_service.dto.ItemDTO;
 import com.internship.order_service.dto.OrderRequestDTO;
 import com.internship.order_service.dto.OrderResponseDTO;
 import com.internship.order_service.model.enums.OrderStatus;
@@ -15,6 +16,10 @@ public interface OrderService {
     List<OrderResponseDTO> getOrdersByIds(List<Long> ids);
 
     List<OrderResponseDTO> getOrdersByStatus(OrderStatus orderStatus);
+
+    List<ItemDTO> getAllAvailableItems();
+
+    List<OrderResponseDTO> getMyOrders(String userLogin);
 
     OrderResponseDTO updateOrderById(Long id, OrderRequestDTO orderRequestDTO);
 
