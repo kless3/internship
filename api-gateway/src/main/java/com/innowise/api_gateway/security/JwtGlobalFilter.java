@@ -7,6 +7,7 @@ import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -21,6 +22,11 @@ public class JwtGlobalFilter implements GatewayFilter, Ordered {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        
+        if (HttpMethod.OPTIONS.equals(exchange.getRequest().getMethod())) {
+            return chain.filter(exchange);
+        }
+
         String token = extractToken(exchange.getRequest());
 
         if (!StringUtils.hasText(token)) {
