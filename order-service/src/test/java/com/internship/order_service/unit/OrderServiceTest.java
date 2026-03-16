@@ -67,7 +67,7 @@ class OrderServiceTest {
         order.setCreationDate(LocalDateTime.now());
 
         userInfoDTO = new UserInfoDTO(1L, "test@example.com");
-        orderResponseDTO = new OrderResponseDTO(1L, OrderStatus.PENDING, LocalDateTime.now(), List.of(orderItemDTO), userInfoDTO);
+        orderResponseDTO = new OrderResponseDTO(1L, 1L, OrderStatus.PENDING, LocalDateTime.now(), List.of(orderItemDTO), userInfoDTO);
     }
 
     @Test
@@ -112,7 +112,7 @@ class OrderServiceTest {
         order2.setUserEmail("test2@example.com");
         List<Order> orders = Arrays.asList(order, order2);
 
-        OrderResponseDTO orderResponseDTO2 = new OrderResponseDTO(2L, OrderStatus.PENDING, LocalDateTime.now(), List.of(orderItemDTO), userInfoDTO);
+        OrderResponseDTO orderResponseDTO2 = new OrderResponseDTO(2L, 2L, OrderStatus.PENDING, LocalDateTime.now(), List.of(orderItemDTO), userInfoDTO);
 
         when(orderRepository.findByIdIn(orderIds)).thenReturn(orders);
         when(orderMapper.toDTO(order)).thenReturn(orderResponseDTO);
@@ -191,7 +191,7 @@ class OrderServiceTest {
         updatedOrder.setUserEmail("updated@example.com");
         updatedOrder.setStatus(OrderStatus.DELIVERED);
 
-        OrderResponseDTO updatedResponse = new OrderResponseDTO(orderId, OrderStatus.DELIVERED, LocalDateTime.now(), List.of(orderItemDTO), userInfoDTO);
+        OrderResponseDTO updatedResponse = new OrderResponseDTO(orderId, 1L, OrderStatus.DELIVERED, LocalDateTime.now(), List.of(orderItemDTO), userInfoDTO);
 
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
         when(orderRepository.save(order)).thenReturn(updatedOrder);

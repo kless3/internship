@@ -2,6 +2,7 @@ package com.internship.order_service.controller;
 
 import com.internship.order_service.dto.OrderRequestDTO;
 import com.internship.order_service.dto.OrderResponseDTO;
+import com.internship.order_service.dto.ItemDTO;
 import com.internship.order_service.model.enums.OrderStatus;
 import com.internship.order_service.service.OrderService;
 import jakarta.validation.Valid;
@@ -32,6 +33,16 @@ public class OrderController {
     @GetMapping("/status")
     public ResponseEntity<List<OrderResponseDTO>> getOrdersByStatus(@RequestParam OrderStatus status){
         return new ResponseEntity<>(orderService.getOrdersByStatus(status), HttpStatus.OK);
+    }
+
+    @GetMapping("/items")
+    public ResponseEntity<List<ItemDTO>> getAvailableItems() {
+        return new ResponseEntity<>(orderService.getAllAvailableItems(), HttpStatus.OK);
+    }
+
+    @GetMapping("/my")
+    public ResponseEntity<List<OrderResponseDTO>> getMyOrders(@RequestHeader("X-User-Id") String userLogin){
+        return new ResponseEntity<>(orderService.getMyOrders(userLogin), HttpStatus.OK);
     }
 
     @PostMapping("/create")
