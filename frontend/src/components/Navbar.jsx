@@ -1,12 +1,12 @@
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../auth/useAuth.js';
 
 export default function Navbar({ userEmail }) {
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const handleLogout = () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    navigate('/login');
+    logout().finally(() => navigate('/login'));
   };
 
   return (

@@ -1,39 +1,16 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import api from '../api/axios.js';
-import { normalizeApiError } from '../api/error-utils.js';
+import { useAuth } from '../auth/useAuth.js';
 
 export default function LoginPage() {
-  const [form, setForm] = useState({ login: '', password: '' });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { initialized, authenticated, login, loginWithGoogle } = useAuth();
 
-  const onChange = (event) => {
-    const { name, value } = event.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const onSubmit = async (event) => {
-    event.preventDefault();
-
-    try {
-      setLoading(true);
-      setError('');
-      const { data } = await api.post('/api/v1/auth/login', {
-        login: form.login,
-        password: form.password
-      });
-
-      localStorage.setItem('accessToken', data.accessToken);
-      localStorage.setItem('refreshToken', data.refreshToken);
+  useEffect(() => {
+    if (initialized && authenticated) {
       navigate('/orders');
-    } catch (e) {
-      setError(normalizeApiError(e, 'Login failed.'));
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [initialized, authenticated, navigate]);
 
   return (
     <main className="container min-vh-100 d-flex align-items-center justify-content-center py-4">
@@ -42,40 +19,13 @@ export default function LoginPage() {
           <h1 className="h4 mb-1">Sign in</h1>
           <p className="text-muted mb-4">Innowise Internship · Order Management System</p>
 
-          <form onSubmit={onSubmit}>
-            <div className="mb-3">
-              <label className="form-label">Login (email)</label>
-              <input
-                className="form-control"
-                type="email"
-                name="login"
-                value={form.login}
-                onChange={onChange}
-                required
-                placeholder="name@example.com"
-              />
-            </div>
+          <button className="btn btn-primary w-100 mb-2" type="button" onClick={() => login()}>
+            Continue with Keycloak
+          </button>
 
-            <div className="mb-3">
-              <label className="form-label">Password</label>
-              <input
-                className="form-control"
-                type="password"
-                name="password"
-                minLength="6"
-                value={form.password}
-                onChange={onChange}
-                required
-                placeholder="Password"
-              />
-            </div>
-
-            {error ? <div className="alert alert-danger py-2">{error}</div> : null}
-
-            <button className="btn btn-primary w-100" type="submit" disabled={loading}>
-              {loading ? 'Signing in...' : 'Sign in'}
-            </button>
-          </form>
+          <button className="btn btn-outline-danger w-100" type="button" onClick={() => loginWithGoogle()}>
+            Continue with Google
+          </button>
 
           <p className="mt-3 mb-0 text-center">
             No account yet? <Link to="/register">Create one</Link>

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import keycloak from '../auth/keycloak.js';
 
 const baseURL = import.meta.env.VITE_SERVER_URL ?? '/';
 
@@ -10,11 +11,18 @@ const api = axios.create({
   }
 });
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+api.interceptors.request.use(async (config) => {
+  if (keycloak.authenticated) {
+    try {
+      await keycloak.updateToken(30);
+    } catch {
+    }
+
+    if (keycloak.token) {
+      config.headers.Authorization = `Bearer ${keycloak.token}`;
+    }
   }
+
   return config;
 });
 
@@ -22,40 +30,18 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    const refreshToken = localStorage.getItem('refreshToken');
 
-    if (
-      originalRequest &&
-      error.response?.status === 401 &&
-      !originalRequest?._retry &&
-      refreshToken &&
-      !originalRequest?.url?.includes('/api/v1/auth/refresh')
-    ) {
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && keycloak.authenticated) {
       originalRequest._retry = true;
 
       try {
-        const refreshResponse = await axios.post(
-          `${baseURL}/api/v1/auth/refresh`,
-          { refreshToken }
-        );
-
-        const newAccessToken = refreshResponse.data?.accessToken;
-        const newRefreshToken = refreshResponse.data?.refreshToken;
-
-        if (!newAccessToken || !newRefreshToken) {
-          throw new Error('Missing tokens after refresh');
+        await keycloak.updateToken(0);
+        if (keycloak.token) {
+          originalRequest.headers.Authorization = `Bearer ${keycloak.token}`;
         }
-
-        localStorage.setItem('accessToken', newAccessToken);
-        localStorage.setItem('refreshToken', newRefreshToken);
-
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return api(originalRequest);
-      } catch (refreshError) {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        window.location.href = '/login';
-        return Promise.reject(refreshError);
+      } catch {
+        await keycloak.logout({ redirectUri: `${window.location.origin}/login` });
       }
     }
 
