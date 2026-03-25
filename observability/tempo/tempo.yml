@@ -8,6 +8,13 @@ distributor:
         grpc:
         http:
 
+ingester:
+  trace_idle_period: 10s
+
+compactor:
+  compaction:
+    compacted_block_retention: 720h
+
 storage:
   trace:
     backend: local
