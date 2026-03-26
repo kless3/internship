@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import api from '../api/axios.js';
 import { normalizeApiError } from '../api/error-utils.js';
+import { useAuth } from '../auth/useAuth.js';
 import Navbar from '../components/Navbar.jsx';
 import OrderCreate from '../components/OrderCreate.jsx';
 import OrderList from '../components/OrderList.jsx';
@@ -33,13 +34,14 @@ export default function OrdersPage() {
   const [payments, setPayments] = useState([]);
   const [paymentsLoading, setPaymentsLoading] = useState(true);
   const [paymentsError, setPaymentsError] = useState('');
+  const { accessToken } = useAuth();
 
   const loadOrders = useCallback(async () => {
     try {
       setOrdersLoading(true);
       setOrdersError('');
 
-      const { data } = await api.get('/api/v1/orders/my');
+      const { data } = await api.get('/api/v1/orders/current');
       setOrders(Array.isArray(data) ? data : []);
     } catch (e) {
       setOrdersError(normalizeApiError(e, 'Failed to fetch orders.'));

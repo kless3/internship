@@ -2,6 +2,11 @@ import axios from 'axios';
 import keycloak from '../auth/keycloak.js';
 
 const baseURL = import.meta.env.VITE_SERVER_URL ?? '/';
+let unauthorizedHandler = null;
+
+export function setUnauthorizedHandler(handler) {
+  unauthorizedHandler = typeof handler === 'function' ? handler : null;
+}
 
 const api = axios.create({
   baseURL,

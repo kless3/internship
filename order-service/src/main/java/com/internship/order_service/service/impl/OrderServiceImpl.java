@@ -135,12 +135,12 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrderResponseDTO> getMyOrders(String userLogin) {
+    public List<OrderResponseDTO> getOrdersByUserEmail(String userEmail) {
         try {
-            UserInfoDTO user = userServiceClient.getUserInfoByEmail(userLogin);
+            UserInfoDTO user = userServiceClient.getUserInfoByEmail(userEmail);
 
             if (user == null || user.id() == null) {
-                throw new ResourceNotFoundException(USER_NOT_FOUND_WITH_EMAIL + userLogin);
+                throw new ResourceNotFoundException(USER_NOT_FOUND_WITH_EMAIL + userEmail);
             }
 
             return orderRepository.findAllByUserId(user.id())
