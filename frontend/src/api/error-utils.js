@@ -11,6 +11,13 @@ function asValidationMessage(data) {
   return entries.map(([field, message]) => `${field}: ${message}`).join('; ');
 }
 
+const STATUS_MESSAGES = new Map([
+  [400, 'Invalid request data.'],
+  [401, 'Unauthorized. Please sign in again.'],
+  [403, 'Access denied.'],
+  [404, 'Resource not found.']
+]);
+
 export function normalizeApiError(error, fallback = 'Request failed.') {
   if (!error) {
     return fallback;
@@ -45,12 +52,9 @@ export function normalizeApiError(error, fallback = 'Request failed.') {
     return validationMessage;
   }
 
-  if (status === 400) return 'Invalid request data.';
-  if (status === 401) return 'Unauthorized. Please sign in again.';
-  if (status === 403) return 'Access denied.';
-  if (status === 404) return 'Resource not found.';
+  const messageByStatus = STATUS_MESSAGES.get(status);
+  if (messageByStatus) return messageByStatus;
   if (status >= 500) return 'Server error. Please try later.';
 
   return fallback;
 }
-

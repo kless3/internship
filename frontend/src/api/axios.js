@@ -1,6 +1,12 @@
 import axios from 'axios';
+import { clearAuthTokens, getAccessToken, getRefreshToken, setAuthTokens } from '../auth/auth-storage.js';
 
 const baseURL = import.meta.env.VITE_SERVER_URL ?? '/';
+let unauthorizedHandler = null;
+
+export function setUnauthorizedHandler(handler) {
+  unauthorizedHandler = typeof handler === 'function' ? handler : null;
+}
 
 const api = axios.create({
   baseURL,
@@ -11,7 +17,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken');
+  const token = getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -22,7 +28,7 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    const refreshToken = localStorage.getItem('refreshToken');
+    const refreshToken = getRefreshToken();
 
     if (
       originalRequest &&
@@ -46,15 +52,16 @@ api.interceptors.response.use(
           throw new Error('Missing tokens after refresh');
         }
 
-        localStorage.setItem('accessToken', newAccessToken);
-        localStorage.setItem('refreshToken', newRefreshToken);
+        setAuthTokens({ accessToken: newAccessToken, refreshToken: newRefreshToken });
 
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return api(originalRequest);
       } catch (refreshError) {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        window.location.href = '/login';
+        if (unauthorizedHandler) {
+          unauthorizedHandler();
+        } else {
+          clearAuthTokens();
+        }
         return Promise.reject(refreshError);
       }
     }

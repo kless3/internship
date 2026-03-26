@@ -31,16 +31,18 @@ export default function RegisterPage() {
       return;
     }
 
+    const normalizedEmail = form.email.trim().toLowerCase();
+
     try {
       setLoading(true);
       setError('');
 
       await api.post('/api/v1/auth/register', {
-        login: form.email,
+        login: normalizedEmail,
         name: form.name,
         surname: form.surname,
         birthDate: form.birthDate,
-        email: form.email,
+        email: normalizedEmail,
         password: form.password
       });
 

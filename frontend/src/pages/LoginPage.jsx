@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/axios.js';
 import { normalizeApiError } from '../api/error-utils.js';
+import { useAuth } from '../auth/useAuth.js';
 
 export default function LoginPage() {
   const [form, setForm] = useState({ login: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { login: loginToAuth } = useAuth();
 
   const onChange = (event) => {
     const { name, value } = event.target;
@@ -16,17 +18,23 @@ export default function LoginPage() {
 
   const onSubmit = async (event) => {
     event.preventDefault();
+    const login = form.login.trim();
+    const password = form.password.trim();
+
+    if (!login || !password) {
+      setError('Login and password are required.');
+      return;
+    }
 
     try {
       setLoading(true);
       setError('');
       const { data } = await api.post('/api/v1/auth/login', {
-        login: form.login,
-        password: form.password
+        login,
+        password
       });
 
-      localStorage.setItem('accessToken', data.accessToken);
-      localStorage.setItem('refreshToken', data.refreshToken);
+      loginToAuth(data.accessToken, data.refreshToken);
       navigate('/orders');
     } catch (e) {
       setError(normalizeApiError(e, 'Login failed.'));

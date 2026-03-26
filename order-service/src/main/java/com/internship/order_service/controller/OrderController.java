@@ -40,9 +40,9 @@ public class OrderController {
         return new ResponseEntity<>(orderService.getAllAvailableItems(), HttpStatus.OK);
     }
 
-    @GetMapping("/my")
-    public ResponseEntity<List<OrderResponseDTO>> getMyOrders(@RequestHeader("X-User-Id") String userLogin){
-        return new ResponseEntity<>(orderService.getMyOrders(userLogin), HttpStatus.OK);
+    @GetMapping("/current")
+    public ResponseEntity<List<OrderResponseDTO>> getOrdersByUserEmail(@RequestHeader("X-User-Id") String userEmail){
+        return new ResponseEntity<>(orderService.getOrdersByUserEmail(userEmail), HttpStatus.OK);
     }
 
     @PostMapping("/create")

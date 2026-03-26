@@ -19,7 +19,7 @@ public interface OrderService {
 
     List<ItemDTO> getAllAvailableItems();
 
-    List<OrderResponseDTO> getMyOrders(String userLogin);
+    List<OrderResponseDTO> getOrdersByUserEmail(String userEmail);
 
     OrderResponseDTO updateOrderById(Long id, OrderRequestDTO orderRequestDTO);
 
