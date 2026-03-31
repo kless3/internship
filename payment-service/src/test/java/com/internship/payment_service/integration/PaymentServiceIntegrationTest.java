@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
 import org.springframework.kafka.core.KafkaTemplate;
 
 import java.math.BigDecimal;
@@ -100,9 +101,9 @@ class PaymentServiceIntegrationTest extends BaseIntegrationTest {
     void testFindPaymentsByUserId() {
         paymentService.createPayment(paymentRequestDTO);
 
-        List<PaymentResponseDTO> payments = paymentService.getPaymentsByUserId(100L);
+        Page<PaymentResponseDTO> payments = paymentService.getPaymentsByUserId(100L, 0, 10);
 
-        assertEquals(1, payments.size());
+        assertEquals(1, payments.getContent().size());
     }
 
     @Test
@@ -205,7 +206,7 @@ class PaymentServiceIntegrationTest extends BaseIntegrationTest {
     @DisplayName("Should return empty list when no payments for user")
     void testNoPaymentsForUser() {
         assertThrows(Exception.class, () -> {
-            paymentService.getPaymentsByUserId(999L);
+            paymentService.getPaymentsByUserId(999L, 0, 10);
         });
     }
 

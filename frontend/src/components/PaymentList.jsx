@@ -1,6 +1,15 @@
 import { useMemo } from 'react';
 
-export default function PaymentList({ payments, loading, error, onRefresh }) {
+export default function PaymentList({
+  payments,
+  page,
+  totalPages,
+  totalElements,
+  loading,
+  error,
+  onRefresh,
+  onPageChange
+}) {
   const sortedPayments = useMemo(
     () => [...payments].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)),
     [payments]
@@ -37,6 +46,30 @@ export default function PaymentList({ payments, loading, error, onRefresh }) {
                 </div>
               </div>
             ))}
+          </div>
+        ) : null}
+
+        {!loading && !error ? (
+          <div className="d-flex justify-content-between align-items-center mt-3">
+            <button
+              className="btn btn-outline-secondary btn-sm"
+              type="button"
+              disabled={page <= 0}
+              onClick={() => onPageChange(Math.max(0, page - 1))}
+            >
+              Prev
+            </button>
+            <small className="text-muted">
+              Page {page + 1} of {totalPages} · Payments: {totalElements}
+            </small>
+            <button
+              className="btn btn-outline-secondary btn-sm"
+              type="button"
+              disabled={page >= totalPages - 1}
+              onClick={() => onPageChange(Math.min(totalPages - 1, page + 1))}
+            >
+              Next
+            </button>
           </div>
         ) : null}
       </div>

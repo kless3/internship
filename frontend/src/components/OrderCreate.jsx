@@ -5,6 +5,10 @@ import { normalizeApiError } from '../api/error-utils.js';
 export default function OrderCreate({ userProfile, onCreated }) {
   const [catalog, setCatalog] = useState([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
+  const [catalogPage, setCatalogPage] = useState(0);
+  const [catalogSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
   const [selectedId, setSelectedId] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [cart, setCart] = useState([]);
@@ -23,8 +27,25 @@ export default function OrderCreate({ userProfile, onCreated }) {
       try {
         setCatalogLoading(true);
         setError('');
-        const { data } = await api.get('/api/v1/orders/items');
-        setCatalog(Array.isArray(data) ? data : []);
+
+        const { data } = await api.get('/api/v1/orders/items', {
+          params: { page: catalogPage, size: catalogSize }
+        });
+
+        const content = Array.isArray(data?.content) ? data.content : [];
+        const resolvedTotalPages =
+          Number.isFinite(Number(data?.totalPages)) && Number(data.totalPages) > 0
+            ? Number(data.totalPages)
+            : 1;
+
+        setCatalog(content);
+        setTotalPages(resolvedTotalPages);
+        setTotalElements(Number.isFinite(Number(data?.totalElements)) ? Number(data.totalElements) : content.length);
+
+        const backendPage = Number.isFinite(Number(data?.number)) ? Number(data.number) : catalogPage;
+        if (backendPage !== catalogPage) {
+          setCatalogPage(backendPage);
+        }
       } catch (e) {
         setError(normalizeApiError(e, 'Failed to load catalog.'));
       } finally {
@@ -33,7 +54,11 @@ export default function OrderCreate({ userProfile, onCreated }) {
     };
 
     loadCatalog();
-  }, []);
+  }, [catalogPage, catalogSize]);
+
+  useEffect(() => {
+    setSelectedId('');
+  }, [catalogPage]);
 
   const addItem = () => {
     if (!selectedProduct || quantity < 1) return;
@@ -106,6 +131,28 @@ export default function OrderCreate({ userProfile, onCreated }) {
           </select>
         </div>
 
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <button
+            className="btn btn-outline-secondary btn-sm"
+            type="button"
+            disabled={catalogLoading || catalogPage <= 0}
+            onClick={() => setCatalogPage((prev) => Math.max(0, prev - 1))}
+          >
+            Prev
+          </button>
+          <small className="text-muted">
+            Page {catalogPage + 1} of {totalPages} · Items: {totalElements}
+          </small>
+          <button
+            className="btn btn-outline-secondary btn-sm"
+            type="button"
+            disabled={catalogLoading || catalogPage >= totalPages - 1}
+            onClick={() => setCatalogPage((prev) => Math.min(totalPages - 1, prev + 1))}
+          >
+            Next
+          </button>
+        </div>
+
         <div className="row g-2 mb-3 align-items-end">
           <div className="col-5">
             <label className="form-label">Qty</label>
@@ -147,6 +194,9 @@ export default function OrderCreate({ userProfile, onCreated }) {
         </div>
 
         {catalogLoading ? <div className="text-muted small mb-2">Loading items...</div> : null}
+        {!catalogLoading && catalog.length === 0 ? (
+          <div className="text-muted small mb-2">No catalog items on this page.</div>
+        ) : null}
         {error ? <div className="alert alert-danger py-2">{error}</div> : null}
         <button className="btn btn-primary w-100" onClick={submitOrder} disabled={submitting || !userProfile}>
           {submitting ? 'Submitting...' : 'Place order'}

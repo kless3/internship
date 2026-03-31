@@ -3,6 +3,7 @@ package com.internship.payment_service.service;
 import com.internship.payment_service.dto.PaymentRequestDTO;
 import com.internship.payment_service.dto.PaymentResponseDTO;
 import com.internship.payment_service.model.enums.PaymentStatus;
+import org.springframework.data.domain.Page;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -16,7 +17,7 @@ public interface PaymentService {
 
     List<PaymentResponseDTO> getAllPayments();
 
-    List<PaymentResponseDTO> getPaymentsByUserId(Long userId);
+    Page<PaymentResponseDTO> getPaymentsByUserId(Long userId, int page, int size);
 
     List<PaymentResponseDTO> getPaymentsByOrderId(Long orderId);
 

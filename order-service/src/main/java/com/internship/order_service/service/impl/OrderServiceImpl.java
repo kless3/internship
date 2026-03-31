@@ -19,6 +19,10 @@ import com.internship.order_service.repository.OrderRepository;
 import com.internship.order_service.service.OrderService;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -126,16 +130,15 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ItemDTO> getAllAvailableItems() {
-        return itemRepository.findAll()
-                .stream()
-                .map(itemMapper::toDTO)
-                .collect(Collectors.toList());
+    public Page<ItemDTO> getAllAvailableItems(int page, int size) {
+        PageRequest pageable = PageRequest.of(page, size, Sort.by("id").ascending());
+        return itemRepository.findAll(pageable)
+                .map(itemMapper::toDTO);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrderResponseDTO> getOrdersByUserEmail(String userEmail) {
+    public Page<OrderResponseDTO> getOrdersByUserEmail(String userEmail, int page, int size) {
         try {
             UserInfoDTO user = userServiceClient.getUserInfoByEmail(userEmail);
 
@@ -143,8 +146,8 @@ public class OrderServiceImpl implements OrderService {
                 throw new ResourceNotFoundException(USER_NOT_FOUND_WITH_EMAIL + userEmail);
             }
 
-            return orderRepository.findAllByUserId(user.id())
-                    .stream()
+            Pageable pageable = PageRequest.of(page, size, Sort.by("creationDate").descending());
+            return orderRepository.findAllByUserId(user.id(), pageable)
                     .map(order -> {
                         OrderResponseDTO orderResponseDTO = orderMapper.toDTO(order);
                         return new OrderResponseDTO(
@@ -155,8 +158,7 @@ public class OrderServiceImpl implements OrderService {
                                 orderResponseDTO.orderItems(),
                                 user
                         );
-                    })
-                    .collect(Collectors.toList());
+                    });
 
         } catch (FeignException e) {
             throw new UserServiceUnavailableException(USER_SERVICE_UNAVAILABLE, e);
