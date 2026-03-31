@@ -28,8 +28,8 @@ services:
     image: postgres:15-alpine
     container_name: postgres-db
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     ports: ["5432:5432"]
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -76,6 +76,71 @@ services:
       timeout: 10s
       retries: 5
 
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.114.0
+    container_name: otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./observability/otel-collector/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "9464:9464"
+    depends_on:
+      tempo:
+        condition: service_started
+      loki:
+        condition: service_started
+    networks: [internship-network]
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: prometheus
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports: ["9090:9090"]
+    networks: [internship-network]
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:3.1.0
+    container_name: loki
+    command: ["-config.file=/etc/loki/loki-config.yaml"]
+    volumes:
+      - ./observability/loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+      - loki_data:/loki
+    ports: ["3100:3100"]
+    networks: [internship-network]
+    restart: unless-stopped
+
+  tempo:
+    image: grafana/tempo:2.6.1
+    container_name: tempo
+    command: ["-config.file=/etc/tempo/tempo.yml"]
+    volumes:
+      - ./observability/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+      - tempo_data:/tmp/tempo
+    user: "0:0"
+    ports:
+      - "3200:3200"
+      - "4319:4317"
+    networks: [internship-network]
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning
+      - grafana_data:/var/lib/grafana
+    ports: ["3000:3000"]
+    networks: [internship-network]
+    restart: unless-stopped
+
   api-gateway:
     build:
       context: ./api-gateway
@@ -85,11 +150,19 @@ services:
     environment:
       - SPRING_APPLICATION_NAME=api-gateway
       - SERVER_PORT=8083
-      - JWT_SECRET=mySuperSecretKeyForJWTGenerationThatIsAtLeast32BytesLong123!
+      - JWT_SECRET=${JWT_SECRET}
       - USER_SERVICE_URL=http://user-service:8080
       - AUTH_SERVICE_URL=http://auth-service:8081
       - ORDER_SERVICE_URL=http://order-service:8082
       - PAYMENT_SERVICE_URL=http://payment-service:8084
+      - JAVA_TOOL_OPTIONS=-javaagent:/otel/opentelemetry-javaagent.jar
+      - OTEL_SERVICE_NAME=api-gateway
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT}
+      - OTEL_EXPORTER_OTLP_PROTOCOL=${OTEL_EXPORTER_OTLP_PROTOCOL}
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
+      - OTEL_RESOURCE_ATTRIBUTES=${OTEL_RESOURCE_ATTRIBUTES}
     depends_on:
       user-service:
         condition: service_started
@@ -98,6 +171,8 @@ services:
       order-service:
         condition: service_started
       payment-service:
+        condition: service_started
+      otel-collector:
         condition: service_started
     networks: [internship-network]
     restart: unless-stopped
@@ -111,19 +186,29 @@ services:
     environment:
       - SPRING_APPLICATION_NAME=user-service
       - SERVER_PORT=8080
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/internship
-      - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${USER_DB_NAME}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
       - SPRING_JPA_HIBERNATE_DDL_AUTO=validate
-      - SPRING_DATA_REDIS_HOST=redis
-      - SPRING_DATA_REDIS_PORT=6379
+      - SPRING_DATA_REDIS_HOST=${REDIS_HOST}
+      - SPRING_DATA_REDIS_PORT=${REDIS_PORT}
       - REDIS_DATABASE=0
       - AUTH_SERVICE_URL=http://auth-service:8081
+      - JAVA_TOOL_OPTIONS=-javaagent:/otel/opentelemetry-javaagent.jar
+      - OTEL_SERVICE_NAME=user-service
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT}
+      - OTEL_EXPORTER_OTLP_PROTOCOL=${OTEL_EXPORTER_OTLP_PROTOCOL}
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
+      - OTEL_RESOURCE_ATTRIBUTES=${OTEL_RESOURCE_ATTRIBUTES}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     networks: [internship-network]
     restart: unless-stopped
 
@@ -136,18 +221,28 @@ services:
     environment:
       - SPRING_APPLICATION_NAME=auth-service
       - SERVER_PORT=8081
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/auth
-      - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${AUTH_DB_NAME}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update
       - USER_SERVICE_URL=http://user-service:8080
-      - JWT_SECRET=mySuperSecretKeyForJWTGenerationThatIsAtLeast32BytesLong123!
-      - JWT_ACCESS_TOKEN_EXPIRATION=3600000
-      - JWT_REFRESH_TOKEN_EXPIRATION=2592000000
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_ACCESS_TOKEN_EXPIRATION=${JWT_ACCESS_TOKEN_EXPIRATION}
+      - JWT_REFRESH_TOKEN_EXPIRATION=${JWT_REFRESH_TOKEN_EXPIRATION}
+      - JAVA_TOOL_OPTIONS=-javaagent:/otel/opentelemetry-javaagent.jar
+      - OTEL_SERVICE_NAME=auth-service
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT}
+      - OTEL_EXPORTER_OTLP_PROTOCOL=${OTEL_EXPORTER_OTLP_PROTOCOL}
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
+      - OTEL_RESOURCE_ATTRIBUTES=${OTEL_RESOURCE_ATTRIBUTES}
     depends_on:
       postgres:
         condition: service_healthy
       user-service:
+        condition: service_started
+      otel-collector:
         condition: service_started
     networks: [internship-network]
     restart: unless-stopped
@@ -161,19 +256,29 @@ services:
     environment:
       - SPRING_APPLICATION_NAME=order-service
       - SERVER_PORT=8082
-      - DATASOURCE_URL=jdbc:postgresql://postgres:5432/order_db
-      - DATASOURCE_USERNAME=postgres
-      - DATASOURCE_PASSWORD=postgres
+      - DATASOURCE_URL=jdbc:postgresql://postgres:5432/${ORDER_DB_NAME}
+      - DATASOURCE_USERNAME=${POSTGRES_USER}
+      - DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
       - SPRING_JPA_HIBERNATE_DDL_AUTO=validate
       - USER_SERVICE_URL=http://user-service:8080
-      - BOOTSTRAP_SERVERS=kafka:9092
+      - BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
       - CONSUMER_GROUP_ID=order-service
+      - JAVA_TOOL_OPTIONS=-javaagent:/otel/opentelemetry-javaagent.jar
+      - OTEL_SERVICE_NAME=order-service
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT}
+      - OTEL_EXPORTER_OTLP_PROTOCOL=${OTEL_EXPORTER_OTLP_PROTOCOL}
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
+      - OTEL_RESOURCE_ATTRIBUTES=${OTEL_RESOURCE_ATTRIBUTES}
     depends_on:
       kafka:
         condition: service_started
       postgres:
         condition: service_healthy
       user-service:
+        condition: service_started
+      otel-collector:
         condition: service_started
     networks: [internship-network]
     restart: unless-stopped
@@ -187,15 +292,23 @@ services:
     environment:
       - SPRING_APPLICATION_NAME=payment-service
       - SERVER_PORT=8084
-      - MONGODB_HOST=mongodb
-      - MONGODB_PORT=27017
-      - MONGODB_DATABASE=payment
+      - MONGODB_HOST=${MONGODB_HOST}
+      - MONGODB_PORT=${MONGODB_PORT}
+      - MONGODB_DATABASE=${MONGODB_DATABASE}
       - LIQUIBASE_ENABLED=true
       - LIQUIBASE_CHANGE_LOG=db/changelog/db.changelog-master.xml
       - USER_SERVICE_URL=http://user-service:8080
       - ORDER_SERVICE_URL=http://order-service:8082
-      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
       - KAFKA_CONSUMER_GROUP_ID=payment-service
+      - JAVA_TOOL_OPTIONS=-javaagent:/otel/opentelemetry-javaagent.jar
+      - OTEL_SERVICE_NAME=payment-service
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT}
+      - OTEL_EXPORTER_OTLP_PROTOCOL=${OTEL_EXPORTER_OTLP_PROTOCOL}
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
+      - OTEL_RESOURCE_ATTRIBUTES=${OTEL_RESOURCE_ATTRIBUTES}
     depends_on:
       kafka:
         condition: service_started
@@ -205,6 +318,8 @@ services:
         condition: service_started
       order-service:
         condition: service_started
+      otel-collector:
+        condition: service_started
     networks: [internship-network]
     restart: unless-stopped
 
@@ -212,6 +327,9 @@ volumes:
   postgres_data:
   redis_data:
   mongodb_data:
+  grafana_data:
+  loki_data:
+  tempo_data:
 
 networks:
   internship-network:
