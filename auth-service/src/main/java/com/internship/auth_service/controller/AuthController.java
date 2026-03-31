@@ -4,13 +4,14 @@ package com.internship.auth_service.controller;
 import com.internship.auth_service.dto.LoginRequest;
 import com.internship.auth_service.dto.TokenValidationResponse;
 import com.internship.auth_service.dto.RegisterRequest;
-import com.internship.auth_service.dto.RefreshTokenRequest;
 import com.internship.auth_service.dto.TokenResponse;
 import com.internship.auth_service.dto.ValidateTokenRequest;
 import com.internship.auth_service.service.AuthService;
 import com.internship.auth_service.service.TokenManagementService;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,20 +24,32 @@ public class AuthController {
 
     private static final String USER_REGISTRATION_SUCCESS = "User registered successfully";
     private static final String SERVICE_HEALTHY = "Auth Service is healthy";
+    private static final String REFRESH_COOKIE_NAME = "refresh_token";
+    private static final String LOGGED_OUT = "Logged out!";
 
     private final AuthService authService;
     private final TokenManagementService tokenManagementService;
 
     @PostMapping("/login")
-    public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
-        TokenResponse tokenResponse = tokenManagementService.login(loginRequest);
-        return ResponseEntity.ok(tokenResponse);
+    public ResponseEntity<TokenResponse> login(
+            @Valid @RequestBody LoginRequest loginRequest,
+            HttpServletResponse response
+    ) {
+        return ResponseEntity.ok(tokenManagementService.loginWithRefreshCookie(loginRequest, response));
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<TokenResponse> refreshToken(@Valid @RequestBody RefreshTokenRequest refreshTokenRequest) {
-        TokenResponse tokenResponse = tokenManagementService.refreshToken(refreshTokenRequest);
-        return ResponseEntity.ok(tokenResponse);
+    public ResponseEntity<TokenResponse> refreshToken(
+            @CookieValue(name = REFRESH_COOKIE_NAME, required = false) String refreshTokenFromCookie,
+            HttpServletResponse response
+    ) {
+        return ResponseEntity.ok(tokenManagementService.refreshWithRotatedCookie(refreshTokenFromCookie, response));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Map<String, String>> logout(HttpServletResponse response) {
+        response.addHeader(HttpHeaders.SET_COOKIE, tokenManagementService.clearRefreshCookie());
+        return ResponseEntity.ok(Map.of("message", LOGGED_OUT));
     }
 
     @PostMapping("/validate")

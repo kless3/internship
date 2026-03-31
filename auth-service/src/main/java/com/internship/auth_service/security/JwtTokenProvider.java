@@ -97,4 +97,8 @@ public class JwtTokenProvider {
     public Long getAccessTokenExpiration() {
         return jwtProperties.getAccessToken().getExpiration();
     }
+
+    public Long getRefreshTokenExpiration() {
+        return jwtProperties.getRefreshToken().getExpiration();
+    }
 }

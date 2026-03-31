@@ -65,6 +65,8 @@ public class JwtTokenFilter extends OncePerRequestFilter {
 
     private boolean isPublicEndpoint(String path, String method) {
         return ("POST".equals(method) && path.equals("/api/v1/auth/login")) ||
+                ("POST".equals(method) && path.equals("/api/v1/auth/refresh")) ||
+                ("POST".equals(method) && path.equals("/api/v1/auth/logout")) ||
                 ("POST".equals(method) && path.equals("/api/v1/auth/register"));
     }
 

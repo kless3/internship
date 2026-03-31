@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   clearAuthTokens,
   getAccessToken,
-  getRefreshToken,
   setAccessToken as persistAccessToken,
   setAuthTokens,
   subscribeToAuthChanges
@@ -12,8 +11,7 @@ import { setUnauthorizedHandler } from '../api/axios.js';
 
 function readAuthState() {
   return {
-    accessToken: getAccessToken(),
-    refreshToken: getRefreshToken()
+    accessToken: getAccessToken()
   };
 }
 
@@ -26,14 +24,14 @@ export function AuthProvider({ children }) {
     return subscribeToAuthChanges(syncAuthState);
   }, []);
 
-  const login = useCallback((accessToken, refreshToken) => {
-    setAuthTokens({ accessToken, refreshToken });
-    setAuthState({ accessToken, refreshToken });
+  const login = useCallback((accessToken) => {
+    setAuthTokens({ accessToken });
+    setAuthState({ accessToken });
   }, []);
 
   const logout = useCallback(() => {
     clearAuthTokens();
-    setAuthState({ accessToken: null, refreshToken: null });
+    setAuthState({ accessToken: null });
   }, []);
 
   const updateAccessToken = useCallback((accessToken) => {
@@ -49,13 +47,12 @@ export function AuthProvider({ children }) {
   const value = useMemo(
     () => ({
       accessToken: authState.accessToken,
-      refreshToken: authState.refreshToken,
       isAuthenticated: Boolean(authState.accessToken),
       login,
       logout,
       updateAccessToken
     }),
-    [authState.accessToken, authState.refreshToken, login, logout, updateAccessToken]
+    [authState.accessToken, login, logout, updateAccessToken]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

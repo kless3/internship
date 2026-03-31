@@ -34,7 +34,7 @@ export default function LoginPage() {
         password
       });
 
-      loginToAuth(data.accessToken, data.refreshToken);
+      loginToAuth(data.accessToken);
       navigate('/orders');
     } catch (e) {
       setError(normalizeApiError(e, 'Login failed.'));
