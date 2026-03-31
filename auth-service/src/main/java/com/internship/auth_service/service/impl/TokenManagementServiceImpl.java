@@ -2,7 +2,6 @@ package com.internship.auth_service.service.impl;
 
 import com.internship.auth_service.dto.LoginRequest;
 import com.internship.auth_service.dto.TokenValidationResponse;
-import com.internship.auth_service.dto.RefreshTokenRequest;
 import com.internship.auth_service.dto.TokenResponse;
 import com.internship.auth_service.dto.ValidateTokenRequest;
 import com.internship.auth_service.exception.AuthServiceException;
@@ -12,7 +11,10 @@ import com.internship.auth_service.exception.UserNotFoundException;
 import com.internship.auth_service.security.JwtTokenProvider;
 import com.internship.auth_service.service.AuthService;
 import com.internship.auth_service.service.TokenManagementService;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -20,6 +22,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +36,10 @@ public class TokenManagementServiceImpl implements TokenManagementService {
     private static final String USER_NOT_FOUND_MESSAGE = "User not found";
     private static final String TOKEN_VALIDATION_ERROR = "Token validation error";
     private static final String TOKEN_IS_VALID = "Token is valid";
+    private static final String REFRESH_COOKIE_NAME = "refresh_token";
+    private static final String REFRESH_COOKIE_PATH = "/api/v1/auth";
+    private static final String REFRESH_COOKIE_SAME_SITE = "Strict";
+    private static final String REFRESH_TOKEN_MISSING = "Refresh token is missing";
 
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthenticationManager authenticationManager;
@@ -51,9 +59,8 @@ public class TokenManagementServiceImpl implements TokenManagementService {
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
             String accessToken = jwtTokenProvider.generateAccessToken(loginRequest.login());
-            String refreshToken = jwtTokenProvider.generateRefreshToken(loginRequest.login());
 
-            return new TokenResponse(accessToken, refreshToken, jwtTokenProvider.getAccessTokenExpiration());
+            return new TokenResponse(accessToken, jwtTokenProvider.getAccessTokenExpiration());
 
         } catch (BadCredentialsException e) {
             throw new AuthenticationException(INVALID_LOGIN_OR_PASSWORD);
@@ -63,29 +70,48 @@ public class TokenManagementServiceImpl implements TokenManagementService {
     }
 
     @Override
+    @Transactional
+    public TokenResponse loginWithRefreshCookie(LoginRequest loginRequest, HttpServletResponse response) {
+        TokenResponse tokenResponse = login(loginRequest);
+        String refreshToken = jwtTokenProvider.generateRefreshToken(loginRequest.login());
+        response.addHeader(HttpHeaders.SET_COOKIE, buildRefreshCookie(refreshToken));
+        return tokenResponse;
+    }
+
+    @Override
     @Transactional(readOnly = true)
-    public TokenResponse refreshToken(RefreshTokenRequest refreshTokenRequest) {
+    public TokenResponse refreshToken(String refreshToken) {
         try {
-            if (!jwtTokenProvider.validateToken(refreshTokenRequest.refreshToken())) {
+            if (!jwtTokenProvider.validateToken(refreshToken)) {
                 throw new InvalidTokenException(INVALID_REFRESH_TOKEN);
             }
 
-            String login = jwtTokenProvider.getUsernameFromToken(refreshTokenRequest.refreshToken());
+            String login = jwtTokenProvider.getUsernameFromToken(refreshToken);
 
             if (!authService.userExists(login)) {
                 throw new UserNotFoundException(login);
             }
 
             String newAccessToken = jwtTokenProvider.generateAccessToken(login);
-            String newRefreshToken = jwtTokenProvider.generateRefreshToken(login);
 
-            return new TokenResponse(newAccessToken, newRefreshToken, jwtTokenProvider.getAccessTokenExpiration());
+            return new TokenResponse(newAccessToken, jwtTokenProvider.getAccessTokenExpiration());
 
         } catch (AuthServiceException e) {
             throw e;
         } catch (Exception e) {
             throw new InvalidTokenException(TOKEN_REFRESH_FAILED + e.getMessage());
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TokenResponse refreshWithRotatedCookie(String refreshTokenFromCookie, HttpServletResponse response) {
+        String refreshToken = resolveRefreshToken(refreshTokenFromCookie);
+        TokenResponse tokenResponse = refreshToken(refreshToken);
+        String login = jwtTokenProvider.getUsernameFromToken(refreshToken);
+        String rotatedRefreshToken = jwtTokenProvider.generateRefreshToken(login);
+        response.addHeader(HttpHeaders.SET_COOKIE, buildRefreshCookie(rotatedRefreshToken));
+        return tokenResponse;
     }
 
     @Override
@@ -107,5 +133,39 @@ public class TokenManagementServiceImpl implements TokenManagementService {
         } catch (Exception e) {
             return new TokenValidationResponse(false, null, TOKEN_VALIDATION_ERROR);
         }
+    }
+
+    @Override
+    public String resolveRefreshToken(String refreshTokenFromCookie) {
+        if (refreshTokenFromCookie != null && !refreshTokenFromCookie.isBlank()) {
+            return refreshTokenFromCookie;
+        }
+
+        throw new InvalidTokenException(REFRESH_TOKEN_MISSING);
+    }
+
+    @Override
+    public String buildRefreshCookie(String token) {
+        long maxAgeSeconds = TimeUnit.MILLISECONDS.toSeconds(jwtTokenProvider.getRefreshTokenExpiration());
+        return ResponseCookie.from(REFRESH_COOKIE_NAME, token)
+                .httpOnly(true)
+                .secure(false)
+                .path(REFRESH_COOKIE_PATH)
+                .maxAge(maxAgeSeconds)
+                .sameSite(REFRESH_COOKIE_SAME_SITE)
+                .build()
+                .toString();
+    }
+
+    @Override
+    public String clearRefreshCookie() {
+        return ResponseCookie.from(REFRESH_COOKIE_NAME, "")
+                .httpOnly(true)
+                .secure(false)
+                .path(REFRESH_COOKIE_PATH)
+                .maxAge(0)
+                .sameSite(REFRESH_COOKIE_SAME_SITE)
+                .build()
+                .toString();
     }
 }

@@ -11,6 +11,7 @@ export function setUnauthorizedHandler(handler) {
 const api = axios.create({
   baseURL,
   timeout: Number(import.meta.env.VITE_REQUEST_TIMEOUT_MS ?? 15000),
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json'
   }
