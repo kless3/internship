@@ -29,30 +29,64 @@ export default function OrdersPage() {
 
   const [profile, setProfile] = useState(null);
   const [orders, setOrders] = useState([]);
+  const [ordersPage, setOrdersPage] = useState(0);
+  const [ordersPageSize] = useState(10);
+  const [ordersTotalPages, setOrdersTotalPages] = useState(1);
+  const [ordersTotalElements, setOrdersTotalElements] = useState(0);
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [ordersError, setOrdersError] = useState('');
   const [payments, setPayments] = useState([]);
+  const [paymentsPage, setPaymentsPage] = useState(0);
+  const [paymentsPageSize] = useState(10);
+  const [paymentsTotalPages, setPaymentsTotalPages] = useState(1);
+  const [paymentsTotalElements, setPaymentsTotalElements] = useState(0);
   const [paymentsLoading, setPaymentsLoading] = useState(true);
   const [paymentsError, setPaymentsError] = useState('');
   const { accessToken } = useAuth();
 
-  const loadOrders = useCallback(async () => {
+  const loadOrders = useCallback(async (targetPage = 0) => {
     try {
       setOrdersLoading(true);
       setOrdersError('');
 
-      const { data } = await api.get('/api/v1/orders/current');
-      setOrders(Array.isArray(data) ? data : []);
+      const { data } = await api.get('/api/v1/orders/current', {
+        params: {
+          page: targetPage,
+          size: ordersPageSize
+        }
+      });
+
+      const content = Array.isArray(data?.content) ? data.content : [];
+      const currentPage =
+        Number.isFinite(Number(data?.number)) && Number(data.number) >= 0
+          ? Number(data.number)
+          : targetPage;
+      const totalPages =
+        Number.isFinite(Number(data?.totalPages)) && Number(data.totalPages) > 0
+          ? Number(data.totalPages)
+          : 1;
+      const totalElements =
+        Number.isFinite(Number(data?.totalElements)) && Number(data.totalElements) >= 0
+          ? Number(data.totalElements)
+          : content.length;
+
+      setOrders(content);
+      setOrdersPage(currentPage);
+      setOrdersTotalPages(totalPages);
+      setOrdersTotalElements(totalElements);
     } catch (e) {
       setOrdersError(normalizeApiError(e, 'Failed to fetch orders.'));
     } finally {
       setOrdersLoading(false);
     }
-  }, []);
+  }, [ordersPageSize]);
 
-  const loadPayments = useCallback(async (userId) => {
+  const loadPayments = useCallback(async (userId, targetPage = 0) => {
     if (!userId) {
       setPayments([]);
+      setPaymentsPage(0);
+      setPaymentsTotalPages(1);
+      setPaymentsTotalElements(0);
       setPaymentsLoading(false);
       return;
     }
@@ -60,11 +94,37 @@ export default function OrdersPage() {
     try {
       setPaymentsLoading(true);
       setPaymentsError('');
-      const { data } = await api.get(`/api/v1/payments/user/${userId}`);
-      setPayments(Array.isArray(data) ? data : []);
+      const { data } = await api.get(`/api/v1/payments/user/${userId}`, {
+        params: {
+          page: targetPage,
+          size: paymentsPageSize
+        }
+      });
+
+      const content = Array.isArray(data?.content) ? data.content : [];
+      const currentPage =
+        Number.isFinite(Number(data?.number)) && Number(data.number) >= 0
+          ? Number(data.number)
+          : targetPage;
+      const totalPages =
+        Number.isFinite(Number(data?.totalPages)) && Number(data.totalPages) > 0
+          ? Number(data.totalPages)
+          : 1;
+      const totalElements =
+        Number.isFinite(Number(data?.totalElements)) && Number(data.totalElements) >= 0
+          ? Number(data.totalElements)
+          : content.length;
+
+      setPayments(content);
+      setPaymentsPage(currentPage);
+      setPaymentsTotalPages(totalPages);
+      setPaymentsTotalElements(totalElements);
     } catch (e) {
       if (e.response?.status === 404) {
         setPayments([]);
+        setPaymentsPage(0);
+        setPaymentsTotalPages(1);
+        setPaymentsTotalElements(0);
         setPaymentsError('');
       } else {
         setPaymentsError(normalizeApiError(e, 'Failed to fetch payments.'));
@@ -72,7 +132,7 @@ export default function OrdersPage() {
     } finally {
       setPaymentsLoading(false);
     }
-  }, []);
+  }, [paymentsPageSize]);
 
   useEffect(() => {
     const loadProfileAndData = async () => {
@@ -133,8 +193,8 @@ export default function OrdersPage() {
               userProfile={profile}
               onCreated={() => {
                 if (profile?.id || profile?.email) {
-                  loadOrders();
-                  loadPayments(profile.id);
+                  loadOrders(0);
+                  loadPayments(profile.id, 0);
                 }
               }}
             />
@@ -143,18 +203,26 @@ export default function OrdersPage() {
           <div className="col-12 col-xl-5">
             <OrderList
               orders={orders}
+              page={ordersPage}
+              totalPages={ordersTotalPages}
+              totalElements={ordersTotalElements}
               loading={ordersLoading}
               error={ordersError}
-              onRefresh={loadOrders}
+              onRefresh={() => loadOrders(ordersPage)}
+              onPageChange={loadOrders}
             />
           </div>
 
           <div className="col-12 col-xl-4">
             <PaymentList
               payments={payments}
+              page={paymentsPage}
+              totalPages={paymentsTotalPages}
+              totalElements={paymentsTotalElements}
               loading={paymentsLoading}
               error={paymentsError}
-              onRefresh={() => loadPayments(profile?.id)}
+              onRefresh={() => loadPayments(profile?.id, paymentsPage)}
+              onPageChange={(nextPage) => loadPayments(profile?.id, nextPage)}
             />
           </div>
         </div>

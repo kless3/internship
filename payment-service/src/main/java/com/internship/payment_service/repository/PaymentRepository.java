@@ -2,6 +2,8 @@ package com.internship.payment_service.repository;
 
 import com.internship.payment_service.model.Payment;
 import com.internship.payment_service.model.enums.PaymentStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -13,6 +15,8 @@ import java.util.List;
 public interface PaymentRepository extends MongoRepository<Payment, String> {
 
     List<Payment> findByUserId(Long userId);
+    Page<Payment> findByUserId(Long userId, Pageable pageable);
+    boolean existsByUserId(Long userId);
 
     List<Payment> findByOrderId(Long orderId);
 

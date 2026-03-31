@@ -7,6 +7,7 @@ import com.internship.order_service.model.enums.OrderStatus;
 import com.internship.order_service.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -36,13 +37,20 @@ public class OrderController {
     }
 
     @GetMapping("/items")
-    public ResponseEntity<List<ItemDTO>> getAvailableItems() {
-        return new ResponseEntity<>(orderService.getAllAvailableItems(), HttpStatus.OK);
+    public ResponseEntity<Page<ItemDTO>> getAvailableItems(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return new ResponseEntity<>(orderService.getAllAvailableItems(page, size), HttpStatus.OK);
     }
 
     @GetMapping("/current")
-    public ResponseEntity<List<OrderResponseDTO>> getOrdersByUserEmail(@RequestHeader("X-User-Id") String userEmail){
-        return new ResponseEntity<>(orderService.getOrdersByUserEmail(userEmail), HttpStatus.OK);
+    public ResponseEntity<Page<OrderResponseDTO>> getOrdersByUserEmail(
+            @RequestHeader("X-User-Id") String userEmail,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return new ResponseEntity<>(orderService.getOrdersByUserEmail(userEmail, page, size), HttpStatus.OK);
     }
 
     @PostMapping("/create")

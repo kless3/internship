@@ -6,6 +6,7 @@ import com.internship.payment_service.model.enums.PaymentStatus;
 import com.internship.payment_service.service.PaymentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,8 +41,12 @@ public class PaymentController {
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<PaymentResponseDTO>> getPaymentsByUserId(@PathVariable Long userId) {
-        List<PaymentResponseDTO> payments = paymentService.getPaymentsByUserId(userId);
+    public ResponseEntity<Page<PaymentResponseDTO>> getPaymentsByUserId(
+            @PathVariable Long userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Page<PaymentResponseDTO> payments = paymentService.getPaymentsByUserId(userId, page, size);
         return ResponseEntity.ok(payments);
     }
 
