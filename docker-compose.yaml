@@ -234,6 +234,7 @@ services:
       - SPRING_DATA_REDIS_HOST=${REDIS_HOST}
       - SPRING_DATA_REDIS_PORT=${REDIS_PORT}
       - REDIS_DATABASE=0
+      - KEYCLOAK_JWK_SET_URI=http://keycloak:8085/realms/internship/protocol/openid-connect/certs
       - JAVA_TOOL_OPTIONS=-javaagent:/otel/opentelemetry-javaagent.jar
       - OTEL_SERVICE_NAME=user-service
       - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT}
@@ -268,6 +269,7 @@ services:
       - USER_SERVICE_URL=http://user-service:8080
       - BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
       - CONSUMER_GROUP_ID=order-service
+      - KEYCLOAK_JWK_SET_URI=http://keycloak:8085/realms/internship/protocol/openid-connect/certs
       - JAVA_TOOL_OPTIONS=-javaagent:/otel/opentelemetry-javaagent.jar
       - OTEL_SERVICE_NAME=order-service
       - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT}
@@ -306,6 +308,7 @@ services:
       - ORDER_SERVICE_URL=http://order-service:8082
       - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
       - KAFKA_CONSUMER_GROUP_ID=payment-service
+      - KEYCLOAK_JWK_SET_URI=http://keycloak:8085/realms/internship/protocol/openid-connect/certs
       - JAVA_TOOL_OPTIONS=-javaagent:/otel/opentelemetry-javaagent.jar
       - OTEL_SERVICE_NAME=payment-service
       - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT}
