@@ -1,6 +1,7 @@
 package com.internship.order_service.service.impl;
 
 import com.internship.order_service.client.UserServiceClient;
+import com.internship.order_service.dto.ItemDTO;
 import com.internship.order_service.dto.OrderRequestDTO;
 import com.internship.order_service.dto.OrderResponseDTO;
 import com.internship.order_service.dto.UserInfoDTO;
@@ -9,13 +10,19 @@ import com.internship.order_service.exception.ResourceNotFoundException;
 import com.internship.order_service.exception.InvalidOrderStatusException;
 import com.internship.order_service.exception.UserServiceUnavailableException;
 import com.internship.order_service.kafka.OrderEventProducer;
+import com.internship.order_service.mapper.ItemMapper;
 import com.internship.order_service.mapper.OrderMapper;
 import com.internship.order_service.model.Order;
 import com.internship.order_service.model.enums.OrderStatus;
+import com.internship.order_service.repository.ItemRepository;
 import com.internship.order_service.repository.OrderRepository;
 import com.internship.order_service.service.OrderService;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,12 +39,15 @@ public class OrderServiceImpl implements OrderService {
     private static final String ORDER_NOT_FOUND_WITH_IDS = "Orders not found with ids: ";
     private static final String ORDER_NOT_FOUND_WITH_STATUS = "Orders not found with status: ";
     private static final String USER_SERVICE_UNAVAILABLE = "User service is currently unavailable";
+    private static final String USER_NOT_FOUND_WITH_EMAIL = "User not found with email: ";
     private static final String ORDER_STATUS_NULL = "Order status cannot be null";
     private static final String FAILED_TO_CREATE_ORDER = "Failed to create order";
     private static final String FAILED_TO_UPDATE_ORDER = "Failed to update order";
 
     private final OrderRepository orderRepository;
+    private final ItemRepository itemRepository;
     private final OrderMapper orderMapper;
+    private final ItemMapper itemMapper;
     private final UserServiceClient userServiceClient;
     private final OrderEventProducer orderEventProducer;
 
@@ -119,6 +129,43 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Page<ItemDTO> getAllAvailableItems(int page, int size) {
+        PageRequest pageable = PageRequest.of(page, size, Sort.by("id").ascending());
+        return itemRepository.findAll(pageable)
+                .map(itemMapper::toDTO);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<OrderResponseDTO> getOrdersByUserEmail(String userEmail, int page, int size) {
+        try {
+            UserInfoDTO user = userServiceClient.getUserInfoByEmail(userEmail);
+
+            if (user == null || user.id() == null) {
+                throw new ResourceNotFoundException(USER_NOT_FOUND_WITH_EMAIL + userEmail);
+            }
+
+            Pageable pageable = PageRequest.of(page, size, Sort.by("creationDate").descending());
+            return orderRepository.findAllByUserId(user.id(), pageable)
+                    .map(order -> {
+                        OrderResponseDTO orderResponseDTO = orderMapper.toDTO(order);
+                        return new OrderResponseDTO(
+                                orderResponseDTO.id(),
+                                orderResponseDTO.userId(),
+                                orderResponseDTO.status(),
+                                orderResponseDTO.creationDate(),
+                                orderResponseDTO.orderItems(),
+                                user
+                        );
+                    });
+
+        } catch (FeignException e) {
+            throw new UserServiceUnavailableException(USER_SERVICE_UNAVAILABLE, e);
+        }
+    }
+
+    @Override
     @Transactional
     public OrderResponseDTO updateOrderById(Long id, OrderRequestDTO orderRequestDTO) {
         try {
@@ -150,6 +197,7 @@ public class OrderServiceImpl implements OrderService {
         OrderResponseDTO orderResponseDTO = orderMapper.toDTO(order);
         UserInfoDTO userInfo = userServiceClient.getUserInfoByEmail(order.getUserEmail());
         return new OrderResponseDTO(
+                orderResponseDTO.id(),
                 orderResponseDTO.userId(),
                 orderResponseDTO.status(),
                 orderResponseDTO.creationDate(),

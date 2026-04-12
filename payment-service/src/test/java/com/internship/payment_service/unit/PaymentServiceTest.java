@@ -17,6 +17,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -28,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -123,33 +126,40 @@ class PaymentServiceTest {
     @DisplayName("Should return payments for user when user has payments")
     void getPaymentsByUserId_UserHasPayments_ReturnsPaymentList() {
         Long userId = 1L;
+        int page = 0;
+        int size = 10;
         Payment payment1 = new Payment();
         Payment payment2 = new Payment();
         List<Payment> payments = Arrays.asList(payment1, payment2);
+        Page<Payment> paymentsPage = new PageImpl<>(payments);
         PaymentResponseDTO response1 = new PaymentResponseDTO("1", userId, 1L, new BigDecimal("100.00"), PaymentStatus.COMPLETED, LocalDateTime.now());
         PaymentResponseDTO response2 = new PaymentResponseDTO("2", userId, 2L, new BigDecimal("200.00"), PaymentStatus.COMPLETED, LocalDateTime.now());
 
-        when(paymentRepository.findByUserId(userId)).thenReturn(payments);
+        when(paymentRepository.existsByUserId(userId)).thenReturn(true);
+        when(paymentRepository.findByUserId(eq(userId), any(org.springframework.data.domain.Pageable.class))).thenReturn(paymentsPage);
         when(paymentMapper.toResponseDTO(payment1)).thenReturn(response1);
         when(paymentMapper.toResponseDTO(payment2)).thenReturn(response2);
 
-        List<PaymentResponseDTO> actualResponses = paymentService.getPaymentsByUserId(userId);
+        Page<PaymentResponseDTO> actualResponses = paymentService.getPaymentsByUserId(userId, page, size);
 
-        assertEquals(2, actualResponses.size());
-        assertTrue(actualResponses.contains(response1));
-        assertTrue(actualResponses.contains(response2));
-        verify(paymentRepository).findByUserId(userId);
+        assertEquals(2, actualResponses.getContent().size());
+        assertTrue(actualResponses.getContent().contains(response1));
+        assertTrue(actualResponses.getContent().contains(response2));
+        verify(paymentRepository).existsByUserId(userId);
+        verify(paymentRepository).findByUserId(eq(userId), any(org.springframework.data.domain.Pageable.class));
     }
 
     @Test
     @DisplayName("Should throw PaymentNotFoundException when user has no payments")
     void getPaymentsByUserId_UserNoPayments_ThrowsException() {
         Long userId = 999L;
+        int page = 0;
+        int size = 10;
 
-        when(paymentRepository.findByUserId(userId)).thenReturn(List.of());
+        when(paymentRepository.existsByUserId(userId)).thenReturn(false);
 
-        assertThrows(PaymentNotFoundException.class, () -> paymentService.getPaymentsByUserId(userId));
-        verify(paymentRepository).findByUserId(userId);
+        assertThrows(PaymentNotFoundException.class, () -> paymentService.getPaymentsByUserId(userId, page, size));
+        verify(paymentRepository).existsByUserId(userId);
     }
 
     @Test

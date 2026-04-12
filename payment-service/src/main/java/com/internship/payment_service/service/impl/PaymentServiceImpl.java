@@ -12,6 +12,10 @@ import com.internship.payment_service.repository.PaymentRepository;
 import com.internship.payment_service.rest.ExternalApiClient;
 import com.internship.payment_service.service.PaymentService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -66,15 +70,14 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<PaymentResponseDTO> getPaymentsByUserId(Long userId) {
-
-        List<Payment> payments = paymentRepository.findByUserId(userId);
-        if (payments.isEmpty()) {
+    public Page<PaymentResponseDTO> getPaymentsByUserId(Long userId, int page, int size) {
+        if (!paymentRepository.existsByUserId(userId)) {
             throw new PaymentNotFoundException(NO_PAYMENTS_FOR_USER + userId);
         }
-        return payments.stream()
-                .map(paymentMapper::toResponseDTO)
-                .collect(Collectors.toList());
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("timestamp").descending());
+        return paymentRepository.findByUserId(userId, pageable)
+                .map(paymentMapper::toResponseDTO);
     }
 
     @Override
