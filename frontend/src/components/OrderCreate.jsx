@@ -103,7 +103,7 @@ export default function OrderCreate({ userProfile, onCreated }) {
         }))
       };
 
-      await api.post('/api/v1/orders/create', payload);
+      await api.post('/api/v1/orders', payload);
       setCart([]);
       onCreated();
     } catch (e) {

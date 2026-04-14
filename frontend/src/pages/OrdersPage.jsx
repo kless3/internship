@@ -6,7 +6,6 @@ import Navbar from '../components/Navbar.jsx';
 import OrderCreate from '../components/OrderCreate.jsx';
 import OrderList from '../components/OrderList.jsx';
 import PaymentList from '../components/PaymentList.jsx';
-import { useAuth } from '../auth/useAuth.js';
 
 const FALLBACK_BIRTH_DATE = '1970-01-01';
 
@@ -42,8 +41,6 @@ export default function OrdersPage() {
   const [paymentsTotalElements, setPaymentsTotalElements] = useState(0);
   const [paymentsLoading, setPaymentsLoading] = useState(true);
   const [paymentsError, setPaymentsError] = useState('');
-  const { accessToken } = useAuth();
-
   const loadOrders = useCallback(async (targetPage = 0) => {
     try {
       setOrdersLoading(true);
