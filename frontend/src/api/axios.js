@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { clearAuthTokens, getAccessToken, setAuthTokens } from '../auth/auth-storage.js';
+import keycloak from '../auth/keycloak.js';
 
 const baseURL = import.meta.env.VITE_SERVER_URL ?? '/';
 let unauthorizedHandler = null;
@@ -17,11 +17,18 @@ const api = axios.create({
   }
 });
 
-api.interceptors.request.use((config) => {
-  const token = getAccessToken();
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+api.interceptors.request.use(async (config) => {
+  if (keycloak.authenticated) {
+    try {
+      await keycloak.updateToken(30);
+    } catch {
+    }
+
+    if (keycloak.token) {
+      config.headers.Authorization = `Bearer ${keycloak.token}`;
+    }
   }
+
   return config;
 });
 
@@ -30,38 +37,17 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (
-      originalRequest &&
-      error.response?.status === 401 &&
-      !originalRequest?._retry &&
-      !originalRequest?.url?.includes('/api/v1/auth/refresh')
-    ) {
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && keycloak.authenticated) {
       originalRequest._retry = true;
 
       try {
-        const refreshResponse = await axios.post(
-          `${baseURL}/api/v1/auth/refresh`,
-          {},
-          { withCredentials: true }
-        );
-
-        const newAccessToken = refreshResponse.data?.accessToken;
-
-        if (!newAccessToken) {
-          throw new Error('Missing access token after refresh');
+        await keycloak.updateToken(0);
+        if (keycloak.token) {
+          originalRequest.headers.Authorization = `Bearer ${keycloak.token}`;
         }
-
-        setAuthTokens({ accessToken: newAccessToken });
-
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return api(originalRequest);
-      } catch (refreshError) {
-        if (unauthorizedHandler) {
-          unauthorizedHandler();
-        } else {
-          clearAuthTokens();
-        }
-        return Promise.reject(refreshError);
+      } catch {
+        await keycloak.logout({ redirectUri: `${window.location.origin}/login` });
       }
     }
 

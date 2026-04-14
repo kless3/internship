@@ -53,7 +53,7 @@ public class OrderController {
         return new ResponseEntity<>(orderService.getOrdersByUserEmail(userEmail, page, size), HttpStatus.OK);
     }
 
-    @PostMapping("/create")
+    @PostMapping
     public ResponseEntity<OrderResponseDTO> createOrder(@Valid @RequestBody OrderRequestDTO orderRequestDTO){
         return new ResponseEntity<>(orderService.createOrder(orderRequestDTO), HttpStatus.CREATED);
     }

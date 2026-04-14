@@ -28,6 +28,11 @@ spring:
     redis:
       time-to-live: 3600000
       cache-null-values: false
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8085/realms/internship/protocol/openid-connect/certs}
 
 server:
   port: ${SERVER_PORT}

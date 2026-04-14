@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 @Setter
 public class ServiceProperties {
 
-    private String authService;
     private String orderService;
     private String userService;
     private String paymentService;

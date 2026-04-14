@@ -19,6 +19,11 @@ spring:
     consumer-group-id: ${KAFKA_CONSUMER_GROUP_ID:payment-service}
     trusted-packages: "*"
     default-type: com.internship.payment_service.dto.event.OrderCreatedEvent
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8085/realms/internship/protocol/openid-connect/certs}
 
 logging:
   level:

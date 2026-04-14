@@ -6,17 +6,27 @@ import Navbar from '../components/Navbar.jsx';
 import OrderCreate from '../components/OrderCreate.jsx';
 import OrderList from '../components/OrderList.jsx';
 import PaymentList from '../components/PaymentList.jsx';
+import { useAuth } from '../auth/useAuth.js';
 
-function parseJwt(token) {
-  try {
-    const base64Payload = token.split('.')[1];
-    return JSON.parse(atob(base64Payload));
-  } catch {
+const FALLBACK_BIRTH_DATE = '1970-01-01';
+
+function toProfileFromClaims(claims) {
+  const email = claims?.email ?? claims?.preferred_username ?? claims?.sub ?? '';
+  if (!email) {
     return null;
   }
+
+  return {
+    email,
+    name: claims?.given_name ?? claims?.name ?? 'User',
+    surname: claims?.family_name ?? 'User',
+    birthDate: FALLBACK_BIRTH_DATE
+  };
 }
 
 export default function OrdersPage() {
+  const { tokenParsed } = useAuth();
+
   const [profile, setProfile] = useState(null);
   const [orders, setOrders] = useState([]);
   const [ordersPage, setOrdersPage] = useState(0);
@@ -127,28 +137,39 @@ export default function OrdersPage() {
   useEffect(() => {
     const loadProfileAndData = async () => {
       try {
-        if (!accessToken) {
-          setOrdersError('Missing access token. Please sign in again.');
-          setPaymentsError('Missing access token. Please sign in again.');
-          setOrdersLoading(false);
-          setPaymentsLoading(false);
-          return;
-        }
-
-        const payload = parseJwt(accessToken);
-        const login = payload?.sub;
+        const profileDraft = toProfileFromClaims(tokenParsed);
+        const login = profileDraft?.email;
 
         if (!login) {
-          setOrdersError('Invalid token payload.');
-          setPaymentsError('Invalid token payload.');
+          const error = 'Invalid token payload.';
+          setOrdersError(error);
+          setPaymentsError(error);
           setOrdersLoading(false);
           setPaymentsLoading(false);
           return;
         }
 
-        const { data } = await api.get(`/api/v1/users/email/${encodeURIComponent(login)}`);
-        setProfile(data);
-        await Promise.all([loadOrders(0), loadPayments(data.id, 0)]);
+        let userProfile;
+
+        try {
+          const { data } = await api.get(`/api/v1/users/email/${encodeURIComponent(login)}`);
+          userProfile = data;
+        } catch (e) {
+          if (e.response?.status === 404 && profileDraft) {
+            const { data } = await api.post('/api/v1/users', {
+              name: profileDraft.name,
+              surname: profileDraft.surname,
+              birthDate: profileDraft.birthDate,
+              email: profileDraft.email
+            });
+            userProfile = data;
+          } else {
+            throw e;
+          }
+        }
+
+        setProfile(userProfile);
+        await Promise.all([loadOrders(), loadPayments(userProfile.id)]);
       } catch (e) {
         const normalizedMessage = normalizeApiError(e, 'Failed to load user profile.');
         setOrdersError(normalizedMessage);
@@ -159,7 +180,7 @@ export default function OrdersPage() {
     };
 
     loadProfileAndData();
-  }, [accessToken, loadOrders, loadPayments]);
+  }, [tokenParsed, loadOrders, loadPayments]);
 
   return (
     <main className="bg-body-tertiary min-vh-100">

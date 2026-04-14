@@ -1,58 +1,90 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  clearAuthTokens,
-  getAccessToken,
-  setAccessToken as persistAccessToken,
-  setAuthTokens,
-  subscribeToAuthChanges
-} from './auth-storage.js';
-import { AuthContext } from './auth-context.js';
-import { setUnauthorizedHandler } from '../api/axios.js';
+import { useEffect, useMemo, useState } from 'react';
+import keycloak from './keycloak.js';
 
-function readAuthState() {
-  return {
-    accessToken: getAccessToken()
-  };
-}
+import { AuthContext } from './AuthContextValue.js';
 
 export function AuthProvider({ children }) {
-  const [authState, setAuthState] = useState(readAuthState);
+  const [initialized, setInitialized] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
 
   useEffect(() => {
-    const syncAuthState = () => setAuthState(readAuthState());
+    let active = true;
 
-    return subscribeToAuthChanges(syncAuthState);
+    const init = async () => {
+      try {
+        const isAuthenticated = await keycloak.init({
+          onLoad: 'check-sso',
+          checkLoginIframe: false,
+          silentCheckSsoRedirectUri: `${window.location.origin}/silent-check-sso.html`,
+          pkceMethod: 'S256'
+        });
+
+        if (!active) {
+          return;
+        }
+
+        setAuthenticated(isAuthenticated);
+      } catch {
+        if (active) {
+          setAuthenticated(false);
+        }
+      } finally {
+        if (active) {
+          setInitialized(true);
+        }
+      }
+    };
+
+    keycloak.onAuthSuccess = () => {
+      if (active) {
+        setAuthenticated(true);
+      }
+    };
+
+    keycloak.onAuthLogout = () => {
+      if (active) {
+        setAuthenticated(false);
+      }
+    };
+
+    keycloak.onTokenExpired = async () => {
+      try {
+        await keycloak.updateToken(30);
+      } catch {
+        await keycloak.logout({ redirectUri: `${window.location.origin}/login` });
+      }
+    };
+
+    init();
+
+    return () => {
+      active = false;
+    };
   }, []);
-
-  const login = useCallback((accessToken) => {
-    setAuthTokens({ accessToken });
-    setAuthState({ accessToken });
-  }, []);
-
-  const logout = useCallback(() => {
-    clearAuthTokens();
-    setAuthState({ accessToken: null });
-  }, []);
-
-  const updateAccessToken = useCallback((accessToken) => {
-    persistAccessToken(accessToken);
-    setAuthState((prev) => ({ ...prev, accessToken }));
-  }, []);
-
-  useEffect(() => {
-    setUnauthorizedHandler(logout);
-    return () => setUnauthorizedHandler(null);
-  }, [logout]);
 
   const value = useMemo(
     () => ({
-      accessToken: authState.accessToken,
-      isAuthenticated: Boolean(authState.accessToken),
-      login,
-      logout,
-      updateAccessToken
+      initialized,
+      authenticated,
+      token: keycloak.token,
+      tokenParsed: keycloak.tokenParsed,
+      login: () => keycloak.login({ redirectUri: `${window.location.origin}/orders` }),
+      register: () =>
+        keycloak.register({
+          redirectUri: `${window.location.origin}/orders`
+        }),
+      loginWithGoogle: () =>
+        keycloak.login({
+          redirectUri: `${window.location.origin}/orders`,
+          idpHint: 'google'
+        }),
+      logout: () =>
+        keycloak.logout({
+          redirectUri: `${window.location.origin}/login`
+        }),
+      refresh: (minValidity = 30) => keycloak.updateToken(minValidity)
     }),
-    [authState.accessToken, login, logout, updateAccessToken]
+    [initialized, authenticated]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
