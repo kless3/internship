@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import api from '../api/axios.js';
 import { normalizeApiError } from '../api/error-utils.js';
+import { isAdminUser } from '../auth/roles.js';
 import { useAuth } from '../auth/useAuth.js';
 import Navbar from '../components/Navbar.jsx';
 import OrderCreate from '../components/OrderCreate.jsx';
 import OrderList from '../components/OrderList.jsx';
 import PaymentList from '../components/PaymentList.jsx';
+import UsersList from '../components/UsersList.jsx';
 
 const FALLBACK_BIRTH_DATE = '1970-01-01';
 
@@ -25,6 +27,7 @@ function toProfileFromClaims(claims) {
 
 export default function OrdersPage() {
   const { tokenParsed } = useAuth();
+  const isAdmin = isAdminUser(tokenParsed);
 
   const [profile, setProfile] = useState(null);
   const [orders, setOrders] = useState([]);
@@ -41,6 +44,10 @@ export default function OrdersPage() {
   const [paymentsTotalElements, setPaymentsTotalElements] = useState(0);
   const [paymentsLoading, setPaymentsLoading] = useState(true);
   const [paymentsError, setPaymentsError] = useState('');
+  const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState('');
+
   const loadOrders = useCallback(async (targetPage = 0) => {
     try {
       setOrdersLoading(true);
@@ -77,6 +84,26 @@ export default function OrdersPage() {
       setOrdersLoading(false);
     }
   }, [ordersPageSize]);
+
+  const loadUsers = useCallback(async () => {
+    if (!isAdmin) {
+      setUsers([]);
+      setUsersError('');
+      setUsersLoading(false);
+      return;
+    }
+
+    try {
+      setUsersLoading(true);
+      setUsersError('');
+      const { data } = await api.get('/api/v1/users');
+      setUsers(Array.isArray(data) ? data : []);
+    } catch (e) {
+      setUsersError(normalizeApiError(e, 'Failed to fetch users.'));
+    } finally {
+      setUsersLoading(false);
+    }
+  }, [isAdmin]);
 
   const loadPayments = useCallback(async (userId, targetPage = 0) => {
     if (!userId) {
@@ -166,18 +193,19 @@ export default function OrdersPage() {
         }
 
         setProfile(userProfile);
-        await Promise.all([loadOrders(), loadPayments(userProfile.id)]);
+        await Promise.all([loadOrders(), loadPayments(userProfile.id), loadUsers()]);
       } catch (e) {
         const normalizedMessage = normalizeApiError(e, 'Failed to load user profile.');
         setOrdersError(normalizedMessage);
         setPaymentsError(normalizedMessage);
         setOrdersLoading(false);
         setPaymentsLoading(false);
+        setUsersLoading(false);
       }
     };
 
     loadProfileAndData();
-  }, [tokenParsed, loadOrders, loadPayments]);
+  }, [tokenParsed, loadOrders, loadPayments, loadUsers]);
 
   return (
     <main className="bg-body-tertiary min-vh-100">
@@ -222,6 +250,17 @@ export default function OrdersPage() {
               onPageChange={(nextPage) => loadPayments(profile?.id, nextPage)}
             />
           </div>
+
+          {isAdmin ? (
+            <div className="col-12">
+              <UsersList
+                users={users}
+                loading={usersLoading}
+                error={usersError}
+                onRefresh={loadUsers}
+              />
+            </div>
+          ) : null}
         </div>
       </section>
     </main>
