@@ -1,5 +1,6 @@
 package com.internship.order_service.controller;
 
+import com.internship.order_service.dto.OrderEventResponseDto;
 import com.internship.order_service.dto.OrderRequestDTO;
 import com.internship.order_service.dto.OrderResponseDTO;
 import com.internship.order_service.dto.ItemDTO;
@@ -67,5 +68,10 @@ public class OrderController {
     public ResponseEntity<Void> deleteOrder(@PathVariable Long id){
         orderService.deleteOrderById(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/history")
+    public ResponseEntity<List<OrderEventResponseDto>> getOrderHistory(@PathVariable Long id) {
+        return new ResponseEntity<>(orderService.getOrderHistory(id), HttpStatus.OK);
     }
 }

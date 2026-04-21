@@ -1,0 +1,69 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-create-order-events-table
+      author: Yafimchyk
+      changes:
+        - createTable:
+            tableName: order_events
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: order_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_email
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: event_timestamp
+                  type: timestamp
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: CURRENT_TIMESTAMP
+
+        - createIndex:
+            indexName: idx_order_events_order_id
+            tableName: order_events
+            columns:
+              - column:
+                  name: order_id
+
+        - createIndex:
+            indexName: idx_order_events_user_id
+            tableName: order_events
+            columns:
+              - column:
+                  name: user_id
+
+        - createIndex:
+            indexName: idx_order_events_user_email
+            tableName: order_events
+            columns:
+              - column:
+                  name: user_email
+
+        - createIndex:
+            indexName: idx_order_events_event_timestamp
+            tableName: order_events
+            columns:
+              - column:
+                  name: event_timestamp

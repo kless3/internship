@@ -2,6 +2,7 @@ package com.internship.order_service.kafka;
 
 import com.internship.order_service.dto.event.OrderCreatedEvent;
 import com.internship.order_service.model.Order;
+import com.internship.order_service.model.OrderEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -19,26 +20,21 @@ public class OrderEventProducer {
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
-    public void sendOrderCreatedEvent(Order order) {
+    public void sendOrderCreatedEvent(OrderEvent orderEvent, BigDecimal totalAmount) {
         try {
-            BigDecimal totalAmount = order.getOrderItems().stream()
-                    .map(orderItem ->
-                            orderItem.getItem().getPrice()
-                                    .multiply(BigDecimal.valueOf(orderItem.getQuantity()))
-                    )
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
 
             OrderCreatedEvent event = new OrderCreatedEvent(
-                    order.getId(),
-                    order.getUserId(),
-                    order.getUserEmail(),
+                    orderEvent.getOrderId(),
+                    orderEvent.getUserId(),
+                    orderEvent.getUserEmail(),
                     totalAmount,
                     LocalDateTime.now()
             );
 
-            kafkaTemplate.send(ORDER_CREATED_TOPIC, String.valueOf(order.getId()), event);
+            kafkaTemplate.send(ORDER_CREATED_TOPIC, String.valueOf(orderEvent.getOrderId()), event);
         } catch (Exception e) {
-            log.error("Error sending order created event for order: {}", order.getId(), e);
+            log.error("Error sending order created event for order: {}", orderEvent.getId(), e);
         }
     }
 }

@@ -1,10 +1,7 @@
 package com.internship.order_service.service.impl;
 
 import com.internship.order_service.client.UserServiceClient;
-import com.internship.order_service.dto.ItemDTO;
-import com.internship.order_service.dto.OrderRequestDTO;
-import com.internship.order_service.dto.OrderResponseDTO;
-import com.internship.order_service.dto.UserInfoDTO;
+import com.internship.order_service.dto.*;
 import com.internship.order_service.exception.OrderProcessingException;
 import com.internship.order_service.exception.ResourceNotFoundException;
 import com.internship.order_service.exception.InvalidOrderStatusException;
@@ -13,8 +10,11 @@ import com.internship.order_service.kafka.OrderEventProducer;
 import com.internship.order_service.mapper.ItemMapper;
 import com.internship.order_service.mapper.OrderMapper;
 import com.internship.order_service.model.Order;
+import com.internship.order_service.model.OrderEvent;
+import com.internship.order_service.model.enums.OrderEventStatus;
 import com.internship.order_service.model.enums.OrderStatus;
 import com.internship.order_service.repository.ItemRepository;
+import com.internship.order_service.repository.OrderEventRepository;
 import com.internship.order_service.repository.OrderRepository;
 import com.internship.order_service.service.OrderService;
 import feign.FeignException;
@@ -26,6 +26,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -45,6 +46,7 @@ public class OrderServiceImpl implements OrderService {
     private static final String FAILED_TO_UPDATE_ORDER = "Failed to update order";
 
     private final OrderRepository orderRepository;
+    private final OrderEventRepository orderEventRepository;
     private final ItemRepository itemRepository;
     private final OrderMapper orderMapper;
     private final ItemMapper itemMapper;
@@ -54,16 +56,23 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderResponseDTO createOrder(OrderRequestDTO orderRequestDTO) {
+
         try {
 
             Order order = orderMapper.toEntity(orderRequestDTO);
+            order.setStatus(OrderStatus.PENDING);
 
             if (order.getOrderItems() != null) {
                 order.getOrderItems().forEach(orderItem -> orderItem.setOrder(order));
             }
 
             Order savedOrder = orderRepository.save(order);
-            orderEventProducer.sendOrderCreatedEvent(savedOrder);
+
+            BigDecimal totalAmount = calculateTotal(savedOrder);
+            OrderEvent savedOrderEvent = saveEvent(savedOrder);
+
+            orderEventProducer.sendOrderCreatedEvent(savedOrderEvent, totalAmount);
+
             return toOrderResponseDTO(savedOrder);
 
         } catch (FeignException e) {
@@ -191,6 +200,39 @@ public class OrderServiceImpl implements OrderService {
                 .orElseThrow(() -> new ResourceNotFoundException(ORDER_NOT_FOUND_WITH_ID + id));
 
         orderRepository.deleteById(id);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<OrderEventResponseDto> getOrderHistory(Long orderId) {
+        if (!orderRepository.existsById(orderId)) {
+            throw new ResourceNotFoundException(ORDER_NOT_FOUND_WITH_ID + orderId);
+        }
+
+        return orderEventRepository.findAllByOrderIdOrderByEventTimestampAsc(orderId)
+                .stream()
+                .map(event -> new OrderEventResponseDto(
+                        event.getStatus(),
+                        event.getEventTimestamp()
+                ))
+                .toList();
+    }
+
+    private BigDecimal calculateTotal(Order order) {
+        return order.getOrderItems().stream()
+                .map(orderItem -> orderItem.getItem().getPrice()
+                        .multiply(BigDecimal.valueOf(orderItem.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private OrderEvent saveEvent(Order order) {
+        OrderEvent orderEvent = new OrderEvent();
+        orderEvent.setOrderId(order.getId());
+        orderEvent.setUserId(order.getUserId());
+        orderEvent.setUserEmail(order.getUserEmail());
+        orderEvent.setStatus(OrderEventStatus.CREATED);
+
+        return orderEventRepository.save(orderEvent);
     }
 
     private OrderResponseDTO toOrderResponseDTO(Order order) {

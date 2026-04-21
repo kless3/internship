@@ -158,6 +158,13 @@ export default function OrdersPage() {
     }
   }, [paymentsPageSize]);
 
+
+    const loadOrderHistory = useCallback(async (orderId) => {
+    const { data } = await api.get(`/api/v1/orders/${orderId}/history`);
+    return Array.isArray(data) ? data : [];
+  }, []);
+
+
   useEffect(() => {
     const loadProfileAndData = async () => {
       try {
@@ -234,6 +241,7 @@ export default function OrdersPage() {
               loading={ordersLoading}
               error={ordersError}
               onRefresh={() => loadOrders(ordersPage)}
+              loadOrderHistory={loadOrderHistory}
               onPageChange={loadOrders}
             />
           </div>

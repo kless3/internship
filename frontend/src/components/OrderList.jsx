@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 export default function OrderList({
   orders,
@@ -8,12 +8,54 @@ export default function OrderList({
   loading,
   error,
   onRefresh,
-  onPageChange
+  onPageChange,
+  loadOrderHistory
 }) {
+  const [expandedOrderIds, setExpandedOrderIds] = useState({});
+  const [historyByOrderId, setHistoryByOrderId] = useState({});
+  const [historyLoadingByOrderId, setHistoryLoadingByOrderId] = useState({});
+  const [historyErrorByOrderId, setHistoryErrorByOrderId] = useState({});
+
   const sortedOrders = useMemo(
     () => [...orders].sort((a, b) => new Date(b.creationDate) - new Date(a.creationDate)),
     [orders]
   );
+
+  const toLabel = (value) =>
+    String(value ?? '')
+      .toLowerCase()
+      .replaceAll('_', ' ')
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+
+  const toggleTimeline = async (orderId) => {
+    if (!orderId) {
+      return;
+    }
+
+    const isOpen = Boolean(expandedOrderIds[orderId]);
+    if (isOpen) {
+      setExpandedOrderIds((prev) => ({ ...prev, [orderId]: false }));
+      return;
+    }
+
+    setExpandedOrderIds((prev) => ({ ...prev, [orderId]: true }));
+
+    if (historyByOrderId[orderId] || historyLoadingByOrderId[orderId] || typeof loadOrderHistory !== 'function') {
+      return;
+    }
+
+    try {
+      setHistoryLoadingByOrderId((prev) => ({ ...prev, [orderId]: true }));
+      setHistoryErrorByOrderId((prev) => ({ ...prev, [orderId]: '' }));
+
+      const history = await loadOrderHistory(orderId);
+      setHistoryByOrderId((prev) => ({ ...prev, [orderId]: history }));
+    } catch {
+      setHistoryErrorByOrderId((prev) => ({ ...prev, [orderId]: 'Failed to load order timeline.' }));
+    } finally {
+      setHistoryLoadingByOrderId((prev) => ({ ...prev, [orderId]: false }));
+    }
+  };
 
   return (
     <div className="card shadow-sm h-100">
@@ -53,6 +95,69 @@ export default function OrderList({
                       </span>
                     ))}
                   </div>
+
+                  <div className="mt-3">
+                    <button
+                      className="btn btn-sm btn-outline-primary"
+                      type="button"
+                      onClick={() => toggleTimeline(order.id)}
+                    >
+                      {expandedOrderIds[order.id] ? 'Hide timeline' : 'Show timeline'}
+                    </button>
+                  </div>
+
+                  {expandedOrderIds[order.id] ? (
+                    <div className="mt-3 pt-3 border-top">
+                      {historyLoadingByOrderId[order.id] ? (
+                        <p className="text-muted small mb-0">Loading timeline...</p>
+                      ) : null}
+
+                      {historyErrorByOrderId[order.id] ? (
+                        <div className="alert alert-danger py-2 mb-0">{historyErrorByOrderId[order.id]}</div>
+                      ) : null}
+
+                      {!historyLoadingByOrderId[order.id] &&
+                      !historyErrorByOrderId[order.id] &&
+                      Array.isArray(historyByOrderId[order.id]) &&
+                      historyByOrderId[order.id].length > 0 ? (
+                        <div className="d-flex flex-column gap-3">
+                          {historyByOrderId[order.id].map((event, index) => {
+                            const eventKey = `${order.id}-${event.eventTimestamp}-${event.status}-${index}`;
+                            const isLast = index === historyByOrderId[order.id].length - 1;
+
+                            return (
+                              <div key={eventKey} className="d-flex align-items-start gap-3">
+                                <div className="d-flex flex-column align-items-center">
+                                  <span className="rounded-circle bg-primary" style={{ width: 10, height: 10 }} />
+                                  {!isLast ? (
+                                    <span
+                                      className="bg-secondary-subtle mt-1"
+                                      style={{ width: 2, height: 30 }}
+                                    />
+                                  ) : null}
+                                </div>
+                                <div className="pb-1">
+                                  <div className="fw-semibold">{toLabel(event.status)}</div>
+                                  <div className="small text-muted">
+                                    {event.eventTimestamp
+                                      ? new Date(event.eventTimestamp).toLocaleString()
+                                      : 'Unknown time'}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+
+                      {!historyLoadingByOrderId[order.id] &&
+                      !historyErrorByOrderId[order.id] &&
+                      Array.isArray(historyByOrderId[order.id]) &&
+                      historyByOrderId[order.id].length === 0 ? (
+                        <p className="text-muted small mb-0">No timeline events for this order yet.</p>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
               );
             })}

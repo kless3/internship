@@ -1,6 +1,7 @@
 package com.internship.order_service.service;
 
 import com.internship.order_service.dto.ItemDTO;
+import com.internship.order_service.dto.OrderEventResponseDto;
 import com.internship.order_service.dto.OrderRequestDTO;
 import com.internship.order_service.dto.OrderResponseDTO;
 import com.internship.order_service.model.enums.OrderStatus;
@@ -25,5 +26,7 @@ public interface OrderService {
     OrderResponseDTO updateOrderById(Long id, OrderRequestDTO orderRequestDTO);
 
     void deleteOrderById(Long id);
+
+    List<OrderEventResponseDto> getOrderHistory(Long orderId);
 
 }
