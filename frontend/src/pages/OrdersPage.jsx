@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import api from '../api/axios.js';
 import { normalizeApiError } from '../api/error-utils.js';
+import { isAdminUser } from '../auth/roles.js';
 import { useAuth } from '../auth/useAuth.js';
 import Navbar from '../components/Navbar.jsx';
 import OrderCreate from '../components/OrderCreate.jsx';
@@ -26,9 +27,7 @@ function toProfileFromClaims(claims) {
 
 export default function OrdersPage() {
   const { tokenParsed } = useAuth();
-  const isAdmin = Array.isArray(tokenParsed?.realm_access?.roles)
-    ? tokenParsed.realm_access.roles.some((role) => String(role).toLowerCase() === 'admin')
-    : false;
+  const isAdmin = isAdminUser(tokenParsed);
 
   const [profile, setProfile] = useState(null);
   const [orders, setOrders] = useState([]);
