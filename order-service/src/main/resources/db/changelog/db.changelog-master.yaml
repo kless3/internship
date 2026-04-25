@@ -9,3 +9,5 @@ databaseChangeLog:
       file: db/changelog/changeset/005-create-order-events-table.yaml
   - include:
       file: db/changelog/changeset/004-insert-test-data.yaml
+  - include:
+      file: db/changelog/changeset/006-create-item-price-events-table.yaml

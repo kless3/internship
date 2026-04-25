@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
+import { normalizeApiError } from '../api/error-utils.js';
 
 export default function OrderList({
   orders,
+  isAdmin,
   page,
   totalPages,
   totalElements,
@@ -9,12 +11,17 @@ export default function OrderList({
   error,
   onRefresh,
   onPageChange,
-  loadOrderHistory
+  loadOrderHistory,
+  onRestoreOrder
 }) {
   const [expandedOrderIds, setExpandedOrderIds] = useState({});
   const [historyByOrderId, setHistoryByOrderId] = useState({});
   const [historyLoadingByOrderId, setHistoryLoadingByOrderId] = useState({});
   const [historyErrorByOrderId, setHistoryErrorByOrderId] = useState({});
+  const [restoreDateByOrderId, setRestoreDateByOrderId] = useState({});
+  const [restoreLoadingByOrderId, setRestoreLoadingByOrderId] = useState({});
+  const [restoreErrorByOrderId, setRestoreErrorByOrderId] = useState({});
+  const [restoreSuccessByOrderId, setRestoreSuccessByOrderId] = useState({});
 
   const sortedOrders = useMemo(
     () => [...orders].sort((a, b) => new Date(b.creationDate) - new Date(a.creationDate)),
@@ -53,6 +60,51 @@ export default function OrderList({
     } catch {
       setHistoryErrorByOrderId((prev) => ({ ...prev, [orderId]: 'Failed to load order timeline.' }));
     } finally {
+      setHistoryLoadingByOrderId((prev) => ({ ...prev, [orderId]: false }));
+    }
+  };
+
+  const toRestoreRequestDate = (date) => {
+    if (!date) {
+      return '';
+    }
+    return date.length === 16 ? `${date}:59` : date;
+  };
+
+  const restoreOrder = async (orderId) => {
+    if (!orderId || typeof onRestoreOrder !== 'function') {
+      return;
+    }
+
+    const selectedDate = restoreDateByOrderId[orderId];
+    const requestDate = toRestoreRequestDate(selectedDate);
+    if (!requestDate) {
+      setRestoreErrorByOrderId((prev) => ({ ...prev, [orderId]: 'Select date and time first.' }));
+      return;
+    }
+
+    try {
+      setRestoreLoadingByOrderId((prev) => ({ ...prev, [orderId]: true }));
+      setRestoreErrorByOrderId((prev) => ({ ...prev, [orderId]: '' }));
+      setRestoreSuccessByOrderId((prev) => ({ ...prev, [orderId]: '' }));
+
+      await onRestoreOrder(orderId, requestDate);
+      await Promise.resolve(onRefresh?.());
+
+      if (typeof loadOrderHistory === 'function') {
+        setHistoryLoadingByOrderId((prev) => ({ ...prev, [orderId]: true }));
+        const refreshedHistory = await loadOrderHistory(orderId);
+        setHistoryByOrderId((prev) => ({ ...prev, [orderId]: refreshedHistory }));
+      }
+
+      setRestoreSuccessByOrderId((prev) => ({ ...prev, [orderId]: 'Status restored successfully.' }));
+    } catch (e) {
+      setRestoreErrorByOrderId((prev) => ({
+        ...prev,
+        [orderId]: normalizeApiError(e, 'Failed to restore order status.')
+      }));
+    } finally {
+      setRestoreLoadingByOrderId((prev) => ({ ...prev, [orderId]: false }));
       setHistoryLoadingByOrderId((prev) => ({ ...prev, [orderId]: false }));
     }
   };
@@ -105,6 +157,40 @@ export default function OrderList({
                       {expandedOrderIds[order.id] ? 'Hide timeline' : 'Show timeline'}
                     </button>
                   </div>
+
+                  {isAdmin ? (
+                    <div className="mt-3 pt-3 border-top">
+                      <label className="form-label small mb-1">Admin: restore status by date and time</label>
+                      <div className="input-group input-group-sm">
+                        <input
+                          className="form-control"
+                          type="datetime-local"
+                          step="1"
+                          value={restoreDateByOrderId[order.id] ?? ''}
+                          onChange={(e) => {
+                            const nextValue = e.target.value;
+                            setRestoreDateByOrderId((prev) => ({ ...prev, [order.id]: nextValue }));
+                            setRestoreErrorByOrderId((prev) => ({ ...prev, [order.id]: '' }));
+                            setRestoreSuccessByOrderId((prev) => ({ ...prev, [order.id]: '' }));
+                          }}
+                        />
+                        <button
+                          className="btn btn-outline-warning"
+                          type="button"
+                          onClick={() => restoreOrder(order.id)}
+                          disabled={Boolean(restoreLoadingByOrderId[order.id])}
+                        >
+                          {restoreLoadingByOrderId[order.id] ? 'Restoring...' : 'Restore'}
+                        </button>
+                      </div>
+                      {restoreErrorByOrderId[order.id] ? (
+                        <div className="text-danger small mt-1">{restoreErrorByOrderId[order.id]}</div>
+                      ) : null}
+                      {restoreSuccessByOrderId[order.id] ? (
+                        <div className="text-success small mt-1">{restoreSuccessByOrderId[order.id]}</div>
+                      ) : null}
+                    </div>
+                  ) : null}
 
                   {expandedOrderIds[order.id] ? (
                     <div className="mt-3 pt-3 border-top">

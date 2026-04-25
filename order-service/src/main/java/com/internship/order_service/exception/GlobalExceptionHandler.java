@@ -58,6 +58,17 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(ItemValidationException.class)
+    public ResponseEntity<ErrorResponse> handleItemValidationException(ItemValidationException ex) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.BAD_REQUEST.value(),
+                "Item Validation Failed",
+                ex.getMessage()
+        );
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(OrderProcessingException.class)
     public ResponseEntity<ErrorResponse> handleOrderProcessingException(OrderProcessingException ex) {
         ErrorResponse errorResponse = new ErrorResponse(

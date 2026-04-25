@@ -3,16 +3,26 @@ package com.internship.order_service.controller;
 import com.internship.order_service.dto.OrderEventResponseDto;
 import com.internship.order_service.dto.OrderRequestDTO;
 import com.internship.order_service.dto.OrderResponseDTO;
-import com.internship.order_service.dto.ItemDTO;
 import com.internship.order_service.model.enums.OrderStatus;
 import com.internship.order_service.service.OrderService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -37,14 +47,6 @@ public class OrderController {
         return new ResponseEntity<>(orderService.getOrdersByStatus(status), HttpStatus.OK);
     }
 
-    @GetMapping("/items")
-    public ResponseEntity<Page<ItemDTO>> getAvailableItems(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
-    ) {
-        return new ResponseEntity<>(orderService.getAllAvailableItems(page, size), HttpStatus.OK);
-    }
-
     @GetMapping("/current")
     public ResponseEntity<Page<OrderResponseDTO>> getOrdersByUserEmail(
             @RequestHeader("X-User-Id") String userEmail,
@@ -60,7 +62,8 @@ public class OrderController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<OrderResponseDTO> updateOrder(@PathVariable Long id, @Valid @RequestBody OrderRequestDTO orderRequestDTO){
+    public ResponseEntity<OrderResponseDTO> updateOrder(
+            @PathVariable Long id, @Valid @RequestBody OrderRequestDTO orderRequestDTO){
         return new ResponseEntity<>(orderService.updateOrderById(id, orderRequestDTO), HttpStatus.OK);
     }
 
@@ -73,5 +76,12 @@ public class OrderController {
     @GetMapping("/{id}/history")
     public ResponseEntity<List<OrderEventResponseDto>> getOrderHistory(@PathVariable Long id) {
         return new ResponseEntity<>(orderService.getOrderHistory(id), HttpStatus.OK);
+    }
+
+    @PostMapping("/{id}/restore")
+    public ResponseEntity<OrderResponseDTO> restoreOrderStatusAt(@PathVariable Long id,
+            @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime date
+    ) {
+        return new ResponseEntity<>(orderService.restoreOrderStatusAt(id, date), HttpStatus.OK);
     }
 }

@@ -159,9 +159,16 @@ export default function OrdersPage() {
   }, [paymentsPageSize]);
 
 
-    const loadOrderHistory = useCallback(async (orderId) => {
+  const loadOrderHistory = useCallback(async (orderId) => {
     const { data } = await api.get(`/api/v1/orders/${orderId}/history`);
     return Array.isArray(data) ? data : [];
+  }, []);
+
+  const restoreOrderStatus = useCallback(async (orderId, date) => {
+    const { data } = await api.post(`/api/v1/orders/${orderId}/restore`, null, {
+      params: { date }
+    });
+    return data;
   }, []);
 
 
@@ -223,6 +230,7 @@ export default function OrdersPage() {
           <div className="col-12 col-xl-3">
             <OrderCreate
               userProfile={profile}
+              isAdmin={isAdmin}
               onCreated={() => {
                 if (profile?.id || profile?.email) {
                   loadOrders(0);
@@ -235,6 +243,7 @@ export default function OrdersPage() {
           <div className="col-12 col-xl-5">
             <OrderList
               orders={orders}
+              isAdmin={isAdmin}
               page={ordersPage}
               totalPages={ordersTotalPages}
               totalElements={ordersTotalElements}
@@ -242,6 +251,7 @@ export default function OrdersPage() {
               error={ordersError}
               onRefresh={() => loadOrders(ordersPage)}
               loadOrderHistory={loadOrderHistory}
+              onRestoreOrder={restoreOrderStatus}
               onPageChange={loadOrders}
             />
           </div>
@@ -269,6 +279,7 @@ export default function OrdersPage() {
               />
             </div>
           ) : null}
+
         </div>
       </section>
     </main>

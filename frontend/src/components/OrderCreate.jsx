@@ -2,7 +2,47 @@ import { useEffect, useMemo, useState } from 'react';
 import api from '../api/axios.js';
 import { normalizeApiError } from '../api/error-utils.js';
 
-export default function OrderCreate({ userProfile, onCreated }) {
+function ItemPriceChart({ points }) {
+  if (!Array.isArray(points) || points.length === 0) {
+    return null;
+  }
+
+  const width = 320;
+  const height = 120;
+  const padding = 16;
+
+  const prices = points.map((point) => Number(point.price ?? 0));
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  const range = max - min || 1;
+
+  const xFor = (index) => {
+    if (points.length === 1) {
+      return width / 2;
+    }
+    return padding + (index / (points.length - 1)) * (width - padding * 2);
+  };
+
+  const yFor = (price) => padding + ((max - price) / range) * (height - padding * 2);
+
+  const polyline = points
+    .map((point, index) => `${xFor(index)},${yFor(Number(point.price ?? 0))}`)
+    .join(' ');
+
+  return (
+    <div className="border rounded p-2 bg-light-subtle">
+      <svg width="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="img" aria-label="Item price chart for last 6 months">
+        <polyline fill="none" stroke="#0d6efd" strokeWidth="2.5" points={polyline} />
+      </svg>
+      <div className="d-flex justify-content-between small text-muted mt-1">
+        <span>Min: ${min.toFixed(2)}</span>
+        <span>Max: ${max.toFixed(2)}</span>
+      </div>
+    </div>
+  );
+}
+
+export default function OrderCreate({ userProfile, isAdmin, onCreated }) {
   const [catalog, setCatalog] = useState([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogPage, setCatalogPage] = useState(0);
@@ -14,6 +54,12 @@ export default function OrderCreate({ userProfile, onCreated }) {
   const [cart, setCart] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [priceHistory, setPriceHistory] = useState([]);
+  const [priceHistoryLoading, setPriceHistoryLoading] = useState(false);
+  const [priceHistoryError, setPriceHistoryError] = useState('');
+  const [newPrice, setNewPrice] = useState('');
+  const [updatingPrice, setUpdatingPrice] = useState(false);
+  const [updatePriceError, setUpdatePriceError] = useState('');
 
   const selectedProduct = useMemo(
     () => catalog.find((item) => item.id === Number(selectedId)),
@@ -28,7 +74,7 @@ export default function OrderCreate({ userProfile, onCreated }) {
         setCatalogLoading(true);
         setError('');
 
-        const { data } = await api.get('/api/v1/orders/items', {
+        const { data } = await api.get('/api/v1/items', {
           params: { page: catalogPage, size: catalogSize }
         });
 
@@ -59,6 +105,38 @@ export default function OrderCreate({ userProfile, onCreated }) {
   useEffect(() => {
     setSelectedId('');
   }, [catalogPage]);
+
+  useEffect(() => {
+    const loadPriceHistory = async () => {
+      if (!selectedProduct?.id) {
+        setPriceHistory([]);
+        setPriceHistoryError('');
+        setPriceHistoryLoading(false);
+        return;
+      }
+
+      try {
+        setPriceHistoryLoading(true);
+        setPriceHistoryError('');
+        const { data } = await api.get(`/api/v1/items/${selectedProduct.id}/price/history`, {
+          params: { months: 6 }
+        });
+        setPriceHistory(Array.isArray(data) ? data : []);
+      } catch (e) {
+        setPriceHistory([]);
+        setPriceHistoryError(normalizeApiError(e, 'Failed to load item price history.'));
+      } finally {
+        setPriceHistoryLoading(false);
+      }
+    };
+
+    loadPriceHistory();
+  }, [selectedProduct?.id]);
+
+  useEffect(() => {
+    setNewPrice(selectedProduct?.price != null ? String(selectedProduct.price) : '');
+    setUpdatePriceError('');
+  }, [selectedProduct?.id, selectedProduct?.price]);
 
   const addItem = () => {
     if (!selectedProduct || quantity < 1) return;
@@ -104,12 +182,47 @@ export default function OrderCreate({ userProfile, onCreated }) {
       };
 
       await api.post('/api/v1/orders', payload);
+
       setCart([]);
       onCreated();
     } catch (e) {
       setError(normalizeApiError(e, 'Failed to create order.'));
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const updateItemPrice = async () => {
+    if (!selectedProduct?.id) {
+      return;
+    }
+
+    const parsedPrice = Number(newPrice);
+    if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
+      setUpdatePriceError('Enter a valid price greater than 0.');
+      return;
+    }
+
+    try {
+      setUpdatingPrice(true);
+      setUpdatePriceError('');
+
+      const { data } = await api.put(`/api/v1/items/${selectedProduct.id}/price`, {
+        price: Number(parsedPrice.toFixed(2))
+      });
+
+      setCatalog((prev) =>
+        prev.map((item) => (item.id === selectedProduct.id ? { ...item, price: data?.price ?? item.price } : item))
+      );
+
+      const { data: historyData } = await api.get(`/api/v1/items/${selectedProduct.id}/price/history`, {
+        params: { months: 6 }
+      });
+      setPriceHistory(Array.isArray(historyData) ? historyData : []);
+    } catch (e) {
+      setUpdatePriceError(normalizeApiError(e, 'Failed to update item price.'));
+    } finally {
+      setUpdatingPrice(false);
     }
   };
 
@@ -187,6 +300,50 @@ export default function OrderCreate({ userProfile, onCreated }) {
             </li>
           ))}
         </ul>
+
+        {selectedProduct ? (
+          <div className="mb-3">
+            <div className="d-flex justify-content-between align-items-center mb-2">
+              <span className="fw-semibold small">Price history for {selectedProduct.name}</span>
+              <span className="badge text-bg-light border">6 months</span>
+            </div>
+            {priceHistoryLoading ? <div className="text-muted small mb-2">Loading price history...</div> : null}
+            {priceHistoryError ? <div className="alert alert-danger py-2 mb-2">{priceHistoryError}</div> : null}
+            {!priceHistoryLoading && !priceHistoryError && priceHistory.length > 0 ? (
+              <ItemPriceChart points={priceHistory} />
+            ) : null}
+            {!priceHistoryLoading && !priceHistoryError && priceHistory.length === 0 ? (
+              <div className="text-muted small">No price history points available yet.</div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {isAdmin && selectedProduct ? (
+          <div className="mb-3 border rounded p-2">
+            <label className="form-label mb-1">Admin: update price</label>
+            <div className="input-group input-group-sm">
+              <span className="input-group-text">$</span>
+              <input
+                className="form-control"
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={newPrice}
+                onChange={(e) => setNewPrice(e.target.value)}
+                disabled={updatingPrice}
+              />
+              <button
+                className="btn btn-outline-primary"
+                type="button"
+                disabled={updatingPrice}
+                onClick={updateItemPrice}
+              >
+                {updatingPrice ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+            {updatePriceError ? <div className="text-danger small mt-1">{updatePriceError}</div> : null}
+          </div>
+        ) : null}
 
         <div className="d-flex justify-content-between mb-3">
           <span className="text-muted">Total</span>

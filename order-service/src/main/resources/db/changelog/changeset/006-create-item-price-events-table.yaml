@@ -1,0 +1,75 @@
+databaseChangeLog:
+  - changeSet:
+      id: 006-create-item-price-events-table
+      author: Codex
+      changes:
+        - createTable:
+            tableName: item_price_events
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: item_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: item_name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: price
+                  type: decimal(10,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: event_type
+                  type: varchar(50)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: event_timestamp
+                  type: timestamp
+                  constraints:
+                    nullable: false
+                  defaultValueComputed: CURRENT_TIMESTAMP
+
+        - createIndex:
+            indexName: idx_item_price_events_item_id
+            tableName: item_price_events
+            columns:
+              - column:
+                  name: item_id
+
+        - createIndex:
+            indexName: idx_item_price_events_event_timestamp
+            tableName: item_price_events
+            columns:
+              - column:
+                  name: event_timestamp
+
+        - createIndex:
+            indexName: idx_item_price_events_item_id_event_timestamp
+            tableName: item_price_events
+            columns:
+              - column:
+                  name: item_id
+              - column:
+                  name: event_timestamp
+
+  - changeSet:
+      id: 007-backfill-item-price-events
+      author: Codex
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: |
+              INSERT INTO item_price_events (item_id, item_name, price, event_type, event_timestamp)
+              SELECT i.id, i.name, i.price, 'INITIALIZED', CURRENT_TIMESTAMP
+              FROM items i;
