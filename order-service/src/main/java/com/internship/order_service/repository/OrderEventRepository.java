@@ -1,6 +1,7 @@
 package com.internship.order_service.repository;
 
 import com.internship.order_service.model.OrderEvent;
+import com.internship.order_service.model.enums.OrderEventStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
@@ -14,5 +15,10 @@ public interface OrderEventRepository extends JpaRepository<OrderEvent, Long> {
     Optional<OrderEvent> findTopByOrderIdAndEventTimestampLessThanEqualOrderByEventTimestampDesc(
             Long orderId,
             LocalDateTime eventTimestamp
+    );
+
+    List<OrderEvent> findAllByUserIdAndStatusInOrderByEventTimestampAsc(
+            Long userId,
+            List<OrderEventStatus> statuses
     );
 }

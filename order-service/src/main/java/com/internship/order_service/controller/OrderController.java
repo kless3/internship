@@ -61,6 +61,11 @@ public class OrderController {
         return new ResponseEntity<>(orderService.createOrder(orderRequestDTO), HttpStatus.CREATED);
     }
 
+    @PostMapping("/{id}/pay")
+    public ResponseEntity<OrderResponseDTO> payOrder(@PathVariable Long id) {
+        return new ResponseEntity<>(orderService.payOrder(id), HttpStatus.OK);
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<OrderResponseDTO> updateOrder(
             @PathVariable Long id, @Valid @RequestBody OrderRequestDTO orderRequestDTO){

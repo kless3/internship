@@ -7,6 +7,7 @@ import Navbar from '../components/Navbar.jsx';
 import OrderCreate from '../components/OrderCreate.jsx';
 import OrderList from '../components/OrderList.jsx';
 import PaymentList from '../components/PaymentList.jsx';
+import CreateToPayMetricsList from '../components/CreateToPayMetricsList.jsx';
 import UsersList from '../components/UsersList.jsx';
 
 const FALLBACK_BIRTH_DATE = '1970-01-01';
@@ -47,6 +48,9 @@ export default function OrdersPage() {
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState('');
+  const [metricsByUserId, setMetricsByUserId] = useState({});
+  const [metricsLoading, setMetricsLoading] = useState(false);
+  const [metricsError, setMetricsError] = useState('');
 
   const loadOrders = useCallback(async (targetPage = 0) => {
     try {
@@ -85,11 +89,52 @@ export default function OrdersPage() {
     }
   }, [ordersPageSize]);
 
+  const loadCreateToPayMetrics = useCallback(async (usersList) => {
+    if (!isAdmin || !Array.isArray(usersList) || usersList.length === 0) {
+      setMetricsByUserId({});
+      setMetricsError('');
+      setMetricsLoading(false);
+      return;
+    }
+
+    try {
+      setMetricsLoading(true);
+      setMetricsError('');
+
+      const metricEntries = await Promise.all(
+        usersList.map(async (user) => {
+          try {
+            const { data } = await api.get(`/api/v1/metrics/customers/${user.id}/averageDuration`);
+            return [user.id, data];
+          } catch {
+            return [
+              user.id,
+              {
+                samplesCount: 0,
+                averageDurationMs: 0,
+                averageDurationSeconds: 0
+              }
+            ];
+          }
+        })
+      );
+
+      setMetricsByUserId(Object.fromEntries(metricEntries));
+    } catch (e) {
+      setMetricsError(normalizeApiError(e, 'Failed to fetch metrics.'));
+    } finally {
+      setMetricsLoading(false);
+    }
+  }, [isAdmin]);
+
   const loadUsers = useCallback(async () => {
     if (!isAdmin) {
       setUsers([]);
       setUsersError('');
       setUsersLoading(false);
+      setMetricsByUserId({});
+      setMetricsError('');
+      setMetricsLoading(false);
       return;
     }
 
@@ -97,13 +142,18 @@ export default function OrdersPage() {
       setUsersLoading(true);
       setUsersError('');
       const { data } = await api.get('/api/v1/users');
-      setUsers(Array.isArray(data) ? data : []);
+      const resolvedUsers = Array.isArray(data) ? data : [];
+      setUsers(resolvedUsers);
+      await loadCreateToPayMetrics(resolvedUsers);
     } catch (e) {
       setUsersError(normalizeApiError(e, 'Failed to fetch users.'));
+      setMetricsByUserId({});
+      setMetricsError('');
+      setMetricsLoading(false);
     } finally {
       setUsersLoading(false);
     }
-  }, [isAdmin]);
+  }, [isAdmin, loadCreateToPayMetrics]);
 
   const loadPayments = useCallback(async (userId, targetPage = 0) => {
     if (!userId) {
@@ -170,6 +220,11 @@ export default function OrdersPage() {
     });
     return data;
   }, []);
+
+  const payOrder = useCallback(async (orderId) => {
+    await api.post(`/api/v1/orders/${orderId}/pay`);
+    await Promise.all([loadOrders(0), loadPayments(profile?.id, 0)]);
+  }, [loadOrders, loadPayments, profile?.id]);
 
 
   useEffect(() => {
@@ -252,6 +307,7 @@ export default function OrdersPage() {
               onRefresh={() => loadOrders(ordersPage)}
               loadOrderHistory={loadOrderHistory}
               onRestoreOrder={restoreOrderStatus}
+              onPayOrder={payOrder}
               onPageChange={loadOrders}
             />
           </div>
@@ -276,6 +332,18 @@ export default function OrdersPage() {
                 loading={usersLoading}
                 error={usersError}
                 onRefresh={loadUsers}
+              />
+            </div>
+          ) : null}
+
+          {isAdmin ? (
+            <div className="col-12">
+              <CreateToPayMetricsList
+                users={users}
+                metricsByUserId={metricsByUserId}
+                loading={metricsLoading}
+                error={metricsError}
+                onRefresh={() => loadCreateToPayMetrics(users)}
               />
             </div>
           ) : null}

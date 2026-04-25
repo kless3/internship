@@ -13,6 +13,8 @@ public interface OrderService {
 
     OrderResponseDTO createOrder(OrderRequestDTO orderRequestDTO);
 
+    OrderResponseDTO payOrder(Long id);
+
     OrderResponseDTO getOrderById(Long id);
 
     List<OrderResponseDTO> getOrdersByIds(List<Long> ids);

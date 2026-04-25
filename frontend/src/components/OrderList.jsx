@@ -12,7 +12,8 @@ export default function OrderList({
   onRefresh,
   onPageChange,
   loadOrderHistory,
-  onRestoreOrder
+  onRestoreOrder,
+  onPayOrder
 }) {
   const [expandedOrderIds, setExpandedOrderIds] = useState({});
   const [historyByOrderId, setHistoryByOrderId] = useState({});
@@ -22,6 +23,9 @@ export default function OrderList({
   const [restoreLoadingByOrderId, setRestoreLoadingByOrderId] = useState({});
   const [restoreErrorByOrderId, setRestoreErrorByOrderId] = useState({});
   const [restoreSuccessByOrderId, setRestoreSuccessByOrderId] = useState({});
+  const [payLoadingByOrderId, setPayLoadingByOrderId] = useState({});
+  const [payErrorByOrderId, setPayErrorByOrderId] = useState({});
+  const [paySuccessByOrderId, setPaySuccessByOrderId] = useState({});
 
   const sortedOrders = useMemo(
     () => [...orders].sort((a, b) => new Date(b.creationDate) - new Date(a.creationDate)),
@@ -109,6 +113,37 @@ export default function OrderList({
     }
   };
 
+  const payOrder = async (orderId) => {
+    if (!orderId || typeof onPayOrder !== 'function') {
+      return;
+    }
+
+    try {
+      setPayLoadingByOrderId((prev) => ({ ...prev, [orderId]: true }));
+      setPayErrorByOrderId((prev) => ({ ...prev, [orderId]: '' }));
+      setPaySuccessByOrderId((prev) => ({ ...prev, [orderId]: '' }));
+
+      await onPayOrder(orderId);
+
+      if (typeof loadOrderHistory === 'function') {
+        setHistoryLoadingByOrderId((prev) => ({ ...prev, [orderId]: true }));
+        setHistoryErrorByOrderId((prev) => ({ ...prev, [orderId]: '' }));
+        const refreshedHistory = await loadOrderHistory(orderId);
+        setHistoryByOrderId((prev) => ({ ...prev, [orderId]: refreshedHistory }));
+      }
+
+      setPaySuccessByOrderId((prev) => ({ ...prev, [orderId]: 'Payment started.' }));
+    } catch (e) {
+      setPayErrorByOrderId((prev) => ({
+        ...prev,
+        [orderId]: normalizeApiError(e, 'Failed to start payment.')
+      }));
+    } finally {
+      setPayLoadingByOrderId((prev) => ({ ...prev, [orderId]: false }));
+      setHistoryLoadingByOrderId((prev) => ({ ...prev, [orderId]: false }));
+    }
+  };
+
   return (
     <div className="card shadow-sm h-100">
       <div className="card-body">
@@ -149,13 +184,31 @@ export default function OrderList({
                   </div>
 
                   <div className="mt-3">
-                    <button
-                      className="btn btn-sm btn-outline-primary"
-                      type="button"
-                      onClick={() => toggleTimeline(order.id)}
-                    >
-                      {expandedOrderIds[order.id] ? 'Hide timeline' : 'Show timeline'}
-                    </button>
+                    <div className="d-flex gap-2">
+                      {order.status === 'PENDING' ? (
+                        <button
+                          className="btn btn-sm btn-success"
+                          type="button"
+                          onClick={() => payOrder(order.id)}
+                          disabled={Boolean(payLoadingByOrderId[order.id])}
+                        >
+                          {payLoadingByOrderId[order.id] ? 'Starting payment...' : 'Pay'}
+                        </button>
+                      ) : null}
+                      <button
+                        className="btn btn-sm btn-outline-primary"
+                        type="button"
+                        onClick={() => toggleTimeline(order.id)}
+                      >
+                        {expandedOrderIds[order.id] ? 'Hide timeline' : 'Show timeline'}
+                      </button>
+                    </div>
+                    {payErrorByOrderId[order.id] ? (
+                      <div className="text-danger small mt-1">{payErrorByOrderId[order.id]}</div>
+                    ) : null}
+                    {paySuccessByOrderId[order.id] ? (
+                      <div className="text-success small mt-1">{paySuccessByOrderId[order.id]}</div>
+                    ) : null}
                   </div>
 
                   {isAdmin ? (
