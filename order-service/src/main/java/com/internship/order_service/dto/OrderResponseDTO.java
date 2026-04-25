@@ -9,6 +9,7 @@ public record OrderResponseDTO(
         Long userId,
         OrderStatus status,
         LocalDateTime creationDate,
+        String shippingAddress,
         List<OrderItemDTO> orderItems,
         UserInfoDTO userInfoDto
 ) {}

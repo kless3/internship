@@ -97,7 +97,7 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
                                 }
                                 """)));
 
-        OrderRequestDTO orderRequest = new OrderRequestDTO(123L, USER_EMAIL,
+        OrderRequestDTO orderRequest = new OrderRequestDTO(123L, USER_EMAIL, "Test address",
                 List.of(new OrderItemDTO(
                         new ItemDTO(1L, "Laptop", new BigDecimal(70)), 1L)));
 
@@ -149,7 +149,7 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
                                 }
                                 """)));
 
-        OrderRequestDTO orderRequest = new OrderRequestDTO(123L, USER_EMAIL,
+        OrderRequestDTO orderRequest = new OrderRequestDTO(123L, USER_EMAIL, "Test address",
                 List.of(new OrderItemDTO(
                         new ItemDTO(1L, "Laptop", new BigDecimal(70)), 1L)));
 
@@ -201,11 +201,11 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
                                 }
                                 """)));
 
-        OrderRequestDTO orderRequest1 = new OrderRequestDTO(123L, "test@example.com",
+        OrderRequestDTO orderRequest1 = new OrderRequestDTO(123L, "test@example.com", "Test address",
                 List.of(new OrderItemDTO(
                         new ItemDTO(1L, "Laptop", new BigDecimal(70)), 1L)));
 
-        OrderRequestDTO orderRequest2 = new OrderRequestDTO(124L, "test@example.com",
+        OrderRequestDTO orderRequest2 = new OrderRequestDTO(124L, "test@example.com", "Test address",
                 List.of(new OrderItemDTO(
                         new ItemDTO(2L, "Mouse", new BigDecimal(25)), 2L)));
 
@@ -244,11 +244,11 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
                                 }
                                 """)));
 
-        OrderRequestDTO orderRequest1 = new OrderRequestDTO(123L, USER_EMAIL,
+        OrderRequestDTO orderRequest1 = new OrderRequestDTO(123L, USER_EMAIL, "Test address",
                 List.of(new OrderItemDTO(
                         new ItemDTO(1L, "Laptop", new BigDecimal(70)), 1L)));
 
-        OrderRequestDTO orderRequest2 = new OrderRequestDTO(124L, "test2@example.com",
+        OrderRequestDTO orderRequest2 = new OrderRequestDTO(124L, "test2@example.com", "Test address",
                 List.of(new OrderItemDTO(
                         new ItemDTO(2L, "Mouse", new BigDecimal(25)), 2L)));
 
@@ -308,7 +308,7 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
                                 }
                                 """)));
 
-        OrderRequestDTO orderRequest = new OrderRequestDTO(123L, USER_EMAIL,
+        OrderRequestDTO orderRequest = new OrderRequestDTO(123L, USER_EMAIL, "Test address",
                 List.of(new OrderItemDTO(
                         new ItemDTO(1L, "Laptop", new BigDecimal(70)), 1L)));
 
@@ -319,7 +319,7 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
                 .map(order -> order.getId())
                 .orElseThrow(() -> new AssertionError("Order not found in database"));
 
-        OrderRequestDTO updateRequest = new OrderRequestDTO(123L, USER_EMAIL,
+        OrderRequestDTO updateRequest = new OrderRequestDTO(123L, USER_EMAIL, "Updated address",
                 List.of(new OrderItemDTO(
                         new ItemDTO(2L, "Updated Laptop", new BigDecimal(80)), 2L)));
 
@@ -365,7 +365,7 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
                                 }
                                 """)));
 
-        OrderRequestDTO orderRequest = new OrderRequestDTO(123L, USER_EMAIL,
+        OrderRequestDTO orderRequest = new OrderRequestDTO(123L, USER_EMAIL, "Test address",
                 List.of(new OrderItemDTO(
                         new ItemDTO(1L, "Laptop", new BigDecimal(70)), 1L)));
 

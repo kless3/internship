@@ -4,6 +4,7 @@ import com.internship.order_service.client.UserServiceClient;
 import com.internship.order_service.dto.OrderEventResponseDto;
 import com.internship.order_service.dto.OrderRequestDTO;
 import com.internship.order_service.dto.OrderResponseDTO;
+import com.internship.order_service.dto.UpdateShippingAddressRequestDto;
 import com.internship.order_service.dto.UserInfoDTO;
 import com.internship.order_service.exception.OrderProcessingException;
 import com.internship.order_service.exception.ResourceNotFoundException;
@@ -53,7 +54,9 @@ public class OrderServiceImpl implements OrderService {
     private static final String FAILED_TO_CREATE_ORDER = "Failed to create order";
     private static final String FAILED_TO_UPDATE_ORDER = "Failed to update order";
     private static final String ONLY_PENDING_ORDER_CAN_BE_PAID = "Only pending orders can be paid";
+    private static final String ONLY_PENDING_ORDER_CAN_UPDATE_SHIPPING_ADDRESS = "Shipping address can be updated only while order is pending";
     private static final String FAILED_TO_START_PAYMENT_FOR_ORDER = "Failed to start payment for order";
+    private static final String FAILED_TO_UPDATE_SHIPPING_ADDRESS = "Failed to update shipping address";
 
     private final OrderRepository orderRepository;
     private final OrderEventRepository orderEventRepository;
@@ -160,6 +163,7 @@ public class OrderServiceImpl implements OrderService {
                                 orderResponseDTO.userId(),
                                 orderResponseDTO.status(),
                                 orderResponseDTO.creationDate(),
+                                orderResponseDTO.shippingAddress(),
                                 orderResponseDTO.orderItems(),
                                 user
                         );
@@ -186,6 +190,31 @@ public class OrderServiceImpl implements OrderService {
             throw new UserServiceUnavailableException(USER_SERVICE_UNAVAILABLE, e);
         } catch (Exception e) {
             throw new OrderProcessingException(FAILED_TO_UPDATE_ORDER, e);
+        }
+    }
+
+    @Override
+    @Transactional
+    public OrderResponseDTO updateShippingAddress(Long id, UpdateShippingAddressRequestDto requestDto) {
+        try {
+            Order order = orderRepository.findById(id)
+                    .orElseThrow(() -> new ResourceNotFoundException(ORDER_NOT_FOUND_WITH_ID + id));
+
+            if (order.getStatus() != OrderStatus.PENDING) {
+                throw new OrderValidationException(ONLY_PENDING_ORDER_CAN_UPDATE_SHIPPING_ADDRESS);
+            }
+
+            order.setShippingAddress(requestDto.shippingAddress().trim());
+            Order savedOrder = orderRepository.save(order);
+            saveEvent(savedOrder, OrderEventStatus.SHIPPING_ADDRESS_UPDATED);
+
+            return toOrderResponseDTO(savedOrder);
+        } catch (FeignException e) {
+            throw new UserServiceUnavailableException(USER_SERVICE_UNAVAILABLE, e);
+        } catch (OrderValidationException | ResourceNotFoundException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new OrderProcessingException(FAILED_TO_UPDATE_SHIPPING_ADDRESS, e);
         }
     }
 
@@ -291,7 +320,7 @@ public class OrderServiceImpl implements OrderService {
 
     private OrderStatus mapEventStatusToOrderStatus(OrderEventStatus status) {
         return switch (status) {
-            case CREATED -> OrderStatus.PENDING;
+            case CREATED, SHIPPING_ADDRESS_UPDATED -> OrderStatus.PENDING;
             case PAYMENT_STARTED -> OrderStatus.PROCESSING;
             case PAYMENT_CANCELLED -> OrderStatus.CANCELLED;
             case PAID_SUCCESS, CONFIRMED -> OrderStatus.CONFIRMED;
@@ -323,6 +352,7 @@ public class OrderServiceImpl implements OrderService {
                 orderResponseDTO.userId(),
                 orderResponseDTO.status(),
                 orderResponseDTO.creationDate(),
+                orderResponseDTO.shippingAddress(),
                 orderResponseDTO.orderItems(),
                 userInfo
         );

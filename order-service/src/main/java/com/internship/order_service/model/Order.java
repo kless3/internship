@@ -59,4 +59,6 @@ public class Order {
     @Column(name = "user_email", nullable = false)
     private String userEmail;
 
+    @Column(name = "shipping_address", nullable = false)
+    private String shippingAddress;
 }

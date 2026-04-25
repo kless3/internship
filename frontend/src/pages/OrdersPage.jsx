@@ -104,15 +104,28 @@ export default function OrdersPage() {
       const metricEntries = await Promise.all(
         usersList.map(async (user) => {
           try {
-            const { data } = await api.get(`/api/v1/metrics/customers/${user.id}/averageDuration`);
-            return [user.id, data];
+            const [averageDurationResponse, shippingAddressFrequencyResponse] = await Promise.all([
+              api.get(`/api/v1/metrics/customers/${user.id}/averageDuration`),
+              api.get(`/api/v1/metrics/customers/${user.id}/shippingAddressChangeFrequency`)
+            ]);
+
+            return [
+              user.id,
+              {
+                ...(averageDurationResponse?.data ?? {}),
+                ...(shippingAddressFrequencyResponse?.data ?? {})
+              }
+            ];
           } catch {
             return [
               user.id,
               {
                 samplesCount: 0,
                 averageDurationMs: 0,
-                averageDurationSeconds: 0
+                averageDurationSeconds: 0,
+                totalCreatedOrders: 0,
+                ordersWithAddressChanges: 0,
+                changeRatePercent: 0
               }
             ];
           }
@@ -226,6 +239,13 @@ export default function OrdersPage() {
     await Promise.all([loadOrders(0), loadPayments(profile?.id, 0)]);
   }, [loadOrders, loadPayments, profile?.id]);
 
+  const updateShippingAddress = useCallback(async (orderId, shippingAddress) => {
+    await api.put(`/api/v1/orders/${orderId}/adress`, {
+      shippingAddress
+    });
+    await loadOrders(0);
+  }, [loadOrders]);
+
 
   useEffect(() => {
     const loadProfileAndData = async () => {
@@ -308,6 +328,7 @@ export default function OrdersPage() {
               loadOrderHistory={loadOrderHistory}
               onRestoreOrder={restoreOrderStatus}
               onPayOrder={payOrder}
+              onUpdateShippingAddress={updateShippingAddress}
               onPageChange={loadOrders}
             />
           </div>

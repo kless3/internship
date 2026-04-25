@@ -57,7 +57,7 @@ class OrderServiceTest {
     void setUp() {
         itemDTO = new ItemDTO(1L, "Test Item", new BigDecimal("29.99"));
         orderItemDTO = new OrderItemDTO(itemDTO, 2L);
-        orderRequestDTO = new OrderRequestDTO(1L, "test@example.com", List.of(orderItemDTO));
+        orderRequestDTO = new OrderRequestDTO(1L, "test@example.com", "Test address", List.of(orderItemDTO));
 
         order = new Order();
         order.setId(1L);
@@ -67,7 +67,7 @@ class OrderServiceTest {
         order.setCreationDate(LocalDateTime.now());
 
         userInfoDTO = new UserInfoDTO(1L, "test@example.com");
-        orderResponseDTO = new OrderResponseDTO(1L, 1L, OrderStatus.PENDING, LocalDateTime.now(), List.of(orderItemDTO), userInfoDTO);
+        orderResponseDTO = new OrderResponseDTO(1L, 1L, OrderStatus.PENDING, LocalDateTime.now(), "Test address", List.of(orderItemDTO), userInfoDTO);
     }
 
     @Test
@@ -112,7 +112,7 @@ class OrderServiceTest {
         order2.setUserEmail("test2@example.com");
         List<Order> orders = Arrays.asList(order, order2);
 
-        OrderResponseDTO orderResponseDTO2 = new OrderResponseDTO(2L, 2L, OrderStatus.PENDING, LocalDateTime.now(), List.of(orderItemDTO), userInfoDTO);
+        OrderResponseDTO orderResponseDTO2 = new OrderResponseDTO(2L, 2L, OrderStatus.PENDING, LocalDateTime.now(), "Test address", List.of(orderItemDTO), userInfoDTO);
 
         when(orderRepository.findByIdIn(orderIds)).thenReturn(orders);
         when(orderMapper.toDTO(order)).thenReturn(orderResponseDTO);
@@ -183,7 +183,7 @@ class OrderServiceTest {
     @DisplayName("Should update order successfully")
     void updateOrderById_ShouldReturnUpdatedOrderResponseDTO() {
         Long orderId = 1L;
-        OrderRequestDTO updateRequest = new OrderRequestDTO(1L, "updated@example.com", List.of(orderItemDTO));
+        OrderRequestDTO updateRequest = new OrderRequestDTO(1L, "updated@example.com", "Updated address", List.of(orderItemDTO));
 
         Order updatedOrder = new Order();
         updatedOrder.setId(orderId);
@@ -191,7 +191,7 @@ class OrderServiceTest {
         updatedOrder.setUserEmail("updated@example.com");
         updatedOrder.setStatus(OrderStatus.DELIVERED);
 
-        OrderResponseDTO updatedResponse = new OrderResponseDTO(orderId, 1L, OrderStatus.DELIVERED, LocalDateTime.now(), List.of(orderItemDTO), userInfoDTO);
+        OrderResponseDTO updatedResponse = new OrderResponseDTO(orderId, 1L, OrderStatus.DELIVERED, LocalDateTime.now(), "Updated address", List.of(orderItemDTO), userInfoDTO);
 
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
         when(orderRepository.save(order)).thenReturn(updatedOrder);
@@ -215,7 +215,7 @@ class OrderServiceTest {
     @DisplayName("Should throw ResourceNotFoundException when updating non-existent order")
     void updateOrderById_WhenOrderNotFound_ShouldThrowException() {
         Long orderId = 999L;
-        OrderRequestDTO updateRequest = new OrderRequestDTO(1L, "test@example.com", List.of(orderItemDTO));
+        OrderRequestDTO updateRequest = new OrderRequestDTO(1L, "test@example.com", "Test address", List.of(orderItemDTO));
         when(orderRepository.findById(orderId)).thenReturn(Optional.empty());
 
         OrderProcessingException exception = assertThrows(OrderProcessingException.class,

@@ -52,6 +52,7 @@ export default function OrderCreate({ userProfile, isAdmin, onCreated }) {
   const [selectedId, setSelectedId] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [cart, setCart] = useState([]);
+  const [shippingAddress, setShippingAddress] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [priceHistory, setPriceHistory] = useState([]);
@@ -163,6 +164,10 @@ export default function OrderCreate({ userProfile, isAdmin, onCreated }) {
       setError('Add at least one item.');
       return;
     }
+    if (!shippingAddress.trim()) {
+      setError('Shipping address is required.');
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -171,6 +176,7 @@ export default function OrderCreate({ userProfile, isAdmin, onCreated }) {
       const payload = {
         userId: userProfile.id,
         userEmail: userProfile.email,
+        shippingAddress: shippingAddress.trim(),
         orderItems: cart.map((line) => ({
           item: {
             id: line.item.id,
@@ -184,6 +190,7 @@ export default function OrderCreate({ userProfile, isAdmin, onCreated }) {
       await api.post('/api/v1/orders', payload);
 
       setCart([]);
+      setShippingAddress('');
       onCreated();
     } catch (e) {
       setError(normalizeApiError(e, 'Failed to create order.'));
@@ -287,6 +294,18 @@ export default function OrderCreate({ userProfile, isAdmin, onCreated }) {
               Add item
             </button>
           </div>
+        </div>
+
+        <div className="mb-3">
+          <label className="form-label">Shipping address</label>
+          <input
+            className="form-control"
+            type="text"
+            maxLength="500"
+            placeholder="Enter shipping address"
+            value={shippingAddress}
+            onChange={(e) => setShippingAddress(e.target.value)}
+          />
         </div>
 
         <ul className="list-group mb-3">

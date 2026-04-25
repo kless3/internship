@@ -3,6 +3,7 @@ package com.internship.order_service.controller;
 import com.internship.order_service.dto.OrderEventResponseDto;
 import com.internship.order_service.dto.OrderRequestDTO;
 import com.internship.order_service.dto.OrderResponseDTO;
+import com.internship.order_service.dto.UpdateShippingAddressRequestDto;
 import com.internship.order_service.model.enums.OrderStatus;
 import com.internship.order_service.service.OrderService;
 import jakarta.validation.Valid;
@@ -70,6 +71,14 @@ public class OrderController {
     public ResponseEntity<OrderResponseDTO> updateOrder(
             @PathVariable Long id, @Valid @RequestBody OrderRequestDTO orderRequestDTO){
         return new ResponseEntity<>(orderService.updateOrderById(id, orderRequestDTO), HttpStatus.OK);
+    }
+
+    @PutMapping("/{id}/adress")
+    public ResponseEntity<OrderResponseDTO> updateShippingAddress(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateShippingAddressRequestDto requestDto
+    ) {
+        return new ResponseEntity<>(orderService.updateShippingAddress(id, requestDto), HttpStatus.OK);
     }
 
     @DeleteMapping("/{id}")

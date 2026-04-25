@@ -13,7 +13,8 @@ export default function OrderList({
   onPageChange,
   loadOrderHistory,
   onRestoreOrder,
-  onPayOrder
+  onPayOrder,
+  onUpdateShippingAddress
 }) {
   const [expandedOrderIds, setExpandedOrderIds] = useState({});
   const [historyByOrderId, setHistoryByOrderId] = useState({});
@@ -26,6 +27,10 @@ export default function OrderList({
   const [payLoadingByOrderId, setPayLoadingByOrderId] = useState({});
   const [payErrorByOrderId, setPayErrorByOrderId] = useState({});
   const [paySuccessByOrderId, setPaySuccessByOrderId] = useState({});
+  const [shippingAddressByOrderId, setShippingAddressByOrderId] = useState({});
+  const [shippingAddressLoadingByOrderId, setShippingAddressLoadingByOrderId] = useState({});
+  const [shippingAddressErrorByOrderId, setShippingAddressErrorByOrderId] = useState({});
+  const [shippingAddressSuccessByOrderId, setShippingAddressSuccessByOrderId] = useState({});
 
   const sortedOrders = useMemo(
     () => [...orders].sort((a, b) => new Date(b.creationDate) - new Date(a.creationDate)),
@@ -144,6 +149,43 @@ export default function OrderList({
     }
   };
 
+  const saveShippingAddress = async (orderId, fallbackAddress) => {
+    if (!orderId || typeof onUpdateShippingAddress !== 'function') {
+      return;
+    }
+
+    const address = (shippingAddressByOrderId[orderId] ?? fallbackAddress ?? '').trim();
+    if (!address) {
+      setShippingAddressErrorByOrderId((prev) => ({ ...prev, [orderId]: 'Shipping address is required.' }));
+      return;
+    }
+
+    try {
+      setShippingAddressLoadingByOrderId((prev) => ({ ...prev, [orderId]: true }));
+      setShippingAddressErrorByOrderId((prev) => ({ ...prev, [orderId]: '' }));
+      setShippingAddressSuccessByOrderId((prev) => ({ ...prev, [orderId]: '' }));
+
+      await onUpdateShippingAddress(orderId, address);
+
+      if (typeof loadOrderHistory === 'function') {
+        setHistoryLoadingByOrderId((prev) => ({ ...prev, [orderId]: true }));
+        setHistoryErrorByOrderId((prev) => ({ ...prev, [orderId]: '' }));
+        const refreshedHistory = await loadOrderHistory(orderId);
+        setHistoryByOrderId((prev) => ({ ...prev, [orderId]: refreshedHistory }));
+      }
+
+      setShippingAddressSuccessByOrderId((prev) => ({ ...prev, [orderId]: 'Shipping address updated.' }));
+    } catch (e) {
+      setShippingAddressErrorByOrderId((prev) => ({
+        ...prev,
+        [orderId]: normalizeApiError(e, 'Failed to update shipping address.')
+      }));
+    } finally {
+      setShippingAddressLoadingByOrderId((prev) => ({ ...prev, [orderId]: false }));
+      setHistoryLoadingByOrderId((prev) => ({ ...prev, [orderId]: false }));
+    }
+  };
+
   return (
     <div className="card shadow-sm h-100">
       <div className="card-body">
@@ -175,6 +217,9 @@ export default function OrderList({
                     <strong>${total.toFixed(2)}</strong>
                   </div>
                   <div className="small text-muted mt-2">{new Date(order.creationDate).toLocaleString()}</div>
+                  <div className="small mt-1">
+                    <span className="text-muted">Shipping:</span> {order.shippingAddress || '-'}
+                  </div>
                   <div className="d-flex flex-wrap gap-2 mt-2">
                     {(order.orderItems ?? []).map((line) => (
                       <span key={`${order.id}-${line.item?.id}`} className="badge text-bg-light border">
@@ -210,6 +255,41 @@ export default function OrderList({
                       <div className="text-success small mt-1">{paySuccessByOrderId[order.id]}</div>
                     ) : null}
                   </div>
+
+                  {order.status === 'PENDING' ? (
+                    <div className="mt-3 pt-3 border-top">
+                      <label className="form-label small mb-1">Update shipping address</label>
+                      <div className="input-group input-group-sm">
+                        <input
+                          className="form-control"
+                          type="text"
+                          maxLength="500"
+                          value={shippingAddressByOrderId[order.id] ?? order.shippingAddress ?? ''}
+                          onChange={(e) => {
+                            const nextValue = e.target.value;
+                            setShippingAddressByOrderId((prev) => ({ ...prev, [order.id]: nextValue }));
+                            setShippingAddressErrorByOrderId((prev) => ({ ...prev, [order.id]: '' }));
+                            setShippingAddressSuccessByOrderId((prev) => ({ ...prev, [order.id]: '' }));
+                          }}
+                          disabled={Boolean(shippingAddressLoadingByOrderId[order.id])}
+                        />
+                        <button
+                          className="btn btn-outline-primary"
+                          type="button"
+                          onClick={() => saveShippingAddress(order.id, order.shippingAddress)}
+                          disabled={Boolean(shippingAddressLoadingByOrderId[order.id])}
+                        >
+                          {shippingAddressLoadingByOrderId[order.id] ? 'Saving...' : 'Save address'}
+                        </button>
+                      </div>
+                      {shippingAddressErrorByOrderId[order.id] ? (
+                        <div className="text-danger small mt-1">{shippingAddressErrorByOrderId[order.id]}</div>
+                      ) : null}
+                      {shippingAddressSuccessByOrderId[order.id] ? (
+                        <div className="text-success small mt-1">{shippingAddressSuccessByOrderId[order.id]}</div>
+                      ) : null}
+                    </div>
+                  ) : null}
 
                   {isAdmin ? (
                     <div className="mt-3 pt-3 border-top">

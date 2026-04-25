@@ -30,6 +30,9 @@ export default function CreateToPayMetricsList({
                   <th scope="col">Samples</th>
                   <th scope="col">Average (ms)</th>
                   <th scope="col">Average (sec)</th>
+                  <th scope="col">Created Orders</th>
+                  <th scope="col">Changed Address</th>
+                  <th scope="col">Change Rate %</th>
                 </tr>
               </thead>
               <tbody>
@@ -38,6 +41,9 @@ export default function CreateToPayMetricsList({
                   const samplesCount = Number(metric.samplesCount ?? 0);
                   const averageDurationMs = Number(metric.averageDurationMs ?? 0);
                   const averageDurationSeconds = metric.averageDurationSeconds ?? 0;
+                  const totalCreatedOrders = Number(metric.totalCreatedOrders ?? 0);
+                  const ordersWithAddressChanges = Number(metric.ordersWithAddressChanges ?? 0);
+                  const changeRatePercent = Number(metric.changeRatePercent ?? 0);
 
                   return (
                     <tr key={`metric-${user.id ?? user.email}`}>
@@ -45,6 +51,9 @@ export default function CreateToPayMetricsList({
                       <td>{samplesCount}</td>
                       <td>{averageDurationMs}</td>
                       <td>{Number(averageDurationSeconds).toFixed(3)}</td>
+                      <td>{totalCreatedOrders}</td>
+                      <td>{ordersWithAddressChanges}</td>
+                      <td>{changeRatePercent.toFixed(2)}</td>
                     </tr>
                   );
                 })}

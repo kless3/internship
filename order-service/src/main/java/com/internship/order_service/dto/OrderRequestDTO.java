@@ -15,6 +15,10 @@ public record OrderRequestDTO(
         @Email(message = "User email should be valid")
         String userEmail,
 
+        @NotBlank(message = "Shipping address cannot be blank")
+        @Size(max = 500, message = "Shipping address cannot exceed 500 characters")
+        String shippingAddress,
+
         @Valid
         @NotNull(message = "Order items cannot be null")
         @Size(min = 1, message = "Order must contain at least one item")

@@ -1,6 +1,7 @@
 package com.internship.order_service.controller;
 
 import com.internship.order_service.dto.AverageCreateToPayDurationResponseDto;
+import com.internship.order_service.dto.ShippingAddressChangeFrequencyResponseDto;
 import com.internship.order_service.service.OrderMetricsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -21,5 +22,12 @@ public class OrderMetricsController {
             @PathVariable Long userId
     ) {
         return ResponseEntity.ok(orderMetricsService.getAverageCreateToPayDuration(userId));
+    }
+
+    @GetMapping("/customers/{userId}/shippingAddressChangeFrequency")
+    public ResponseEntity<ShippingAddressChangeFrequencyResponseDto> getShippingAddressChangeFrequency(
+            @PathVariable Long userId
+    ) {
+        return ResponseEntity.ok(orderMetricsService.getShippingAddressChangeFrequency(userId));
     }
 }
