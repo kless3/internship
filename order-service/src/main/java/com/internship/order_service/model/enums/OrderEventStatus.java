@@ -1,4 +1,4 @@
-package com.internship.order_service.model.enums;
+﻿package com.internship.order_service.model.enums;
 
 public enum OrderEventStatus {
     CREATED,
@@ -16,3 +16,4 @@ public enum OrderEventStatus {
     DELIVERED,
     REFUNDED
 }
+

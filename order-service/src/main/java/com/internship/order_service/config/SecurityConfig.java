@@ -1,4 +1,4 @@
-package com.internship.order_service.config;
+﻿package com.internship.order_service.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,7 +30,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/v1/items/*/price").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/orders/*/restore").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/orders/*/restoration").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/metrics/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated()
@@ -73,3 +73,4 @@ public class SecurityConfig {
                 .toList();
     }
 }
+

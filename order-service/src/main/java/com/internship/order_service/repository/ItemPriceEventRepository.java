@@ -1,4 +1,4 @@
-package com.internship.order_service.repository;
+﻿package com.internship.order_service.repository;
 
 import com.internship.order_service.model.ItemPriceEvent;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -18,3 +18,4 @@ public interface ItemPriceEventRepository extends JpaRepository<ItemPriceEvent, 
             LocalDateTime timestamp
     );
 }
+

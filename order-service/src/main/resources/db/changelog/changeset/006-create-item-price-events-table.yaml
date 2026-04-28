@@ -1,7 +1,7 @@
 databaseChangeLog:
   - changeSet:
       id: 006-create-item-price-events-table
-      author: Codex
+      author: Yafimchyk
       changes:
         - createTable:
             tableName: item_price_events
@@ -65,7 +65,7 @@ databaseChangeLog:
 
   - changeSet:
       id: 007-backfill-item-price-events
-      author: Codex
+      author: Yafimchyk
       changes:
         - sql:
             dbms: postgresql

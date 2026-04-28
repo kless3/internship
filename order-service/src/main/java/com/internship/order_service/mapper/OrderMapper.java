@@ -1,7 +1,7 @@
-package com.internship.order_service.mapper;
+﻿package com.internship.order_service.mapper;
 
-import com.internship.order_service.dto.OrderRequestDTO;
-import com.internship.order_service.dto.OrderResponseDTO;
+import com.internship.order_service.dto.request.OrderRequestDto;
+import com.internship.order_service.dto.response.OrderResponseDto;
 import com.internship.order_service.model.Order;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -13,12 +13,14 @@ public interface OrderMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "status", expression = "java(com.internship.order_service.model.enums.OrderStatus.PENDING)")
     @Mapping(target = "orderItems", source = "orderItems")
-    Order toEntity(OrderRequestDTO orderRequestDTO);
+    Order toEntity(OrderRequestDto orderRequestDto);
 
-    OrderResponseDTO toDTO(Order order);
+    OrderResponseDto toDTO(Order order);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "orderItems", ignore = true)
-    void updateEntityFromDTO(OrderRequestDTO orderRequestDTO, @MappingTarget Order order);
+    void updateEntityFromDTO(OrderRequestDto orderRequestDto, @MappingTarget Order order);
 
 }
+
+

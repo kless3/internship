@@ -1,4 +1,4 @@
-package com.internship.order_service.model;
+﻿package com.internship.order_service.model;
 
 import com.internship.order_service.model.enums.ItemPriceEventType;
 import jakarta.persistence.*;
@@ -40,3 +40,4 @@ public class ItemPriceEvent {
     @CreationTimestamp
     private LocalDateTime eventTimestamp;
 }
+

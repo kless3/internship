@@ -1,4 +1,4 @@
-package com.internship.order_service.dto;
+﻿package com.internship.order_service.dto.request;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
@@ -10,3 +10,5 @@ public record UpdateItemPriceRequestDto(
         @DecimalMin(value = "0.01", message = "Price must be greater than 0")
         BigDecimal price
 ) {}
+
+

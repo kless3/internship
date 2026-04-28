@@ -1,8 +1,8 @@
-package com.internship.order_service.controller;
+﻿package com.internship.order_service.controller;
 
-import com.internship.order_service.dto.ItemDTO;
-import com.internship.order_service.dto.ItemPricePointResponseDto;
-import com.internship.order_service.dto.UpdateItemPriceRequestDto;
+import com.internship.order_service.dto.response.ItemDto;
+import com.internship.order_service.dto.response.ItemPricePointResponseDto;
+import com.internship.order_service.dto.request.UpdateItemPriceRequestDto;
 import com.internship.order_service.service.ItemService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +27,7 @@ public class ItemController {
     private final ItemService itemService;
 
     @GetMapping
-    public ResponseEntity<Page<ItemDTO>> getAvailableItems(
+    public ResponseEntity<Page<ItemDto>> getAvailableItems(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
@@ -35,7 +35,7 @@ public class ItemController {
     }
 
     @PutMapping("/{itemId}/price")
-    public ResponseEntity<ItemDTO> updateItemPrice(
+    public ResponseEntity<ItemDto> updateItemPrice(
             @PathVariable Long itemId,
             @Valid @RequestBody UpdateItemPriceRequestDto updateItemPriceRequestDto
     ) {
@@ -50,3 +50,4 @@ public class ItemController {
         return new ResponseEntity<>(itemService.getItemPriceHistory(itemId, months), HttpStatus.OK);
     }
 }
+

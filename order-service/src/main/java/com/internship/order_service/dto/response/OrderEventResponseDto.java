@@ -1,4 +1,4 @@
-package com.internship.order_service.dto;
+﻿package com.internship.order_service.dto.response;
 
 import com.internship.order_service.model.enums.OrderEventStatus;
 
@@ -8,3 +8,4 @@ public record OrderEventResponseDto(
         OrderEventStatus status,
         LocalDateTime eventTimestamp
 ) {}
+

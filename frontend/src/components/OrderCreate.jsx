@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import api from '../api/axios.js';
+import { createOrder } from '../api/orders.js';
+import { fetchItemPriceHistory, fetchItems, updateItemPrice as updateItemPriceRequest } from '../api/items.js';
 import { normalizeApiError } from '../api/error-utils.js';
 
 function ItemPriceChart({ points }) {
@@ -75,9 +76,7 @@ export default function OrderCreate({ userProfile, isAdmin, onCreated }) {
         setCatalogLoading(true);
         setError('');
 
-        const { data } = await api.get('/api/v1/items', {
-          params: { page: catalogPage, size: catalogSize }
-        });
+        const data = await fetchItems(catalogPage, catalogSize);
 
         const content = Array.isArray(data?.content) ? data.content : [];
         const resolvedTotalPages =
@@ -119,10 +118,8 @@ export default function OrderCreate({ userProfile, isAdmin, onCreated }) {
       try {
         setPriceHistoryLoading(true);
         setPriceHistoryError('');
-        const { data } = await api.get(`/api/v1/items/${selectedProduct.id}/price/history`, {
-          params: { months: 6 }
-        });
-        setPriceHistory(Array.isArray(data) ? data : []);
+        const data = await fetchItemPriceHistory(selectedProduct.id, 6);
+        setPriceHistory(data);
       } catch (e) {
         setPriceHistory([]);
         setPriceHistoryError(normalizeApiError(e, 'Failed to load item price history.'));
@@ -187,7 +184,7 @@ export default function OrderCreate({ userProfile, isAdmin, onCreated }) {
         }))
       };
 
-      await api.post('/api/v1/orders', payload);
+      await createOrder(payload);
 
       setCart([]);
       setShippingAddress('');
@@ -214,18 +211,14 @@ export default function OrderCreate({ userProfile, isAdmin, onCreated }) {
       setUpdatingPrice(true);
       setUpdatePriceError('');
 
-      const { data } = await api.put(`/api/v1/items/${selectedProduct.id}/price`, {
-        price: Number(parsedPrice.toFixed(2))
-      });
+      const data = await updateItemPriceRequest(selectedProduct.id, Number(parsedPrice.toFixed(2)));
 
       setCatalog((prev) =>
         prev.map((item) => (item.id === selectedProduct.id ? { ...item, price: data?.price ?? item.price } : item))
       );
 
-      const { data: historyData } = await api.get(`/api/v1/items/${selectedProduct.id}/price/history`, {
-        params: { months: 6 }
-      });
-      setPriceHistory(Array.isArray(historyData) ? historyData : []);
+      const historyData = await fetchItemPriceHistory(selectedProduct.id, 6);
+      setPriceHistory(historyData);
     } catch (e) {
       setUpdatePriceError(normalizeApiError(e, 'Failed to update item price.'));
     } finally {

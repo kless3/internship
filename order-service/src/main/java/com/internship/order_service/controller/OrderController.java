@@ -1,9 +1,9 @@
-package com.internship.order_service.controller;
+﻿package com.internship.order_service.controller;
 
-import com.internship.order_service.dto.OrderEventResponseDto;
-import com.internship.order_service.dto.OrderRequestDTO;
-import com.internship.order_service.dto.OrderResponseDTO;
-import com.internship.order_service.dto.UpdateShippingAddressRequestDto;
+import com.internship.order_service.dto.response.OrderEventResponseDto;
+import com.internship.order_service.dto.request.OrderRequestDto;
+import com.internship.order_service.dto.response.OrderResponseDto;
+import com.internship.order_service.dto.request.UpdateShippingAddressRequestDto;
 import com.internship.order_service.model.enums.OrderStatus;
 import com.internship.order_service.service.OrderService;
 import jakarta.validation.Valid;
@@ -34,22 +34,22 @@ public class OrderController {
     private final OrderService orderService;
 
     @GetMapping("/{id}")
-    public ResponseEntity<OrderResponseDTO> getOrderById(@PathVariable Long id){
+    public ResponseEntity<OrderResponseDto> getOrderById(@PathVariable Long id){
         return new ResponseEntity<>(orderService.getOrderById(id), HttpStatus.OK);
     }
 
     @GetMapping("/ids")
-    public ResponseEntity<List<OrderResponseDTO>> getOrdersByIds(@RequestParam List<Long> ids){
+    public ResponseEntity<List<OrderResponseDto>> getOrdersByIds(@RequestParam List<Long> ids){
         return new ResponseEntity<>(orderService.getOrdersByIds(ids), HttpStatus.OK);
     }
 
     @GetMapping("/status")
-    public ResponseEntity<List<OrderResponseDTO>> getOrdersByStatus(@RequestParam OrderStatus status){
+    public ResponseEntity<List<OrderResponseDto>> getOrdersByStatus(@RequestParam OrderStatus status){
         return new ResponseEntity<>(orderService.getOrdersByStatus(status), HttpStatus.OK);
     }
 
     @GetMapping("/current")
-    public ResponseEntity<Page<OrderResponseDTO>> getOrdersByUserEmail(
+    public ResponseEntity<Page<OrderResponseDto>> getOrdersByUserEmail(
             @RequestHeader("X-User-Id") String userEmail,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
@@ -58,23 +58,23 @@ public class OrderController {
     }
 
     @PostMapping
-    public ResponseEntity<OrderResponseDTO> createOrder(@Valid @RequestBody OrderRequestDTO orderRequestDTO){
-        return new ResponseEntity<>(orderService.createOrder(orderRequestDTO), HttpStatus.CREATED);
+    public ResponseEntity<OrderResponseDto> createOrder(@Valid @RequestBody OrderRequestDto orderRequestDto){
+        return new ResponseEntity<>(orderService.createOrder(orderRequestDto), HttpStatus.CREATED);
     }
 
-    @PostMapping("/{id}/pay")
-    public ResponseEntity<OrderResponseDTO> payOrder(@PathVariable Long id) {
+    @PostMapping("/{id}/payment")
+    public ResponseEntity<OrderResponseDto> payOrder(@PathVariable Long id) {
         return new ResponseEntity<>(orderService.payOrder(id), HttpStatus.OK);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<OrderResponseDTO> updateOrder(
-            @PathVariable Long id, @Valid @RequestBody OrderRequestDTO orderRequestDTO){
-        return new ResponseEntity<>(orderService.updateOrderById(id, orderRequestDTO), HttpStatus.OK);
+    public ResponseEntity<OrderResponseDto> updateOrder(
+            @PathVariable Long id, @Valid @RequestBody OrderRequestDto orderRequestDto){
+        return new ResponseEntity<>(orderService.updateOrderById(id, orderRequestDto), HttpStatus.OK);
     }
 
-    @PutMapping("/{id}/adress")
-    public ResponseEntity<OrderResponseDTO> updateShippingAddress(
+    @PutMapping("/{id}/address")
+    public ResponseEntity<OrderResponseDto> updateShippingAddress(
             @PathVariable Long id,
             @Valid @RequestBody UpdateShippingAddressRequestDto requestDto
     ) {
@@ -87,15 +87,17 @@ public class OrderController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/{id}/history")
+    @GetMapping("/{id}/timeline")
     public ResponseEntity<List<OrderEventResponseDto>> getOrderHistory(@PathVariable Long id) {
         return new ResponseEntity<>(orderService.getOrderHistory(id), HttpStatus.OK);
     }
 
-    @PostMapping("/{id}/restore")
-    public ResponseEntity<OrderResponseDTO> restoreOrderStatusAt(@PathVariable Long id,
+    @PostMapping("/{id}/restoration")
+    public ResponseEntity<OrderResponseDto> restoreOrderStatusAt(@PathVariable Long id,
             @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime date
     ) {
         return new ResponseEntity<>(orderService.restoreOrderStatusAt(id, date), HttpStatus.OK);
     }
 }
+
+

@@ -1,4 +1,4 @@
-package com.internship.order_service.model;
+﻿package com.internship.order_service.model;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -37,3 +37,4 @@ public class Item {
     private BigDecimal price;
 
 }
+

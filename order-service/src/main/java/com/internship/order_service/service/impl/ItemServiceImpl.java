@@ -1,8 +1,8 @@
-package com.internship.order_service.service.impl;
+﻿package com.internship.order_service.service.impl;
 
-import com.internship.order_service.dto.ItemDTO;
-import com.internship.order_service.dto.ItemPricePointResponseDto;
-import com.internship.order_service.dto.UpdateItemPriceRequestDto;
+import com.internship.order_service.dto.response.ItemDto;
+import com.internship.order_service.dto.response.ItemPricePointResponseDto;
+import com.internship.order_service.dto.request.UpdateItemPriceRequestDto;
 import com.internship.order_service.exception.ItemValidationException;
 import com.internship.order_service.exception.ResourceNotFoundException;
 import com.internship.order_service.mapper.ItemMapper;
@@ -39,7 +39,7 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ItemDTO> getAllAvailableItems(int page, int size) {
+    public Page<ItemDto> getAllAvailableItems(int page, int size) {
         PageRequest pageable = PageRequest.of(page, size, Sort.by("id").ascending());
         return itemRepository.findAll(pageable)
                 .map(itemMapper::toDTO);
@@ -47,7 +47,7 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     @Transactional
-    public ItemDTO updateItemPrice(Long itemId, UpdateItemPriceRequestDto updateItemPriceRequestDto) {
+    public ItemDto updateItemPrice(Long itemId, UpdateItemPriceRequestDto updateItemPriceRequestDto) {
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new ResourceNotFoundException(ITEM_NOT_FOUND_WITH_ID + itemId));
 
@@ -113,3 +113,4 @@ public class ItemServiceImpl implements ItemService {
         itemPriceEventRepository.save(event);
     }
 }
+

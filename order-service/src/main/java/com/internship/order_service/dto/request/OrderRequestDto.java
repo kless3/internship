@@ -1,13 +1,15 @@
-package com.internship.order_service.dto;
+package com.internship.order_service.dto.request;
 
+import com.internship.order_service.dto.response.OrderItemDto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+
 import java.util.List;
 
-public record OrderRequestDTO(
+public record OrderRequestDto(
         @NotNull(message = "User ID cannot be null")
         Long userId,
 
@@ -22,5 +24,6 @@ public record OrderRequestDTO(
         @Valid
         @NotNull(message = "Order items cannot be null")
         @Size(min = 1, message = "Order must contain at least one item")
-        List<OrderItemDTO> orderItems
-) {}
+        List<OrderItemDto> orderItems
+) {
+}

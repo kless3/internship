@@ -1,4 +1,4 @@
-package com.internship.order_service.repository;
+﻿package com.internship.order_service.repository;
 
 import com.internship.order_service.model.Order;
 import com.internship.order_service.model.enums.OrderStatus;
@@ -16,3 +16,4 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findAllByUserId(Long userId);
     Page<Order> findAllByUserId(Long userId, Pageable pageable);
 }
+

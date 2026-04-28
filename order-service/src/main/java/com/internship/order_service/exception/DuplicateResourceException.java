@@ -1,7 +1,8 @@
-package com.internship.order_service.exception;
+﻿package com.internship.order_service.exception;
 
 public class DuplicateResourceException extends RuntimeException {
     public DuplicateResourceException(String message) {
         super(message);
     }
 }
+

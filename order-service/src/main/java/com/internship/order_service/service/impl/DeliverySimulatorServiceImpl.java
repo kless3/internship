@@ -1,4 +1,4 @@
-package com.internship.order_service.service.impl;
+﻿package com.internship.order_service.service.impl;
 
 import com.internship.order_service.model.Order;
 import com.internship.order_service.model.OrderEvent;
@@ -71,3 +71,4 @@ public class DeliverySimulatorServiceImpl implements DeliverySimulatorService {
         return ThreadLocalRandom.current().nextInt(1, 101);
     }
 }
+

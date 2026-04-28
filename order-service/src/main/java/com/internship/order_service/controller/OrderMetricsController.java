@@ -1,7 +1,7 @@
-package com.internship.order_service.controller;
+﻿package com.internship.order_service.controller;
 
-import com.internship.order_service.dto.AverageCreateToPayDurationResponseDto;
-import com.internship.order_service.dto.ShippingAddressChangeFrequencyResponseDto;
+import com.internship.order_service.dto.response.AverageCreateToPayDurationResponseDto;
+import com.internship.order_service.dto.response.ShippingAddressChangeFrequencyResponseDto;
 import com.internship.order_service.service.OrderMetricsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -31,3 +31,4 @@ public class OrderMetricsController {
         return ResponseEntity.ok(orderMetricsService.getShippingAddressChangeFrequency(userId));
     }
 }
+

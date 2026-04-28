@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
-import api from '../api/axios.js';
+import {
+  fetchCurrentUserOrders,
+  fetchOrderHistory,
+  payOrder as payOrderRequest,
+  restoreOrder,
+  updateOrderShippingAddress
+} from '../api/orders.js';
+import { fetchPaymentsByUser } from '../api/payments.js';
+import { fetchAverageDurationMetric, fetchShippingAddressChangeFrequencyMetric } from '../api/metrics.js';
+import { createUser, fetchUserByEmail, fetchUsers } from '../api/users.js';
 import { normalizeApiError } from '../api/error-utils.js';
 import { isAdminUser } from '../auth/roles.js';
 import { useAuth } from '../auth/useAuth.js';
@@ -57,12 +66,7 @@ export default function OrdersPage() {
       setOrdersLoading(true);
       setOrdersError('');
 
-      const { data } = await api.get('/api/v1/orders/current', {
-        params: {
-          page: targetPage,
-          size: ordersPageSize
-        }
-      });
+      const data = await fetchCurrentUserOrders(targetPage, ordersPageSize);
 
       const content = Array.isArray(data?.content) ? data.content : [];
       const currentPage =
@@ -105,15 +109,15 @@ export default function OrdersPage() {
         usersList.map(async (user) => {
           try {
             const [averageDurationResponse, shippingAddressFrequencyResponse] = await Promise.all([
-              api.get(`/api/v1/metrics/customers/${user.id}/averageDuration`),
-              api.get(`/api/v1/metrics/customers/${user.id}/shippingAddressChangeFrequency`)
+              fetchAverageDurationMetric(user.id),
+              fetchShippingAddressChangeFrequencyMetric(user.id)
             ]);
 
             return [
               user.id,
               {
-                ...(averageDurationResponse?.data ?? {}),
-                ...(shippingAddressFrequencyResponse?.data ?? {})
+                ...(averageDurationResponse ?? {}),
+                ...(shippingAddressFrequencyResponse ?? {})
               }
             ];
           } catch {
@@ -154,8 +158,7 @@ export default function OrdersPage() {
     try {
       setUsersLoading(true);
       setUsersError('');
-      const { data } = await api.get('/api/v1/users');
-      const resolvedUsers = Array.isArray(data) ? data : [];
+      const resolvedUsers = await fetchUsers();
       setUsers(resolvedUsers);
       await loadCreateToPayMetrics(resolvedUsers);
     } catch (e) {
@@ -181,12 +184,7 @@ export default function OrdersPage() {
     try {
       setPaymentsLoading(true);
       setPaymentsError('');
-      const { data } = await api.get(`/api/v1/payments/user/${userId}`, {
-        params: {
-          page: targetPage,
-          size: paymentsPageSize
-        }
-      });
+      const data = await fetchPaymentsByUser(userId, targetPage, paymentsPageSize);
 
       const content = Array.isArray(data?.content) ? data.content : [];
       const currentPage =
@@ -223,26 +221,20 @@ export default function OrdersPage() {
 
 
   const loadOrderHistory = useCallback(async (orderId) => {
-    const { data } = await api.get(`/api/v1/orders/${orderId}/history`);
-    return Array.isArray(data) ? data : [];
+    return fetchOrderHistory(orderId);
   }, []);
 
   const restoreOrderStatus = useCallback(async (orderId, date) => {
-    const { data } = await api.post(`/api/v1/orders/${orderId}/restore`, null, {
-      params: { date }
-    });
-    return data;
+    return restoreOrder(orderId, date);
   }, []);
 
   const payOrder = useCallback(async (orderId) => {
-    await api.post(`/api/v1/orders/${orderId}/pay`);
+    await payOrderRequest(orderId);
     await Promise.all([loadOrders(0), loadPayments(profile?.id, 0)]);
   }, [loadOrders, loadPayments, profile?.id]);
 
   const updateShippingAddress = useCallback(async (orderId, shippingAddress) => {
-    await api.put(`/api/v1/orders/${orderId}/adress`, {
-      shippingAddress
-    });
+    await updateOrderShippingAddress(orderId, shippingAddress);
     await loadOrders(0);
   }, [loadOrders]);
 
@@ -265,17 +257,15 @@ export default function OrdersPage() {
         let userProfile;
 
         try {
-          const { data } = await api.get(`/api/v1/users/email/${encodeURIComponent(login)}`);
-          userProfile = data;
+          userProfile = await fetchUserByEmail(login);
         } catch (e) {
           if (e.response?.status === 404 && profileDraft) {
-            const { data } = await api.post('/api/v1/users', {
+            userProfile = await createUser({
               name: profileDraft.name,
               surname: profileDraft.surname,
               birthDate: profileDraft.birthDate,
               email: profileDraft.email
             });
-            userProfile = data;
           } else {
             throw e;
           }

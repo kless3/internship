@@ -1,7 +1,7 @@
 databaseChangeLog:
   - changeSet:
       id: 007-add-shipping-address-to-orders
-      author: codex
+      author: Yafimchyk
       changes:
         - addColumn:
             tableName: orders

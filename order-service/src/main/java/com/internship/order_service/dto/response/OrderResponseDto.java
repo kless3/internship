@@ -1,15 +1,17 @@
-package com.internship.order_service.dto;
+﻿package com.internship.order_service.dto.response;
 
 import com.internship.order_service.model.enums.OrderStatus;
 import java.time.LocalDateTime;
 import java.util.List;
 
-public record OrderResponseDTO(
+public record OrderResponseDto(
         Long id,
         Long userId,
         OrderStatus status,
         LocalDateTime creationDate,
         String shippingAddress,
-        List<OrderItemDTO> orderItems,
-        UserInfoDTO userInfoDto
+        List<OrderItemDto> orderItems,
+        UserInfoDto userInfoDto
 ) {}
+
+

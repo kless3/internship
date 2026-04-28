@@ -1,4 +1,4 @@
-package com.internship.order_service.model;
+﻿package com.internship.order_service.model;
 
 import com.internship.order_service.model.enums.OrderEventStatus;
 import com.internship.order_service.model.enums.OrderStatus;

@@ -1,4 +1,4 @@
-package com.internship.order_service.model;
+﻿package com.internship.order_service.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.internship.order_service.model.enums.OrderStatus;
@@ -61,4 +61,6 @@ public class Order {
 
     @Column(name = "shipping_address", nullable = false)
     private String shippingAddress;
+
 }
+

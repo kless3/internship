@@ -1,7 +1,7 @@
-package com.internship.order_service.service.impl;
+﻿package com.internship.order_service.service.impl;
 
-import com.internship.order_service.dto.AverageCreateToPayDurationResponseDto;
-import com.internship.order_service.dto.ShippingAddressChangeFrequencyResponseDto;
+import com.internship.order_service.dto.response.AverageCreateToPayDurationResponseDto;
+import com.internship.order_service.dto.response.ShippingAddressChangeFrequencyResponseDto;
 import com.internship.order_service.model.OrderEvent;
 import com.internship.order_service.model.enums.OrderEventStatus;
 import com.internship.order_service.repository.OrderEventRepository;
@@ -137,3 +137,4 @@ public class OrderMetricsServiceImpl implements OrderMetricsService {
         );
     }
 }
+

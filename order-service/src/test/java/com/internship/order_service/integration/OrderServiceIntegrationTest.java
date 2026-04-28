@@ -1,11 +1,11 @@
-package com.internship.order_service.integration;
+﻿package com.internship.order_service.integration;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
-import com.internship.order_service.dto.ItemDTO;
-import com.internship.order_service.dto.OrderItemDTO;
-import com.internship.order_service.dto.OrderRequestDTO;
-import com.internship.order_service.dto.OrderResponseDTO;
+import com.internship.order_service.dto.response.ItemDto;
+import com.internship.order_service.dto.response.OrderItemDto;
+import com.internship.order_service.dto.request.OrderRequestDto;
+import com.internship.order_service.dto.response.OrderResponseDto;
 import com.internship.order_service.exception.ResourceNotFoundException;
 import com.internship.order_service.model.Order;
 import com.internship.order_service.model.enums.OrderStatus;
@@ -97,14 +97,14 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
                                 }
                                 """)));
 
-        OrderRequestDTO orderRequest = new OrderRequestDTO(123L, USER_EMAIL, "Test address",
-                List.of(new OrderItemDTO(
-                        new ItemDTO(1L, "Laptop", new BigDecimal(70)), 1L)));
+        OrderRequestDto orderRequest = new OrderRequestDto(123L, USER_EMAIL, "Test address",
+                List.of(new OrderItemDto(
+                        new ItemDto(1L, "Laptop", new BigDecimal(70)), 1L)));
 
-        OrderResponseDTO orderResponse = orderService.createOrder(orderRequest);
+        OrderResponseDto orderResponse = orderService.createOrder(orderRequest);
 
         assertThat(orderResponse.userId()).isNotNull();
-        assertThat(orderResponse.userInfoDto().email()).isEqualTo(USER_EMAIL);
+        assertThat(orderResponse.UserInfoDto().email()).isEqualTo(USER_EMAIL);
         assertThat(orderResponse.status()).isEqualTo(OrderStatus.PENDING);
 
         verify(getRequestedFor(urlPathMatching("/api/v1/users/email/.*")));
@@ -149,16 +149,16 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
                                 }
                                 """)));
 
-        OrderRequestDTO orderRequest = new OrderRequestDTO(123L, USER_EMAIL, "Test address",
-                List.of(new OrderItemDTO(
-                        new ItemDTO(1L, "Laptop", new BigDecimal(70)), 1L)));
+        OrderRequestDto orderRequest = new OrderRequestDto(123L, USER_EMAIL, "Test address",
+                List.of(new OrderItemDto(
+                        new ItemDto(1L, "Laptop", new BigDecimal(70)), 1L)));
 
         orderService.createOrder(orderRequest);
 
-        List<OrderResponseDTO> allOrders = orderService.getOrdersByStatus(OrderStatus.PENDING);
+        List<OrderResponseDto> allOrders = orderService.getOrdersByStatus(OrderStatus.PENDING);
         assertThat(allOrders).isNotEmpty();
 
-        OrderResponseDTO existingOrder = allOrders.get(0);
+        OrderResponseDto existingOrder = allOrders.get(0);
 
         stubFor(get(urlPathMatching("/api/v1/users/email/.*"))
                 .willReturn(aResponse()
@@ -175,10 +175,10 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
                                 """)));
 
         Long orderId = orderRepository.findAll().get(0).getId();
-        OrderResponseDTO foundOrder = orderService.getOrderById(orderId);
+        OrderResponseDto foundOrder = orderService.getOrderById(orderId);
 
         assertThat(foundOrder).isNotNull();
-        assertThat(foundOrder.userInfoDto().email()).isEqualTo(USER_EMAIL);
+        assertThat(foundOrder.UserInfoDto().email()).isEqualTo(USER_EMAIL);
         assertThat(foundOrder.status()).isEqualTo(OrderStatus.PENDING);
 
         verify(getRequestedFor(urlPathMatching("/api/v1/users/email/.*")));
@@ -201,13 +201,13 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
                                 }
                                 """)));
 
-        OrderRequestDTO orderRequest1 = new OrderRequestDTO(123L, "test@example.com", "Test address",
-                List.of(new OrderItemDTO(
-                        new ItemDTO(1L, "Laptop", new BigDecimal(70)), 1L)));
+        OrderRequestDto orderRequest1 = new OrderRequestDto(123L, "test@example.com", "Test address",
+                List.of(new OrderItemDto(
+                        new ItemDto(1L, "Laptop", new BigDecimal(70)), 1L)));
 
-        OrderRequestDTO orderRequest2 = new OrderRequestDTO(124L, "test@example.com", "Test address",
-                List.of(new OrderItemDTO(
-                        new ItemDTO(2L, "Mouse", new BigDecimal(25)), 2L)));
+        OrderRequestDto orderRequest2 = new OrderRequestDto(124L, "test@example.com", "Test address",
+                List.of(new OrderItemDto(
+                        new ItemDto(2L, "Mouse", new BigDecimal(25)), 2L)));
 
         orderService.createOrder(orderRequest1);
         orderService.createOrder(orderRequest2);
@@ -218,13 +218,13 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(orderIds).hasSize(2);
 
-        List<OrderResponseDTO> foundOrders = orderService.getOrdersByIds(orderIds);
+        List<OrderResponseDto> foundOrders = orderService.getOrdersByIds(orderIds);
 
         assertThat(foundOrders).hasSize(2);
-        assertThat(foundOrders).extracting(OrderResponseDTO::status)
+        assertThat(foundOrders).extracting(OrderResponseDto::status)
                 .containsOnly(OrderStatus.PENDING);
 
-        assertThat(foundOrders).allMatch(order -> order.userInfoDto() != null);
+        assertThat(foundOrders).allMatch(order -> order.UserInfoDto() != null);
     }
 
     @Test
@@ -244,13 +244,13 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
                                 }
                                 """)));
 
-        OrderRequestDTO orderRequest1 = new OrderRequestDTO(123L, USER_EMAIL, "Test address",
-                List.of(new OrderItemDTO(
-                        new ItemDTO(1L, "Laptop", new BigDecimal(70)), 1L)));
+        OrderRequestDto orderRequest1 = new OrderRequestDto(123L, USER_EMAIL, "Test address",
+                List.of(new OrderItemDto(
+                        new ItemDto(1L, "Laptop", new BigDecimal(70)), 1L)));
 
-        OrderRequestDTO orderRequest2 = new OrderRequestDTO(124L, "test2@example.com", "Test address",
-                List.of(new OrderItemDTO(
-                        new ItemDTO(2L, "Mouse", new BigDecimal(25)), 2L)));
+        OrderRequestDto orderRequest2 = new OrderRequestDto(124L, "test2@example.com", "Test address",
+                List.of(new OrderItemDto(
+                        new ItemDto(2L, "Mouse", new BigDecimal(25)), 2L)));
 
         orderService.createOrder(orderRequest1);
         orderService.createOrder(orderRequest2);
@@ -283,11 +283,11 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
                                 }
                                 """)));
 
-        List<OrderResponseDTO> foundOrders = orderService.getOrdersByStatus(OrderStatus.PENDING);
+        List<OrderResponseDto> foundOrders = orderService.getOrdersByStatus(OrderStatus.PENDING);
 
         assertThat(foundOrders).isNotEmpty();
         assertThat(foundOrders).allMatch(order -> order.status() == OrderStatus.PENDING);
-        assertThat(foundOrders).extracting(OrderResponseDTO::userId)
+        assertThat(foundOrders).extracting(OrderResponseDto::userId)
                 .contains(123L, 124L);
     }
 
@@ -308,9 +308,9 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
                                 }
                                 """)));
 
-        OrderRequestDTO orderRequest = new OrderRequestDTO(123L, USER_EMAIL, "Test address",
-                List.of(new OrderItemDTO(
-                        new ItemDTO(1L, "Laptop", new BigDecimal(70)), 1L)));
+        OrderRequestDto orderRequest = new OrderRequestDto(123L, USER_EMAIL, "Test address",
+                List.of(new OrderItemDto(
+                        new ItemDto(1L, "Laptop", new BigDecimal(70)), 1L)));
 
         orderService.createOrder(orderRequest);
 
@@ -319,9 +319,9 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
                 .map(order -> order.getId())
                 .orElseThrow(() -> new AssertionError("Order not found in database"));
 
-        OrderRequestDTO updateRequest = new OrderRequestDTO(123L, USER_EMAIL, "Updated address",
-                List.of(new OrderItemDTO(
-                        new ItemDTO(2L, "Updated Laptop", new BigDecimal(80)), 2L)));
+        OrderRequestDto updateRequest = new OrderRequestDto(123L, USER_EMAIL, "Updated address",
+                List.of(new OrderItemDto(
+                        new ItemDto(2L, "Updated Laptop", new BigDecimal(80)), 2L)));
 
         stubFor(get(urlPathMatching("/api/v1/users/email/.*"))
                 .willReturn(aResponse()
@@ -337,15 +337,15 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
                                 }
                                 """)));
 
-        OrderResponseDTO updatedOrder = orderService.updateOrderById(orderId, updateRequest);
+        OrderResponseDto updatedOrder = orderService.updateOrderById(orderId, updateRequest);
 
         assertThat(updatedOrder).isNotNull();
-        assertThat(updatedOrder.userInfoDto().email()).isEqualTo(USER_EMAIL);
+        assertThat(updatedOrder.UserInfoDto().email()).isEqualTo(USER_EMAIL);
         assertThat(updatedOrder.status()).isEqualTo(OrderStatus.PENDING);
 
-        OrderResponseDTO foundAfterUpdate = orderService.getOrderById(orderId);
+        OrderResponseDto foundAfterUpdate = orderService.getOrderById(orderId);
         assertThat(foundAfterUpdate).isNotNull();
-        assertThat(foundAfterUpdate.userInfoDto().email()).isEqualTo(USER_EMAIL);
+        assertThat(foundAfterUpdate.UserInfoDto().email()).isEqualTo(USER_EMAIL);
     }
 
     @Test
@@ -365,9 +365,9 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
                                 }
                                 """)));
 
-        OrderRequestDTO orderRequest = new OrderRequestDTO(123L, USER_EMAIL, "Test address",
-                List.of(new OrderItemDTO(
-                        new ItemDTO(1L, "Laptop", new BigDecimal(70)), 1L)));
+        OrderRequestDto orderRequest = new OrderRequestDto(123L, USER_EMAIL, "Test address",
+                List.of(new OrderItemDto(
+                        new ItemDto(1L, "Laptop", new BigDecimal(70)), 1L)));
 
         orderService.createOrder(orderRequest);
 
@@ -394,3 +394,4 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
                 .hasMessageContaining(ORDER_NOT_FOUND_MESSAGE + 999);
     }
 }
+

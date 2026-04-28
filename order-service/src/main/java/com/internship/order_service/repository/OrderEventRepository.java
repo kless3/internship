@@ -1,4 +1,4 @@
-package com.internship.order_service.repository;
+﻿package com.internship.order_service.repository;
 
 import com.internship.order_service.model.OrderEvent;
 import com.internship.order_service.model.enums.OrderEventStatus;
@@ -22,3 +22,4 @@ public interface OrderEventRepository extends JpaRepository<OrderEvent, Long> {
             List<OrderEventStatus> statuses
     );
 }
+

@@ -1,7 +1,7 @@
-package com.internship.order_service.service;
+﻿package com.internship.order_service.service;
 
-import com.internship.order_service.dto.AverageCreateToPayDurationResponseDto;
-import com.internship.order_service.dto.ShippingAddressChangeFrequencyResponseDto;
+import com.internship.order_service.dto.response.AverageCreateToPayDurationResponseDto;
+import com.internship.order_service.dto.response.ShippingAddressChangeFrequencyResponseDto;
 
 public interface OrderMetricsService {
 
@@ -9,3 +9,4 @@ public interface OrderMetricsService {
 
     ShippingAddressChangeFrequencyResponseDto getShippingAddressChangeFrequency(Long userId);
 }
+

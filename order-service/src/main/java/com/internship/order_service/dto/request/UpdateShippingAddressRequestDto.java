@@ -1,4 +1,4 @@
-package com.internship.order_service.dto;
+﻿package com.internship.order_service.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -9,3 +9,5 @@ public record UpdateShippingAddressRequestDto(
         String shippingAddress
 ) {
 }
+
+

@@ -1,11 +1,11 @@
-package com.internship.order_service.service.impl;
+﻿package com.internship.order_service.service.impl;
 
 import com.internship.order_service.client.UserServiceClient;
-import com.internship.order_service.dto.OrderEventResponseDto;
-import com.internship.order_service.dto.OrderRequestDTO;
-import com.internship.order_service.dto.OrderResponseDTO;
-import com.internship.order_service.dto.UpdateShippingAddressRequestDto;
-import com.internship.order_service.dto.UserInfoDTO;
+import com.internship.order_service.dto.response.OrderEventResponseDto;
+import com.internship.order_service.dto.request.OrderRequestDto;
+import com.internship.order_service.dto.response.OrderResponseDto;
+import com.internship.order_service.dto.request.UpdateShippingAddressRequestDto;
+import com.internship.order_service.dto.response.UserInfoDto;
 import com.internship.order_service.exception.OrderProcessingException;
 import com.internship.order_service.exception.ResourceNotFoundException;
 import com.internship.order_service.exception.InvalidOrderStatusException;
@@ -66,11 +66,11 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderResponseDTO createOrder(OrderRequestDTO orderRequestDTO) {
+    public OrderResponseDto createOrder(OrderRequestDto orderRequestDto) {
 
         try {
 
-            Order order = orderMapper.toEntity(orderRequestDTO);
+            Order order = orderMapper.toEntity(orderRequestDto);
             order.setStatus(OrderStatus.PENDING);
 
             if (order.getOrderItems() != null) {
@@ -91,7 +91,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public OrderResponseDTO getOrderById(Long id) {
+    public OrderResponseDto getOrderById(Long id) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(ORDER_NOT_FOUND_WITH_ID + id));
 
@@ -104,7 +104,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrderResponseDTO> getOrdersByIds(List<Long> ids) {
+    public List<OrderResponseDto> getOrdersByIds(List<Long> ids) {
         List<Order> orders = orderRepository.findByIdIn(ids);
         if (orders == null || orders.isEmpty()) {
             throw new ResourceNotFoundException(ORDER_NOT_FOUND_WITH_IDS + ids);
@@ -126,7 +126,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<OrderResponseDTO> getOrdersByStatus(OrderStatus orderStatus) {
+    public List<OrderResponseDto> getOrdersByStatus(OrderStatus orderStatus) {
         validateOrderStatus(orderStatus);
 
         List<Order> orders = orderRepository.findByStatus(orderStatus);
@@ -146,9 +146,9 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<OrderResponseDTO> getOrdersByUserEmail(String userEmail, int page, int size) {
+    public Page<OrderResponseDto> getOrdersByUserEmail(String userEmail, int page, int size) {
         try {
-            UserInfoDTO user = userServiceClient.getUserInfoByEmail(userEmail);
+            UserInfoDto user = userServiceClient.getUserInfoByEmail(userEmail);
 
             if (user == null || user.id() == null) {
                 throw new ResourceNotFoundException(USER_NOT_FOUND_WITH_EMAIL + userEmail);
@@ -157,14 +157,14 @@ public class OrderServiceImpl implements OrderService {
             Pageable pageable = PageRequest.of(page, size, Sort.by("creationDate").descending());
             return orderRepository.findAllByUserId(user.id(), pageable)
                     .map(order -> {
-                        OrderResponseDTO orderResponseDTO = orderMapper.toDTO(order);
-                        return new OrderResponseDTO(
-                                orderResponseDTO.id(),
-                                orderResponseDTO.userId(),
-                                orderResponseDTO.status(),
-                                orderResponseDTO.creationDate(),
-                                orderResponseDTO.shippingAddress(),
-                                orderResponseDTO.orderItems(),
+                        OrderResponseDto orderResponseDto = orderMapper.toDTO(order);
+                        return new OrderResponseDto(
+                                orderResponseDto.id(),
+                                orderResponseDto.userId(),
+                                orderResponseDto.status(),
+                                orderResponseDto.creationDate(),
+                                orderResponseDto.shippingAddress(),
+                                orderResponseDto.orderItems(),
                                 user
                         );
                     });
@@ -176,12 +176,12 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderResponseDTO updateOrderById(Long id, OrderRequestDTO orderRequestDTO) {
+    public OrderResponseDto updateOrderById(Long id, OrderRequestDto orderRequestDto) {
         try {
             Order existingOrder = orderRepository.findById(id)
                     .orElseThrow(() -> new ResourceNotFoundException(ORDER_NOT_FOUND_WITH_ID + id));
 
-            orderMapper.updateEntityFromDTO(orderRequestDTO, existingOrder);
+            orderMapper.updateEntityFromDTO(orderRequestDto, existingOrder);
             Order savedOrder = orderRepository.save(existingOrder);
 
             return toOrderResponseDTO(savedOrder);
@@ -195,7 +195,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderResponseDTO updateShippingAddress(Long id, UpdateShippingAddressRequestDto requestDto) {
+    public OrderResponseDto updateShippingAddress(Long id, UpdateShippingAddressRequestDto requestDto) {
         try {
             Order order = orderRepository.findById(id)
                     .orElseThrow(() -> new ResourceNotFoundException(ORDER_NOT_FOUND_WITH_ID + id));
@@ -209,6 +209,7 @@ public class OrderServiceImpl implements OrderService {
             saveEvent(savedOrder, OrderEventStatus.SHIPPING_ADDRESS_UPDATED);
 
             return toOrderResponseDTO(savedOrder);
+
         } catch (FeignException e) {
             throw new UserServiceUnavailableException(USER_SERVICE_UNAVAILABLE, e);
         } catch (OrderValidationException | ResourceNotFoundException e) {
@@ -245,14 +246,13 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderResponseDTO restoreOrderStatusAt(Long id, LocalDateTime date) {
+    public OrderResponseDto restoreOrderStatusAt(Long id, LocalDateTime date) {
         if (date == null) {
             throw new OrderValidationException(RESTORE_TIME_REQUIRED);
         }
         if (date.isAfter(LocalDateTime.now())) {
             throw new OrderValidationException(RESTORE_TIME_IN_FUTURE);
         }
-
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(ORDER_NOT_FOUND_WITH_ID + id));
 
@@ -275,7 +275,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderResponseDTO payOrder(Long id) {
+    public OrderResponseDto payOrder(Long id) {
         try {
             Order order = orderRepository.findById(id)
                     .orElseThrow(() -> new ResourceNotFoundException(ORDER_NOT_FOUND_WITH_ID + id));
@@ -292,6 +292,7 @@ public class OrderServiceImpl implements OrderService {
             orderEventProducer.sendOrderCreatedEvent(paymentStartedEvent, totalAmount);
 
             return toOrderResponseDTO(savedOrder);
+
         } catch (FeignException e) {
             throw new UserServiceUnavailableException(USER_SERVICE_UNAVAILABLE, e);
         } catch (OrderValidationException | ResourceNotFoundException e) {
@@ -344,16 +345,16 @@ public class OrderServiceImpl implements OrderService {
         };
     }
 
-    private OrderResponseDTO toOrderResponseDTO(Order order) {
-        OrderResponseDTO orderResponseDTO = orderMapper.toDTO(order);
-        UserInfoDTO userInfo = userServiceClient.getUserInfoByEmail(order.getUserEmail());
-        return new OrderResponseDTO(
-                orderResponseDTO.id(),
-                orderResponseDTO.userId(),
-                orderResponseDTO.status(),
-                orderResponseDTO.creationDate(),
-                orderResponseDTO.shippingAddress(),
-                orderResponseDTO.orderItems(),
+    private OrderResponseDto toOrderResponseDTO(Order order) {
+        OrderResponseDto orderResponseDto = orderMapper.toDTO(order);
+        UserInfoDto userInfo = userServiceClient.getUserInfoByEmail(order.getUserEmail());
+        return new OrderResponseDto(
+                orderResponseDto.id(),
+                orderResponseDto.userId(),
+                orderResponseDto.status(),
+                orderResponseDto.creationDate(),
+                orderResponseDto.shippingAddress(),
+                orderResponseDto.orderItems(),
                 userInfo
         );
     }
@@ -363,4 +364,7 @@ public class OrderServiceImpl implements OrderService {
             throw new InvalidOrderStatusException(ORDER_STATUS_NULL);
         }
     }
+
 }
+
+

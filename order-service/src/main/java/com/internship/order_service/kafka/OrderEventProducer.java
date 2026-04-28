@@ -1,7 +1,6 @@
-package com.internship.order_service.kafka;
+﻿package com.internship.order_service.kafka;
 
 import com.internship.order_service.dto.event.OrderCreatedEvent;
-import com.internship.order_service.model.Order;
 import com.internship.order_service.model.OrderEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
