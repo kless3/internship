@@ -1,11 +1,12 @@
-﻿package com.internship.order_service.controller;
+package com.internship.order_service.controller;
 
 import com.internship.order_service.dto.response.OrderEventResponseDto;
 import com.internship.order_service.dto.request.OrderRequestDto;
 import com.internship.order_service.dto.response.OrderResponseDto;
 import com.internship.order_service.dto.request.UpdateShippingAddressRequestDto;
 import com.internship.order_service.model.enums.OrderStatus;
-import com.internship.order_service.service.OrderService;
+import com.internship.order_service.service.OrderLifecycleService;
+import com.internship.order_service.service.OrderProcessingService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import lombok.RequiredArgsConstructor;
@@ -31,21 +32,22 @@ import java.util.List;
 @RequiredArgsConstructor
 public class OrderController {
 
-    private final OrderService orderService;
+    private final OrderLifecycleService orderLifecycleService;
+    private final OrderProcessingService orderProcessingService;
 
     @GetMapping("/{id}")
     public ResponseEntity<OrderResponseDto> getOrderById(@PathVariable Long id){
-        return new ResponseEntity<>(orderService.getOrderById(id), HttpStatus.OK);
+        return new ResponseEntity<>(orderLifecycleService.getOrderById(id), HttpStatus.OK);
     }
 
     @GetMapping("/ids")
     public ResponseEntity<List<OrderResponseDto>> getOrdersByIds(@RequestParam List<Long> ids){
-        return new ResponseEntity<>(orderService.getOrdersByIds(ids), HttpStatus.OK);
+        return new ResponseEntity<>(orderLifecycleService.getOrdersByIds(ids), HttpStatus.OK);
     }
 
     @GetMapping("/status")
     public ResponseEntity<List<OrderResponseDto>> getOrdersByStatus(@RequestParam OrderStatus status){
-        return new ResponseEntity<>(orderService.getOrdersByStatus(status), HttpStatus.OK);
+        return new ResponseEntity<>(orderLifecycleService.getOrdersByStatus(status), HttpStatus.OK);
     }
 
     @GetMapping("/current")
@@ -54,23 +56,23 @@ public class OrderController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        return new ResponseEntity<>(orderService.getOrdersByUserEmail(userEmail, page, size), HttpStatus.OK);
+        return new ResponseEntity<>(orderLifecycleService.getOrdersByUserEmail(userEmail, page, size), HttpStatus.OK);
     }
 
     @PostMapping
     public ResponseEntity<OrderResponseDto> createOrder(@Valid @RequestBody OrderRequestDto orderRequestDto){
-        return new ResponseEntity<>(orderService.createOrder(orderRequestDto), HttpStatus.CREATED);
+        return new ResponseEntity<>(orderLifecycleService.createOrder(orderRequestDto), HttpStatus.CREATED);
     }
 
     @PostMapping("/{id}/payment")
     public ResponseEntity<OrderResponseDto> payOrder(@PathVariable Long id) {
-        return new ResponseEntity<>(orderService.payOrder(id), HttpStatus.OK);
+        return new ResponseEntity<>(orderProcessingService.payOrder(id), HttpStatus.OK);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<OrderResponseDto> updateOrder(
             @PathVariable Long id, @Valid @RequestBody OrderRequestDto orderRequestDto){
-        return new ResponseEntity<>(orderService.updateOrderById(id, orderRequestDto), HttpStatus.OK);
+        return new ResponseEntity<>(orderLifecycleService.updateOrderById(id, orderRequestDto), HttpStatus.OK);
     }
 
     @PutMapping("/{id}/address")
@@ -78,26 +80,25 @@ public class OrderController {
             @PathVariable Long id,
             @Valid @RequestBody UpdateShippingAddressRequestDto requestDto
     ) {
-        return new ResponseEntity<>(orderService.updateShippingAddress(id, requestDto), HttpStatus.OK);
+        return new ResponseEntity<>(orderLifecycleService.updateShippingAddress(id, requestDto), HttpStatus.OK);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteOrder(@PathVariable Long id){
-        orderService.deleteOrderById(id);
+        orderLifecycleService.deleteOrderById(id);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}/timeline")
     public ResponseEntity<List<OrderEventResponseDto>> getOrderHistory(@PathVariable Long id) {
-        return new ResponseEntity<>(orderService.getOrderHistory(id), HttpStatus.OK);
+        return new ResponseEntity<>(orderProcessingService.getOrderHistory(id), HttpStatus.OK);
     }
 
     @PostMapping("/{id}/restoration")
     public ResponseEntity<OrderResponseDto> restoreOrderStatusAt(@PathVariable Long id,
             @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime date
     ) {
-        return new ResponseEntity<>(orderService.restoreOrderStatusAt(id, date), HttpStatus.OK);
+        return new ResponseEntity<>(orderProcessingService.restoreOrderStatusAt(id, date), HttpStatus.OK);
     }
 }
-
 

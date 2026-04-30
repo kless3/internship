@@ -1,25 +1,21 @@
-﻿package com.internship.order_service.service.impl;
+package com.internship.order_service.service.impl;
 
 import com.internship.order_service.client.UserServiceClient;
-import com.internship.order_service.dto.response.OrderEventResponseDto;
 import com.internship.order_service.dto.request.OrderRequestDto;
-import com.internship.order_service.dto.response.OrderResponseDto;
 import com.internship.order_service.dto.request.UpdateShippingAddressRequestDto;
+import com.internship.order_service.dto.response.OrderResponseDto;
 import com.internship.order_service.dto.response.UserInfoDto;
-import com.internship.order_service.exception.OrderProcessingException;
-import com.internship.order_service.exception.ResourceNotFoundException;
 import com.internship.order_service.exception.InvalidOrderStatusException;
+import com.internship.order_service.exception.OrderProcessingException;
 import com.internship.order_service.exception.OrderValidationException;
+import com.internship.order_service.exception.ResourceNotFoundException;
 import com.internship.order_service.exception.UserServiceUnavailableException;
-import com.internship.order_service.kafka.OrderEventProducer;
 import com.internship.order_service.mapper.OrderMapper;
 import com.internship.order_service.model.Order;
-import com.internship.order_service.model.OrderEvent;
 import com.internship.order_service.model.enums.OrderEventStatus;
 import com.internship.order_service.model.enums.OrderStatus;
-import com.internship.order_service.repository.OrderEventRepository;
 import com.internship.order_service.repository.OrderRepository;
-import com.internship.order_service.service.OrderService;
+import com.internship.order_service.service.OrderLifecycleService;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -29,16 +25,12 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 @Transactional
 @RequiredArgsConstructor
-public class OrderServiceImpl implements OrderService {
+public class OrderLifecycleServiceImpl implements OrderLifecycleService {
 
     private static final String ORDER_NOT_FOUND_WITH_ID = "Order not found with id: ";
     private static final String ORDER_NOT_FOUND_WITH_IDS = "Orders not found with ids: ";
@@ -46,30 +38,19 @@ public class OrderServiceImpl implements OrderService {
     private static final String USER_SERVICE_UNAVAILABLE = "User service is currently unavailable";
     private static final String USER_NOT_FOUND_WITH_EMAIL = "User not found with email: ";
     private static final String ORDER_STATUS_NULL = "Order status cannot be null";
-    private static final String RESTORE_TIME_REQUIRED = "Restore timestamp is required";
-    private static final String RESTORE_TIME_IN_FUTURE = "Restore timestamp cannot be in the future";
-    private static final String NO_HISTORICAL_STATE_AT_TIME = "No historical order state found at timestamp: ";
-    private static final String EVENT_STATUS_UNSUPPORTED_FOR_RESTORE = "Unsupported order event status for restore: ";
-    private static final String ORDER_STATUS_UNSUPPORTED_FOR_RESTORE_EVENT = "Unsupported order status for restore event: ";
     private static final String FAILED_TO_CREATE_ORDER = "Failed to create order";
     private static final String FAILED_TO_UPDATE_ORDER = "Failed to update order";
-    private static final String ONLY_PENDING_ORDER_CAN_BE_PAID = "Only pending orders can be paid";
     private static final String ONLY_PENDING_ORDER_CAN_UPDATE_SHIPPING_ADDRESS = "Shipping address can be updated only while order is pending";
-    private static final String FAILED_TO_START_PAYMENT_FOR_ORDER = "Failed to start payment for order";
     private static final String FAILED_TO_UPDATE_SHIPPING_ADDRESS = "Failed to update shipping address";
 
     private final OrderRepository orderRepository;
-    private final OrderEventRepository orderEventRepository;
     private final OrderMapper orderMapper;
     private final UserServiceClient userServiceClient;
-    private final OrderEventProducer orderEventProducer;
+    private final OrderProcessingServiceImpl orderProcessingService;
 
     @Override
-    @Transactional
     public OrderResponseDto createOrder(OrderRequestDto orderRequestDto) {
-
         try {
-
             Order order = orderMapper.toEntity(orderRequestDto);
             order.setStatus(OrderStatus.PENDING);
 
@@ -78,10 +59,9 @@ public class OrderServiceImpl implements OrderService {
             }
 
             Order savedOrder = orderRepository.save(order);
-            saveEvent(savedOrder);
+            orderProcessingService.saveEvent(savedOrder, OrderEventStatus.CREATED);
 
             return toOrderResponseDTO(savedOrder);
-
         } catch (FeignException e) {
             throw new UserServiceUnavailableException(USER_SERVICE_UNAVAILABLE, e);
         } catch (Exception e) {
@@ -111,14 +91,7 @@ public class OrderServiceImpl implements OrderService {
         }
 
         try {
-            Set<String> userEmails = orders.stream()
-                    .map(Order::getUserEmail)
-                    .collect(Collectors.toSet());
-
-            return orders.stream()
-                    .map(this::toOrderResponseDTO)
-                    .collect(Collectors.toList());
-
+            return orders.stream().map(this::toOrderResponseDTO).toList();
         } catch (FeignException e) {
             throw new UserServiceUnavailableException(USER_SERVICE_UNAVAILABLE, e);
         }
@@ -135,10 +108,7 @@ public class OrderServiceImpl implements OrderService {
         }
 
         try {
-            return orders.stream()
-                    .map(this::toOrderResponseDTO)
-                    .collect(Collectors.toList());
-
+            return orders.stream().map(this::toOrderResponseDTO).toList();
         } catch (FeignException e) {
             throw new UserServiceUnavailableException(USER_SERVICE_UNAVAILABLE, e);
         }
@@ -175,7 +145,6 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Transactional
     public OrderResponseDto updateOrderById(Long id, OrderRequestDto orderRequestDto) {
         try {
             Order existingOrder = orderRepository.findById(id)
@@ -185,7 +154,6 @@ public class OrderServiceImpl implements OrderService {
             Order savedOrder = orderRepository.save(existingOrder);
 
             return toOrderResponseDTO(savedOrder);
-
         } catch (FeignException e) {
             throw new UserServiceUnavailableException(USER_SERVICE_UNAVAILABLE, e);
         } catch (Exception e) {
@@ -194,7 +162,6 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Transactional
     public OrderResponseDto updateShippingAddress(Long id, UpdateShippingAddressRequestDto requestDto) {
         try {
             Order order = orderRepository.findById(id)
@@ -206,7 +173,7 @@ public class OrderServiceImpl implements OrderService {
 
             order.setShippingAddress(requestDto.shippingAddress().trim());
             Order savedOrder = orderRepository.save(order);
-            saveEvent(savedOrder, OrderEventStatus.SHIPPING_ADDRESS_UPDATED);
+            orderProcessingService.saveEvent(savedOrder, OrderEventStatus.SHIPPING_ADDRESS_UPDATED);
 
             return toOrderResponseDTO(savedOrder);
 
@@ -220,129 +187,11 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Transactional
     public void deleteOrderById(Long id) {
-        Order order = orderRepository.findById(id)
+        orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(ORDER_NOT_FOUND_WITH_ID + id));
 
         orderRepository.deleteById(id);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<OrderEventResponseDto> getOrderHistory(Long orderId) {
-        if (!orderRepository.existsById(orderId)) {
-            throw new ResourceNotFoundException(ORDER_NOT_FOUND_WITH_ID + orderId);
-        }
-
-        return orderEventRepository.findAllByOrderIdOrderByEventTimestampAsc(orderId)
-                .stream()
-                .map(event -> new OrderEventResponseDto(
-                        event.getStatus(),
-                        event.getEventTimestamp()
-                ))
-                .toList();
-    }
-
-    @Override
-    @Transactional
-    public OrderResponseDto restoreOrderStatusAt(Long id, LocalDateTime date) {
-        if (date == null) {
-            throw new OrderValidationException(RESTORE_TIME_REQUIRED);
-        }
-        if (date.isAfter(LocalDateTime.now())) {
-            throw new OrderValidationException(RESTORE_TIME_IN_FUTURE);
-        }
-        Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(ORDER_NOT_FOUND_WITH_ID + id));
-
-        OrderEvent historicalEvent = orderEventRepository
-                .findTopByOrderIdAndEventTimestampLessThanEqualOrderByEventTimestampDesc(id, date)
-                .orElseThrow(() -> new OrderValidationException(NO_HISTORICAL_STATE_AT_TIME + date));
-
-        OrderStatus restoredStatus = mapEventStatusToOrderStatus(historicalEvent.getStatus());
-        order.setStatus(restoredStatus);
-        Order savedOrder = orderRepository.save(order);
-
-        saveEvent(savedOrder, mapOrderStatusToRestoreEventStatus(restoredStatus));
-
-        return toOrderResponseDTO(savedOrder);
-    }
-
-    private OrderEvent saveEvent(Order order) {
-        return saveEvent(order, OrderEventStatus.CREATED);
-    }
-
-    @Override
-    @Transactional
-    public OrderResponseDto payOrder(Long id) {
-        try {
-            Order order = orderRepository.findById(id)
-                    .orElseThrow(() -> new ResourceNotFoundException(ORDER_NOT_FOUND_WITH_ID + id));
-
-            if (order.getStatus() != OrderStatus.PENDING) {
-                throw new OrderValidationException(ONLY_PENDING_ORDER_CAN_BE_PAID);
-            }
-
-            order.setStatus(OrderStatus.PROCESSING);
-            Order savedOrder = orderRepository.save(order);
-
-            OrderEvent paymentStartedEvent = saveEvent(savedOrder, OrderEventStatus.PAYMENT_STARTED);
-            BigDecimal totalAmount = calculateTotal(savedOrder);
-            orderEventProducer.sendOrderCreatedEvent(paymentStartedEvent, totalAmount);
-
-            return toOrderResponseDTO(savedOrder);
-
-        } catch (FeignException e) {
-            throw new UserServiceUnavailableException(USER_SERVICE_UNAVAILABLE, e);
-        } catch (OrderValidationException | ResourceNotFoundException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new OrderProcessingException(FAILED_TO_START_PAYMENT_FOR_ORDER, e);
-        }
-    }
-
-    private BigDecimal calculateTotal(Order order) {
-        return order.getOrderItems().stream()
-                .map(orderItem -> orderItem.getItem().getPrice()
-                        .multiply(BigDecimal.valueOf(orderItem.getQuantity())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
-    private OrderEvent saveEvent(Order order, OrderEventStatus status) {
-        OrderEvent orderEvent = new OrderEvent();
-        orderEvent.setOrderId(order.getId());
-        orderEvent.setUserId(order.getUserId());
-        orderEvent.setUserEmail(order.getUserEmail());
-        orderEvent.setStatus(status);
-
-        return orderEventRepository.save(orderEvent);
-    }
-
-    private OrderStatus mapEventStatusToOrderStatus(OrderEventStatus status) {
-        return switch (status) {
-            case CREATED, SHIPPING_ADDRESS_UPDATED -> OrderStatus.PENDING;
-            case PAYMENT_STARTED -> OrderStatus.PROCESSING;
-            case PAYMENT_CANCELLED -> OrderStatus.CANCELLED;
-            case PAID_SUCCESS, CONFIRMED -> OrderStatus.CONFIRMED;
-            case PAID_FAILED, REJECTED -> OrderStatus.FAILED;
-            case DELIVERED -> OrderStatus.DELIVERED;
-            case REFUNDED -> OrderStatus.REFUNDED;
-            default -> throw new OrderValidationException(EVENT_STATUS_UNSUPPORTED_FOR_RESTORE + status);
-        };
-    }
-
-    private OrderEventStatus mapOrderStatusToRestoreEventStatus(OrderStatus status) {
-        return switch (status) {
-            case PENDING -> OrderEventStatus.CREATED;
-            case PROCESSING -> OrderEventStatus.PAYMENT_STARTED;
-            case CANCELLED -> OrderEventStatus.PAYMENT_CANCELLED;
-            case CONFIRMED -> OrderEventStatus.CONFIRMED;
-            case FAILED -> OrderEventStatus.REJECTED;
-            case DELIVERED -> OrderEventStatus.DELIVERED;
-            case REFUNDED -> OrderEventStatus.REFUNDED;
-            default -> throw new OrderValidationException(ORDER_STATUS_UNSUPPORTED_FOR_RESTORE_EVENT + status);
-        };
     }
 
     private OrderResponseDto toOrderResponseDTO(Order order) {
@@ -364,7 +213,4 @@ public class OrderServiceImpl implements OrderService {
             throw new InvalidOrderStatusException(ORDER_STATUS_NULL);
         }
     }
-
 }
-
-

@@ -1,4 +1,4 @@
-﻿package com.internship.order_service.service.impl;
+package com.internship.order_service.service.impl;
 
 import com.internship.order_service.model.Order;
 import com.internship.order_service.model.OrderEvent;

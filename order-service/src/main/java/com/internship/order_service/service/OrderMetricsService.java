@@ -1,4 +1,4 @@
-﻿package com.internship.order_service.service;
+package com.internship.order_service.service;
 
 import com.internship.order_service.dto.response.AverageCreateToPayDurationResponseDto;
 import com.internship.order_service.dto.response.ShippingAddressChangeFrequencyResponseDto;

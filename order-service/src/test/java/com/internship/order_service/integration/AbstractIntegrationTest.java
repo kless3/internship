@@ -1,4 +1,4 @@
-﻿package com.internship.order_service.integration;
+package com.internship.order_service.integration;
 
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
