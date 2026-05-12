@@ -31,3 +31,13 @@ export async function restoreOrder(orderId, date) {
   });
   return data;
 }
+
+export async function applyDiscount(orderId, discountPercent) {
+  const { data } = await api.put(`/api/v1/orders/${orderId}/discount`, { discountPercent });
+  return data;
+}
+
+export async function removeDiscount(orderId) {
+  const { data } = await api.delete(`/api/v1/orders/${orderId}/discount`);
+  return data;
+}

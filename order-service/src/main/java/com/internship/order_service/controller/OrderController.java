@@ -1,6 +1,7 @@
 package com.internship.order_service.controller;
 
 import com.internship.order_service.dto.response.OrderEventResponseDto;
+import com.internship.order_service.dto.request.ApplyDiscountRequestDto;
 import com.internship.order_service.dto.request.OrderRequestDto;
 import com.internship.order_service.dto.response.OrderResponseDto;
 import com.internship.order_service.dto.request.UpdateShippingAddressRequestDto;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -99,6 +101,19 @@ public class OrderController {
             @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime date
     ) {
         return new ResponseEntity<>(orderProcessingService.restoreOrderStatusAt(id, date), HttpStatus.OK);
+    }
+
+    @PutMapping("/{id}/discount")
+    public ResponseEntity<OrderResponseDto> applyDiscount(
+            @PathVariable Long id,
+            @Valid @RequestBody ApplyDiscountRequestDto requestDto
+    ) {
+        return new ResponseEntity<>(orderProcessingService.applyDiscount(id, requestDto.discountPercent()), HttpStatus.OK);
+    }
+
+    @DeleteMapping("/{id}/discount")
+    public ResponseEntity<OrderResponseDto> removeDiscount(@PathVariable Long id) {
+        return new ResponseEntity<>(orderProcessingService.applyDiscount(id, BigDecimal.ZERO), HttpStatus.OK);
     }
 }
 

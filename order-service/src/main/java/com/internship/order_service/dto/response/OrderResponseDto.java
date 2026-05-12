@@ -1,6 +1,7 @@
-﻿package com.internship.order_service.dto.response;
+package com.internship.order_service.dto.response;
 
 import com.internship.order_service.model.enums.OrderStatus;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -11,7 +12,8 @@ public record OrderResponseDto(
         LocalDateTime creationDate,
         String shippingAddress,
         List<OrderItemDto> orderItems,
-        UserInfoDto userInfoDto
+        UserInfoDto userInfoDto,
+        BigDecimal discountPercent
 ) {}
 
 

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
+  applyDiscount as applyDiscountRequest,
   fetchCurrentUserOrders,
   fetchOrderHistory,
   payOrder as payOrderRequest,
+  removeDiscount as removeDiscountRequest,
   restoreOrder,
   updateOrderShippingAddress
 } from '../api/orders.js';
@@ -238,6 +240,15 @@ export default function OrdersPage() {
     await loadOrders(0);
   }, [loadOrders]);
 
+  const handleApplyDiscount = useCallback(async (orderId, discountPercent) => {
+    if (discountPercent === 0) {
+      await removeDiscountRequest(orderId);
+    } else {
+      await applyDiscountRequest(orderId, discountPercent);
+    }
+    await loadOrders(0);
+  }, [loadOrders]);
+
 
   useEffect(() => {
     const loadProfileAndData = async () => {
@@ -319,6 +330,7 @@ export default function OrdersPage() {
               onRestoreOrder={restoreOrderStatus}
               onPayOrder={payOrder}
               onUpdateShippingAddress={updateShippingAddress}
+              onApplyDiscount={handleApplyDiscount}
               onPageChange={loadOrders}
             />
           </div>

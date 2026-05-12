@@ -14,7 +14,8 @@ export default function OrderList({
   loadOrderHistory,
   onRestoreOrder,
   onPayOrder,
-  onUpdateShippingAddress
+  onUpdateShippingAddress,
+  onApplyDiscount
 }) {
   const [expandedOrderIds, setExpandedOrderIds] = useState({});
   const [historyByOrderId, setHistoryByOrderId] = useState({});
@@ -31,6 +32,10 @@ export default function OrderList({
   const [shippingAddressLoadingByOrderId, setShippingAddressLoadingByOrderId] = useState({});
   const [shippingAddressErrorByOrderId, setShippingAddressErrorByOrderId] = useState({});
   const [shippingAddressSuccessByOrderId, setShippingAddressSuccessByOrderId] = useState({});
+  const [discountByOrderId, setDiscountByOrderId] = useState({});
+  const [discountLoadingByOrderId, setDiscountLoadingByOrderId] = useState({});
+  const [discountErrorByOrderId, setDiscountErrorByOrderId] = useState({});
+  const [discountSuccessByOrderId, setDiscountSuccessByOrderId] = useState({});
 
   const sortedOrders = useMemo(
     () => [...orders].sort((a, b) => new Date(b.creationDate) - new Date(a.creationDate)),
@@ -74,10 +79,10 @@ export default function OrderList({
   };
 
   const toRestoreRequestDate = (date) => {
-    if (!date) {
-      return '';
-    }
-    return date.length === 16 ? `${date}:59` : date;
+    if (!date) return '';
+    if (date.length === 16) return `${date}:59.999`;
+    if (date.length === 19) return `${date}.999`;
+    return date;
   };
 
   const restoreOrder = async (orderId) => {
@@ -186,6 +191,51 @@ export default function OrderList({
     }
   };
 
+  const handleApplyDiscount = async (orderId) => {
+    if (!orderId || typeof onApplyDiscount !== 'function') return;
+
+    const raw = discountByOrderId[orderId];
+    const value = raw !== undefined && raw !== '' ? Number(raw) : null;
+    if (value === null || isNaN(value) || value < 0 || value > 100) {
+      setDiscountErrorByOrderId((prev) => ({ ...prev, [orderId]: 'Enter a value between 0 and 100.' }));
+      return;
+    }
+
+    try {
+      setDiscountLoadingByOrderId((prev) => ({ ...prev, [orderId]: true }));
+      setDiscountErrorByOrderId((prev) => ({ ...prev, [orderId]: '' }));
+      setDiscountSuccessByOrderId((prev) => ({ ...prev, [orderId]: '' }));
+
+      await onApplyDiscount(orderId, value);
+      await Promise.resolve(onRefresh?.());
+
+      setDiscountSuccessByOrderId((prev) => ({ ...prev, [orderId]: `Discount ${value}% applied.` }));
+    } catch (e) {
+      setDiscountErrorByOrderId((prev) => ({ ...prev, [orderId]: normalizeApiError(e, 'Failed to apply discount.') }));
+    } finally {
+      setDiscountLoadingByOrderId((prev) => ({ ...prev, [orderId]: false }));
+    }
+  };
+
+  const handleRemoveDiscount = async (orderId) => {
+    if (!orderId || typeof onApplyDiscount !== 'function') return;
+
+    try {
+      setDiscountLoadingByOrderId((prev) => ({ ...prev, [orderId]: true }));
+      setDiscountErrorByOrderId((prev) => ({ ...prev, [orderId]: '' }));
+      setDiscountSuccessByOrderId((prev) => ({ ...prev, [orderId]: '' }));
+
+      await onApplyDiscount(orderId, 0);
+      await Promise.resolve(onRefresh?.());
+
+      setDiscountSuccessByOrderId((prev) => ({ ...prev, [orderId]: 'Discount removed.' }));
+    } catch (e) {
+      setDiscountErrorByOrderId((prev) => ({ ...prev, [orderId]: normalizeApiError(e, 'Failed to remove discount.') }));
+    } finally {
+      setDiscountLoadingByOrderId((prev) => ({ ...prev, [orderId]: false }));
+    }
+  };
+
   return (
     <div className="card shadow-sm h-100">
       <div className="card-body">
@@ -212,9 +262,23 @@ export default function OrderList({
 
               return (
                 <div key={order.id ?? `${order.creationDate}-${order.status}-${order.userId}`} className="border rounded p-3">
-                  <div className="d-flex justify-content-between">
-                    <span className="badge text-bg-primary">{order.status}</span>
-                    <strong>${total.toFixed(2)}</strong>
+                  <div className="d-flex justify-content-between align-items-start">
+                    <div className="d-flex flex-column gap-1">
+                      <span className="badge text-bg-primary">{order.status}</span>
+                      {order.discountPercent > 0 ? (
+                        <span className="badge text-bg-success">Discount {order.discountPercent}%</span>
+                      ) : null}
+                    </div>
+                    <div className="text-end">
+                      {order.discountPercent > 0 ? (
+                        <>
+                          <div className="text-muted text-decoration-line-through small">${total.toFixed(2)}</div>
+                          <strong>${(total * (1 - order.discountPercent / 100)).toFixed(2)}</strong>
+                        </>
+                      ) : (
+                        <strong>${total.toFixed(2)}</strong>
+                      )}
+                    </div>
                   </div>
                   <div className="small text-muted mt-2">{new Date(order.creationDate).toLocaleString()}</div>
                   <div className="small mt-1">
@@ -287,6 +351,53 @@ export default function OrderList({
                       ) : null}
                       {shippingAddressSuccessByOrderId[order.id] ? (
                         <div className="text-success small mt-1">{shippingAddressSuccessByOrderId[order.id]}</div>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {isAdmin && order.status === 'PENDING' ? (
+                    <div className="mt-3 pt-3 border-top">
+                      <label className="form-label small mb-1">Admin: apply discount (%)</label>
+                      <div className="input-group input-group-sm">
+                        <input
+                          className="form-control"
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.01"
+                          placeholder="0 – 100"
+                          value={discountByOrderId[order.id] ?? ''}
+                          onChange={(e) => {
+                            setDiscountByOrderId((prev) => ({ ...prev, [order.id]: e.target.value }));
+                            setDiscountErrorByOrderId((prev) => ({ ...prev, [order.id]: '' }));
+                            setDiscountSuccessByOrderId((prev) => ({ ...prev, [order.id]: '' }));
+                          }}
+                          disabled={Boolean(discountLoadingByOrderId[order.id])}
+                        />
+                        <button
+                          className="btn btn-outline-success"
+                          type="button"
+                          onClick={() => handleApplyDiscount(order.id)}
+                          disabled={Boolean(discountLoadingByOrderId[order.id])}
+                        >
+                          {discountLoadingByOrderId[order.id] ? 'Saving...' : 'Apply'}
+                        </button>
+                        {order.discountPercent > 0 ? (
+                          <button
+                            className="btn btn-outline-danger"
+                            type="button"
+                            onClick={() => handleRemoveDiscount(order.id)}
+                            disabled={Boolean(discountLoadingByOrderId[order.id])}
+                          >
+                            Remove
+                          </button>
+                        ) : null}
+                      </div>
+                      {discountErrorByOrderId[order.id] ? (
+                        <div className="text-danger small mt-1">{discountErrorByOrderId[order.id]}</div>
+                      ) : null}
+                      {discountSuccessByOrderId[order.id] ? (
+                        <div className="text-success small mt-1">{discountSuccessByOrderId[order.id]}</div>
                       ) : null}
                     </div>
                   ) : null}

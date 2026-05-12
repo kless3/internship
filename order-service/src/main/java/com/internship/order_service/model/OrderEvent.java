@@ -1,14 +1,21 @@
-﻿package com.internship.order_service.model;
+package com.internship.order_service.model;
 
 import com.internship.order_service.model.enums.OrderEventStatus;
-import com.internship.order_service.model.enums.OrderStatus;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -39,4 +46,7 @@ public class OrderEvent {
     @Column(name = "event_timestamp", nullable = false, updatable = false)
     @CreationTimestamp
     private LocalDateTime eventTimestamp;
+
+    @Column(name = "discount_percent", updatable = false, precision = 5, scale = 2)
+    private BigDecimal discountPercent;
 }

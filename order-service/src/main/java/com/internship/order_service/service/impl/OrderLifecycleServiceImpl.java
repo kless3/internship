@@ -135,7 +135,8 @@ public class OrderLifecycleServiceImpl implements OrderLifecycleService {
                                 orderResponseDto.creationDate(),
                                 orderResponseDto.shippingAddress(),
                                 orderResponseDto.orderItems(),
-                                user
+                                user,
+                                orderResponseDto.discountPercent()
                         );
                     });
 
@@ -204,7 +205,8 @@ public class OrderLifecycleServiceImpl implements OrderLifecycleService {
                 orderResponseDto.creationDate(),
                 orderResponseDto.shippingAddress(),
                 orderResponseDto.orderItems(),
-                userInfo
+                userInfo,
+                orderResponseDto.discountPercent()
         );
     }
 
