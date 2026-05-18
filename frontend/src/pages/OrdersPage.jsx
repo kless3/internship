@@ -3,6 +3,7 @@ import {
   applyDiscount as applyDiscountRequest,
   fetchCurrentUserOrders,
   fetchOrderHistory,
+  fetchOrderPriceAt,
   payOrder as payOrderRequest,
   removeDiscount as removeDiscountRequest,
   restoreOrder,
@@ -226,6 +227,10 @@ export default function OrdersPage() {
     return fetchOrderHistory(orderId);
   }, []);
 
+  const loadOrderPriceAt = useCallback(async (orderId, date) => {
+    return fetchOrderPriceAt(orderId, date);
+  }, []);
+
   const restoreOrderStatus = useCallback(async (orderId, date) => {
     return restoreOrder(orderId, date);
   }, []);
@@ -327,6 +332,7 @@ export default function OrdersPage() {
               error={ordersError}
               onRefresh={() => loadOrders(ordersPage)}
               loadOrderHistory={loadOrderHistory}
+              onLoadOrderPrice={loadOrderPriceAt}
               onRestoreOrder={restoreOrderStatus}
               onPayOrder={payOrder}
               onUpdateShippingAddress={updateShippingAddress}

@@ -25,6 +25,11 @@ export async function fetchOrderHistory(orderId) {
   return Array.isArray(data) ? data : [];
 }
 
+export async function fetchOrderPriceAt(orderId, date) {
+  const { data } = await api.get(`/api/v1/orders/${orderId}/price`, { params: { date } });
+  return data;
+}
+
 export async function restoreOrder(orderId, date) {
   const { data } = await api.post(`/api/v1/orders/${orderId}/restoration`, null, {
     params: { date }

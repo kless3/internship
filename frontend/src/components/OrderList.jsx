@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useDiscountAction } from '../hooks/useDiscountAction.js';
 import { useOrderPaymentAction } from '../hooks/useOrderPaymentAction.js';
+import { useOrderPriceLookup } from '../hooks/useOrderPriceLookup.js';
 import { useOrderTimeline } from '../hooks/useOrderTimeline.js';
 import { useShippingAddressAction } from '../hooks/useShippingAddressAction.js';
 import { normalizeApiError } from '../api/error-utils.js';
@@ -27,6 +28,7 @@ export default function OrderList({
   onRefresh,
   onPageChange,
   loadOrderHistory,
+  onLoadOrderPrice,
   onRestoreOrder,
   onPayOrder,
   onUpdateShippingAddress,
@@ -115,10 +117,31 @@ export default function OrderList({
     onApplyDiscount
   });
 
+  const {
+    priceDateByOrderId,
+    priceLoadingByOrderId,
+    priceErrorByOrderId,
+    priceResultByOrderId,
+    changePriceDate,
+    loadPriceAt
+  } = useOrderPriceLookup({
+    onLoadOrderPrice
+  });
+
   const sortedOrders = useMemo(
     () => [...orders].sort((a, b) => new Date(b.creationDate) - new Date(a.creationDate)),
     [orders]
   );
+
+  const formatMoney = (value) => {
+    const amount = Number(value ?? 0);
+    return Number.isFinite(amount) ? `$${amount.toFixed(2)}` : '$0.00';
+  };
+
+  const formatPercent = (value) => {
+    const percent = Number(value ?? 0);
+    return Number.isFinite(percent) ? percent.toFixed(2).replace(/\.?0+$/, '') : '0';
+  };
 
   const toLabel = (value) =>
     String(value ?? '')
@@ -149,6 +172,7 @@ export default function OrderList({
                 (sum, line) => sum + (line.item?.price ?? 0) * line.quantity,
                 0
               );
+              const priceResult = priceResultByOrderId[order.id];
 
               return (
                 <div key={order.id ?? `${order.creationDate}-${order.status}-${order.userId}`} className="border rounded p-3">
@@ -207,6 +231,68 @@ export default function OrderList({
                     ) : null}
                     {paySuccessByOrderId[order.id] ? (
                       <div className="text-success small mt-1">{paySuccessByOrderId[order.id]}</div>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-3 pt-3 border-top">
+                    <label className="form-label small mb-1">Price by date and time</label>
+                    <div className="input-group input-group-sm">
+                      <input
+                        className="form-control"
+                        type="datetime-local"
+                        step="1"
+                        value={priceDateByOrderId[order.id] ?? ''}
+                        onChange={(e) => changePriceDate(order.id, e.target.value)}
+                      />
+                      <button
+                        className="btn btn-outline-secondary"
+                        type="button"
+                        onClick={() => loadPriceAt(order.id)}
+                        disabled={Boolean(priceLoadingByOrderId[order.id])}
+                      >
+                        {priceLoadingByOrderId[order.id] ? 'Loading...' : 'Show price'}
+                      </button>
+                    </div>
+                    {priceErrorByOrderId[order.id] ? (
+                      <div className="text-danger small mt-1">{priceErrorByOrderId[order.id]}</div>
+                    ) : null}
+                    {priceResult ? (
+                      <div className="border rounded bg-light p-2 mt-2 small">
+                        <div className="d-flex justify-content-between">
+                          <span className="text-muted">At</span>
+                          <span>
+                            {priceResult.date
+                              ? new Date(priceResult.date).toLocaleString()
+                              : '-'}
+                          </span>
+                        </div>
+                        <div className="d-flex justify-content-between">
+                          <span className="text-muted">Subtotal</span>
+                          <span>{formatMoney(priceResult.subtotal)}</span>
+                        </div>
+                        <div className="d-flex justify-content-between">
+                          <span className="text-muted">Discount</span>
+                          <span>{formatPercent(priceResult.discountPercent)}%</span>
+                        </div>
+                        <div className="d-flex justify-content-between fw-semibold">
+                          <span>Total</span>
+                          <span>{formatMoney(priceResult.total)}</span>
+                        </div>
+                        {Array.isArray(priceResult.items) &&
+                        priceResult.items.length > 0 ? (
+                          <div className="mt-2 d-flex flex-column gap-1">
+                            {priceResult.items.map((item) => (
+                              <div
+                                key={`${order.id}-${item.itemId}`}
+                                className="d-flex justify-content-between text-muted"
+                              >
+                                <span>{item.itemName} x{item.quantity}</span>
+                                <span>{formatMoney(item.unitPrice)} / {formatMoney(item.subtotal)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
                     ) : null}
                   </div>
 

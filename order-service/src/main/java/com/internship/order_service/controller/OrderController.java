@@ -3,10 +3,12 @@ package com.internship.order_service.controller;
 import com.internship.order_service.dto.response.OrderEventResponseDto;
 import com.internship.order_service.dto.request.ApplyDiscountRequestDto;
 import com.internship.order_service.dto.request.OrderRequestDto;
+import com.internship.order_service.dto.response.OrderPriceResponseDto;
 import com.internship.order_service.dto.response.OrderResponseDto;
 import com.internship.order_service.dto.request.UpdateShippingAddressRequestDto;
 import com.internship.order_service.model.enums.OrderStatus;
 import com.internship.order_service.service.OrderLifecycleService;
+import com.internship.order_service.service.OrderPriceService;
 import com.internship.order_service.service.OrderProcessingService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -36,6 +38,7 @@ public class OrderController {
 
     private final OrderLifecycleService orderLifecycleService;
     private final OrderProcessingService orderProcessingService;
+    private final OrderPriceService orderPriceService;
 
     @GetMapping("/{id}")
     public ResponseEntity<OrderResponseDto> getOrderById(@PathVariable Long id){
@@ -96,6 +99,14 @@ public class OrderController {
         return new ResponseEntity<>(orderProcessingService.getOrderHistory(id), HttpStatus.OK);
     }
 
+    @GetMapping("/{id}/price")
+    public ResponseEntity<OrderPriceResponseDto> getOrderPriceAt(
+            @PathVariable Long id,
+            @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime date
+    ) {
+        return new ResponseEntity<>(orderPriceService.getOrderPriceAt(id, date), HttpStatus.OK);
+    }
+
     @PostMapping("/{id}/restoration")
     public ResponseEntity<OrderResponseDto> restoreOrderStatusAt(@PathVariable Long id,
             @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime date
@@ -116,4 +127,3 @@ public class OrderController {
         return new ResponseEntity<>(orderProcessingService.applyDiscount(id, BigDecimal.ZERO), HttpStatus.OK);
     }
 }
-

@@ -1,4 +1,4 @@
-﻿package com.internship.order_service.repository;
+package com.internship.order_service.repository;
 
 import com.internship.order_service.model.ItemPriceEvent;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,5 +17,11 @@ public interface ItemPriceEventRepository extends JpaRepository<ItemPriceEvent, 
             Long itemId,
             LocalDateTime timestamp
     );
-}
 
+    ItemPriceEvent findTopByItemIdAndEventTimestampLessThanEqualOrderByEventTimestampDesc(
+            Long itemId,
+            LocalDateTime timestamp
+    );
+
+    ItemPriceEvent findTopByItemIdOrderByEventTimestampAsc(Long itemId);
+}
