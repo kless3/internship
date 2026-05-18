@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createOrder } from '../api/orders.js';
-import { fetchItemPriceHistory, fetchItems, updateItemPrice as updateItemPriceRequest } from '../api/items.js';
+import { updateItemPrice as updateItemPriceRequest } from '../api/items.js';
 import { normalizeApiError } from '../api/error-utils.js';
+import { useCatalog } from '../hooks/useCatalog.js';
+import { useItemPriceHistory } from '../hooks/useItemPriceHistory.js';
 
 function ItemPriceChart({ points }) {
   if (!Array.isArray(points) || points.length === 0) {
@@ -44,21 +46,22 @@ function ItemPriceChart({ points }) {
 }
 
 export default function OrderCreate({ userProfile, isAdmin, onCreated }) {
-  const [catalog, setCatalog] = useState([]);
-  const [catalogLoading, setCatalogLoading] = useState(true);
-  const [catalogPage, setCatalogPage] = useState(0);
-  const [catalogSize] = useState(10);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalElements, setTotalElements] = useState(0);
+  const {
+    catalog,
+    catalogLoading,
+    catalogPage,
+    totalPages,
+    totalElements,
+    catalogError,
+    setCatalogPage,
+    updateCatalogItem
+  } = useCatalog(10);
   const [selectedId, setSelectedId] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [cart, setCart] = useState([]);
   const [shippingAddress, setShippingAddress] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [priceHistory, setPriceHistory] = useState([]);
-  const [priceHistoryLoading, setPriceHistoryLoading] = useState(false);
-  const [priceHistoryError, setPriceHistoryError] = useState('');
   const [newPrice, setNewPrice] = useState('');
   const [updatingPrice, setUpdatingPrice] = useState(false);
   const [updatePriceError, setUpdatePriceError] = useState('');
@@ -70,66 +73,16 @@ export default function OrderCreate({ userProfile, isAdmin, onCreated }) {
 
   const totalAmount = cart.reduce((sum, line) => sum + line.item.price * line.quantity, 0);
 
-  useEffect(() => {
-    const loadCatalog = async () => {
-      try {
-        setCatalogLoading(true);
-        setError('');
-
-        const data = await fetchItems(catalogPage, catalogSize);
-
-        const content = Array.isArray(data?.content) ? data.content : [];
-        const resolvedTotalPages =
-          Number.isFinite(Number(data?.totalPages)) && Number(data.totalPages) > 0
-            ? Number(data.totalPages)
-            : 1;
-
-        setCatalog(content);
-        setTotalPages(resolvedTotalPages);
-        setTotalElements(Number.isFinite(Number(data?.totalElements)) ? Number(data.totalElements) : content.length);
-
-        const backendPage = Number.isFinite(Number(data?.number)) ? Number(data.number) : catalogPage;
-        if (backendPage !== catalogPage) {
-          setCatalogPage(backendPage);
-        }
-      } catch (e) {
-        setError(normalizeApiError(e, 'Failed to load catalog.'));
-      } finally {
-        setCatalogLoading(false);
-      }
-    };
-
-    loadCatalog();
-  }, [catalogPage, catalogSize]);
+  const {
+    priceHistory,
+    priceHistoryLoading,
+    priceHistoryError,
+    refreshPriceHistory
+  } = useItemPriceHistory(selectedProduct?.id, 6);
 
   useEffect(() => {
     setSelectedId('');
   }, [catalogPage]);
-
-  useEffect(() => {
-    const loadPriceHistory = async () => {
-      if (!selectedProduct?.id) {
-        setPriceHistory([]);
-        setPriceHistoryError('');
-        setPriceHistoryLoading(false);
-        return;
-      }
-
-      try {
-        setPriceHistoryLoading(true);
-        setPriceHistoryError('');
-        const data = await fetchItemPriceHistory(selectedProduct.id, 6);
-        setPriceHistory(data);
-      } catch (e) {
-        setPriceHistory([]);
-        setPriceHistoryError(normalizeApiError(e, 'Failed to load item price history.'));
-      } finally {
-        setPriceHistoryLoading(false);
-      }
-    };
-
-    loadPriceHistory();
-  }, [selectedProduct?.id]);
 
   useEffect(() => {
     setNewPrice(selectedProduct?.price != null ? String(selectedProduct.price) : '');
@@ -213,12 +166,8 @@ export default function OrderCreate({ userProfile, isAdmin, onCreated }) {
 
       const data = await updateItemPriceRequest(selectedProduct.id, Number(parsedPrice.toFixed(2)));
 
-      setCatalog((prev) =>
-        prev.map((item) => (item.id === selectedProduct.id ? { ...item, price: data?.price ?? item.price } : item))
-      );
-
-      const historyData = await fetchItemPriceHistory(selectedProduct.id, 6);
-      setPriceHistory(historyData);
+      updateCatalogItem(selectedProduct.id, { price: data?.price ?? selectedProduct.price });
+      await refreshPriceHistory();
     } catch (e) {
       setUpdatePriceError(normalizeApiError(e, 'Failed to update item price.'));
     } finally {
@@ -366,6 +315,7 @@ export default function OrderCreate({ userProfile, isAdmin, onCreated }) {
         {!catalogLoading && catalog.length === 0 ? (
           <div className="text-muted small mb-2">No catalog items on this page.</div>
         ) : null}
+        {catalogError ? <div className="alert alert-danger py-2">{catalogError}</div> : null}
         {error ? <div className="alert alert-danger py-2">{error}</div> : null}
         <button className="btn btn-primary w-100" onClick={submitOrder} disabled={submitting || !userProfile}>
           {submitting ? 'Submitting...' : 'Place order'}

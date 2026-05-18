@@ -1,5 +1,20 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useDiscountAction } from '../hooks/useDiscountAction.js';
+import { useOrderPaymentAction } from '../hooks/useOrderPaymentAction.js';
+import { useOrderTimeline } from '../hooks/useOrderTimeline.js';
+import { useShippingAddressAction } from '../hooks/useShippingAddressAction.js';
 import { normalizeApiError } from '../api/error-utils.js';
+
+function setById(setter, id, value) {
+  setter((prev) => ({ ...prev, [id]: value }));
+}
+
+function toInclusiveRestoreTimestamp(date) {
+  if (!date) return '';
+  if (date.length === 16) return `${date}:59.999`;
+  if (date.length === 19) return `${date}.999`;
+  return date;
+}
 
 export default function OrderList({
   orders,
@@ -17,25 +32,88 @@ export default function OrderList({
   onUpdateShippingAddress,
   onApplyDiscount
 }) {
-  const [expandedOrderIds, setExpandedOrderIds] = useState({});
-  const [historyByOrderId, setHistoryByOrderId] = useState({});
-  const [historyLoadingByOrderId, setHistoryLoadingByOrderId] = useState({});
-  const [historyErrorByOrderId, setHistoryErrorByOrderId] = useState({});
+  const {
+    expandedOrderIds,
+    historyByOrderId,
+    historyLoadingByOrderId,
+    historyErrorByOrderId,
+    refreshTimeline,
+    toggleTimeline
+  } = useOrderTimeline(loadOrderHistory);
+
   const [restoreDateByOrderId, setRestoreDateByOrderId] = useState({});
   const [restoreLoadingByOrderId, setRestoreLoadingByOrderId] = useState({});
   const [restoreErrorByOrderId, setRestoreErrorByOrderId] = useState({});
   const [restoreSuccessByOrderId, setRestoreSuccessByOrderId] = useState({});
-  const [payLoadingByOrderId, setPayLoadingByOrderId] = useState({});
-  const [payErrorByOrderId, setPayErrorByOrderId] = useState({});
-  const [paySuccessByOrderId, setPaySuccessByOrderId] = useState({});
-  const [shippingAddressByOrderId, setShippingAddressByOrderId] = useState({});
-  const [shippingAddressLoadingByOrderId, setShippingAddressLoadingByOrderId] = useState({});
-  const [shippingAddressErrorByOrderId, setShippingAddressErrorByOrderId] = useState({});
-  const [shippingAddressSuccessByOrderId, setShippingAddressSuccessByOrderId] = useState({});
-  const [discountByOrderId, setDiscountByOrderId] = useState({});
-  const [discountLoadingByOrderId, setDiscountLoadingByOrderId] = useState({});
-  const [discountErrorByOrderId, setDiscountErrorByOrderId] = useState({});
-  const [discountSuccessByOrderId, setDiscountSuccessByOrderId] = useState({});
+
+  const changeRestoreDate = useCallback((orderId, nextValue) => {
+    setById(setRestoreDateByOrderId, orderId, nextValue);
+    setById(setRestoreErrorByOrderId, orderId, '');
+    setById(setRestoreSuccessByOrderId, orderId, '');
+  }, []);
+
+  const restoreOrder = useCallback(async (orderId) => {
+    if (!orderId || typeof onRestoreOrder !== 'function') {
+      return;
+    }
+
+    const inclusiveRestoreTimestamp = toInclusiveRestoreTimestamp(restoreDateByOrderId[orderId]);
+    if (!inclusiveRestoreTimestamp) {
+      setById(setRestoreErrorByOrderId, orderId, 'Select date and time first.');
+      return;
+    }
+
+    try {
+      setById(setRestoreLoadingByOrderId, orderId, true);
+      setById(setRestoreErrorByOrderId, orderId, '');
+      setById(setRestoreSuccessByOrderId, orderId, '');
+
+      await onRestoreOrder(orderId, inclusiveRestoreTimestamp);
+      await Promise.resolve(onRefresh?.());
+      await refreshTimeline?.(orderId);
+
+      setById(setRestoreSuccessByOrderId, orderId, 'Status restored successfully.');
+    } catch (e) {
+      setById(setRestoreErrorByOrderId, orderId, normalizeApiError(e, 'Failed to restore order status.'));
+    } finally {
+      setById(setRestoreLoadingByOrderId, orderId, false);
+    }
+  }, [onRefresh, onRestoreOrder, refreshTimeline, restoreDateByOrderId]);
+
+  const {
+    payLoadingByOrderId,
+    payErrorByOrderId,
+    paySuccessByOrderId,
+    payOrder
+  } = useOrderPaymentAction({
+    onPayOrder,
+    refreshTimeline
+  });
+
+  const {
+    shippingAddressByOrderId,
+    shippingAddressLoadingByOrderId,
+    shippingAddressErrorByOrderId,
+    shippingAddressSuccessByOrderId,
+    changeShippingAddress,
+    saveShippingAddress
+  } = useShippingAddressAction({
+    onUpdateShippingAddress,
+    refreshTimeline
+  });
+
+  const {
+    discountByOrderId,
+    discountLoadingByOrderId,
+    discountErrorByOrderId,
+    discountSuccessByOrderId,
+    changeDiscount,
+    applyDiscount,
+    removeDiscount
+  } = useDiscountAction({
+    onRefresh,
+    onApplyDiscount
+  });
 
   const sortedOrders = useMemo(
     () => [...orders].sort((a, b) => new Date(b.creationDate) - new Date(a.creationDate)),
@@ -47,194 +125,6 @@ export default function OrderList({
       .toLowerCase()
       .replaceAll('_', ' ')
       .replace(/\b\w/g, (char) => char.toUpperCase());
-
-  const toggleTimeline = async (orderId) => {
-    if (!orderId) {
-      return;
-    }
-
-    const isOpen = Boolean(expandedOrderIds[orderId]);
-    if (isOpen) {
-      setExpandedOrderIds((prev) => ({ ...prev, [orderId]: false }));
-      return;
-    }
-
-    setExpandedOrderIds((prev) => ({ ...prev, [orderId]: true }));
-
-    if (historyByOrderId[orderId] || historyLoadingByOrderId[orderId] || typeof loadOrderHistory !== 'function') {
-      return;
-    }
-
-    try {
-      setHistoryLoadingByOrderId((prev) => ({ ...prev, [orderId]: true }));
-      setHistoryErrorByOrderId((prev) => ({ ...prev, [orderId]: '' }));
-
-      const history = await loadOrderHistory(orderId);
-      setHistoryByOrderId((prev) => ({ ...prev, [orderId]: history }));
-    } catch {
-      setHistoryErrorByOrderId((prev) => ({ ...prev, [orderId]: 'Failed to load order timeline.' }));
-    } finally {
-      setHistoryLoadingByOrderId((prev) => ({ ...prev, [orderId]: false }));
-    }
-  };
-
-  const toRestoreRequestDate = (date) => {
-    if (!date) return '';
-    if (date.length === 16) return `${date}:59.999`;
-    if (date.length === 19) return `${date}.999`;
-    return date;
-  };
-
-  const restoreOrder = async (orderId) => {
-    if (!orderId || typeof onRestoreOrder !== 'function') {
-      return;
-    }
-
-    const selectedDate = restoreDateByOrderId[orderId];
-    const requestDate = toRestoreRequestDate(selectedDate);
-    if (!requestDate) {
-      setRestoreErrorByOrderId((prev) => ({ ...prev, [orderId]: 'Select date and time first.' }));
-      return;
-    }
-
-    try {
-      setRestoreLoadingByOrderId((prev) => ({ ...prev, [orderId]: true }));
-      setRestoreErrorByOrderId((prev) => ({ ...prev, [orderId]: '' }));
-      setRestoreSuccessByOrderId((prev) => ({ ...prev, [orderId]: '' }));
-
-      await onRestoreOrder(orderId, requestDate);
-      await Promise.resolve(onRefresh?.());
-
-      if (typeof loadOrderHistory === 'function') {
-        setHistoryLoadingByOrderId((prev) => ({ ...prev, [orderId]: true }));
-        const refreshedHistory = await loadOrderHistory(orderId);
-        setHistoryByOrderId((prev) => ({ ...prev, [orderId]: refreshedHistory }));
-      }
-
-      setRestoreSuccessByOrderId((prev) => ({ ...prev, [orderId]: 'Status restored successfully.' }));
-    } catch (e) {
-      setRestoreErrorByOrderId((prev) => ({
-        ...prev,
-        [orderId]: normalizeApiError(e, 'Failed to restore order status.')
-      }));
-    } finally {
-      setRestoreLoadingByOrderId((prev) => ({ ...prev, [orderId]: false }));
-      setHistoryLoadingByOrderId((prev) => ({ ...prev, [orderId]: false }));
-    }
-  };
-
-  const payOrder = async (orderId) => {
-    if (!orderId || typeof onPayOrder !== 'function') {
-      return;
-    }
-
-    try {
-      setPayLoadingByOrderId((prev) => ({ ...prev, [orderId]: true }));
-      setPayErrorByOrderId((prev) => ({ ...prev, [orderId]: '' }));
-      setPaySuccessByOrderId((prev) => ({ ...prev, [orderId]: '' }));
-
-      await onPayOrder(orderId);
-
-      if (typeof loadOrderHistory === 'function') {
-        setHistoryLoadingByOrderId((prev) => ({ ...prev, [orderId]: true }));
-        setHistoryErrorByOrderId((prev) => ({ ...prev, [orderId]: '' }));
-        const refreshedHistory = await loadOrderHistory(orderId);
-        setHistoryByOrderId((prev) => ({ ...prev, [orderId]: refreshedHistory }));
-      }
-
-      setPaySuccessByOrderId((prev) => ({ ...prev, [orderId]: 'Payment started.' }));
-    } catch (e) {
-      setPayErrorByOrderId((prev) => ({
-        ...prev,
-        [orderId]: normalizeApiError(e, 'Failed to start payment.')
-      }));
-    } finally {
-      setPayLoadingByOrderId((prev) => ({ ...prev, [orderId]: false }));
-      setHistoryLoadingByOrderId((prev) => ({ ...prev, [orderId]: false }));
-    }
-  };
-
-  const saveShippingAddress = async (orderId, fallbackAddress) => {
-    if (!orderId || typeof onUpdateShippingAddress !== 'function') {
-      return;
-    }
-
-    const address = (shippingAddressByOrderId[orderId] ?? fallbackAddress ?? '').trim();
-    if (!address) {
-      setShippingAddressErrorByOrderId((prev) => ({ ...prev, [orderId]: 'Shipping address is required.' }));
-      return;
-    }
-
-    try {
-      setShippingAddressLoadingByOrderId((prev) => ({ ...prev, [orderId]: true }));
-      setShippingAddressErrorByOrderId((prev) => ({ ...prev, [orderId]: '' }));
-      setShippingAddressSuccessByOrderId((prev) => ({ ...prev, [orderId]: '' }));
-
-      await onUpdateShippingAddress(orderId, address);
-
-      if (typeof loadOrderHistory === 'function') {
-        setHistoryLoadingByOrderId((prev) => ({ ...prev, [orderId]: true }));
-        setHistoryErrorByOrderId((prev) => ({ ...prev, [orderId]: '' }));
-        const refreshedHistory = await loadOrderHistory(orderId);
-        setHistoryByOrderId((prev) => ({ ...prev, [orderId]: refreshedHistory }));
-      }
-
-      setShippingAddressSuccessByOrderId((prev) => ({ ...prev, [orderId]: 'Shipping address updated.' }));
-    } catch (e) {
-      setShippingAddressErrorByOrderId((prev) => ({
-        ...prev,
-        [orderId]: normalizeApiError(e, 'Failed to update shipping address.')
-      }));
-    } finally {
-      setShippingAddressLoadingByOrderId((prev) => ({ ...prev, [orderId]: false }));
-      setHistoryLoadingByOrderId((prev) => ({ ...prev, [orderId]: false }));
-    }
-  };
-
-  const handleApplyDiscount = async (orderId) => {
-    if (!orderId || typeof onApplyDiscount !== 'function') return;
-
-    const raw = discountByOrderId[orderId];
-    const value = raw !== undefined && raw !== '' ? Number(raw) : null;
-    if (value === null || isNaN(value) || value < 0 || value > 100) {
-      setDiscountErrorByOrderId((prev) => ({ ...prev, [orderId]: 'Enter a value between 0 and 100.' }));
-      return;
-    }
-
-    try {
-      setDiscountLoadingByOrderId((prev) => ({ ...prev, [orderId]: true }));
-      setDiscountErrorByOrderId((prev) => ({ ...prev, [orderId]: '' }));
-      setDiscountSuccessByOrderId((prev) => ({ ...prev, [orderId]: '' }));
-
-      await onApplyDiscount(orderId, value);
-      await Promise.resolve(onRefresh?.());
-
-      setDiscountSuccessByOrderId((prev) => ({ ...prev, [orderId]: `Discount ${value}% applied.` }));
-    } catch (e) {
-      setDiscountErrorByOrderId((prev) => ({ ...prev, [orderId]: normalizeApiError(e, 'Failed to apply discount.') }));
-    } finally {
-      setDiscountLoadingByOrderId((prev) => ({ ...prev, [orderId]: false }));
-    }
-  };
-
-  const handleRemoveDiscount = async (orderId) => {
-    if (!orderId || typeof onApplyDiscount !== 'function') return;
-
-    try {
-      setDiscountLoadingByOrderId((prev) => ({ ...prev, [orderId]: true }));
-      setDiscountErrorByOrderId((prev) => ({ ...prev, [orderId]: '' }));
-      setDiscountSuccessByOrderId((prev) => ({ ...prev, [orderId]: '' }));
-
-      await onApplyDiscount(orderId, 0);
-      await Promise.resolve(onRefresh?.());
-
-      setDiscountSuccessByOrderId((prev) => ({ ...prev, [orderId]: 'Discount removed.' }));
-    } catch (e) {
-      setDiscountErrorByOrderId((prev) => ({ ...prev, [orderId]: normalizeApiError(e, 'Failed to remove discount.') }));
-    } finally {
-      setDiscountLoadingByOrderId((prev) => ({ ...prev, [orderId]: false }));
-    }
-  };
 
   return (
     <div className="card shadow-sm h-100">
@@ -329,12 +219,7 @@ export default function OrderList({
                           type="text"
                           maxLength="500"
                           value={shippingAddressByOrderId[order.id] ?? order.shippingAddress ?? ''}
-                          onChange={(e) => {
-                            const nextValue = e.target.value;
-                            setShippingAddressByOrderId((prev) => ({ ...prev, [order.id]: nextValue }));
-                            setShippingAddressErrorByOrderId((prev) => ({ ...prev, [order.id]: '' }));
-                            setShippingAddressSuccessByOrderId((prev) => ({ ...prev, [order.id]: '' }));
-                          }}
+                          onChange={(e) => changeShippingAddress(order.id, e.target.value)}
                           disabled={Boolean(shippingAddressLoadingByOrderId[order.id])}
                         />
                         <button
@@ -367,17 +252,13 @@ export default function OrderList({
                           step="0.01"
                           placeholder="0 – 100"
                           value={discountByOrderId[order.id] ?? ''}
-                          onChange={(e) => {
-                            setDiscountByOrderId((prev) => ({ ...prev, [order.id]: e.target.value }));
-                            setDiscountErrorByOrderId((prev) => ({ ...prev, [order.id]: '' }));
-                            setDiscountSuccessByOrderId((prev) => ({ ...prev, [order.id]: '' }));
-                          }}
+                          onChange={(e) => changeDiscount(order.id, e.target.value)}
                           disabled={Boolean(discountLoadingByOrderId[order.id])}
                         />
                         <button
                           className="btn btn-outline-success"
                           type="button"
-                          onClick={() => handleApplyDiscount(order.id)}
+                          onClick={() => applyDiscount(order.id)}
                           disabled={Boolean(discountLoadingByOrderId[order.id])}
                         >
                           {discountLoadingByOrderId[order.id] ? 'Saving...' : 'Apply'}
@@ -386,7 +267,7 @@ export default function OrderList({
                           <button
                             className="btn btn-outline-danger"
                             type="button"
-                            onClick={() => handleRemoveDiscount(order.id)}
+                            onClick={() => removeDiscount(order.id)}
                             disabled={Boolean(discountLoadingByOrderId[order.id])}
                           >
                             Remove
@@ -411,12 +292,7 @@ export default function OrderList({
                           type="datetime-local"
                           step="1"
                           value={restoreDateByOrderId[order.id] ?? ''}
-                          onChange={(e) => {
-                            const nextValue = e.target.value;
-                            setRestoreDateByOrderId((prev) => ({ ...prev, [order.id]: nextValue }));
-                            setRestoreErrorByOrderId((prev) => ({ ...prev, [order.id]: '' }));
-                            setRestoreSuccessByOrderId((prev) => ({ ...prev, [order.id]: '' }));
-                          }}
+                          onChange={(e) => changeRestoreDate(order.id, e.target.value)}
                         />
                         <button
                           className="btn btn-outline-warning"
