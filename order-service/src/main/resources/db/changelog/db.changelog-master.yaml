@@ -11,9 +11,3 @@ databaseChangeLog:
       file: db/changelog/changeset/004-insert-test-data.yaml
   - include:
       file: db/changelog/changeset/006-create-item-price-events-table.yaml
-  - include:
-      file: db/changelog/changeset/007-add-shipping-address-to-orders.yaml
-  - include:
-      file: db/changelog/changeset/008-add-discount-to-orders.yaml
-  - include:
-      file: db/changelog/changeset/009-add-discount-to-order-events.yaml

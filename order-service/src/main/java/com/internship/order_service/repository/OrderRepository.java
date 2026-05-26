@@ -1,4 +1,4 @@
-﻿package com.internship.order_service.repository;
+package com.internship.order_service.repository;
 
 import com.internship.order_service.model.Order;
 import com.internship.order_service.model.enums.OrderStatus;

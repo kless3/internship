@@ -10,9 +10,10 @@ import com.internship.order_service.model.Order;
 import com.internship.order_service.model.OrderEvent;
 import com.internship.order_service.model.OrderItem;
 import com.internship.order_service.model.enums.OrderEventStatus;
+import com.internship.order_service.model.payload.OrderEventPayload;
 import com.internship.order_service.repository.ItemPriceEventRepository;
-import com.internship.order_service.repository.OrderEventRepository;
 import com.internship.order_service.repository.OrderRepository;
+import com.internship.order_service.service.OrderEventService;
 import com.internship.order_service.service.OrderPriceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -36,7 +37,7 @@ public class OrderPriceServiceImpl implements OrderPriceService {
     private static final int MONEY_SCALE = 2;
 
     private final OrderRepository orderRepository;
-    private final OrderEventRepository orderEventRepository;
+    private final OrderEventService orderEventService;
     private final ItemPriceEventRepository itemPriceEventRepository;
 
     @Override
@@ -51,8 +52,7 @@ public class OrderPriceServiceImpl implements OrderPriceService {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(ORDER_NOT_FOUND_WITH_ID + id));
 
-        List<OrderEvent> history = orderEventRepository
-                .findAllByOrderIdAndEventTimestampLessThanEqualOrderByEventTimestampAsc(id, date);
+        List<OrderEvent> history = orderEventService.getOrderHistoryUntil(id, date);
 
         if (history.isEmpty()) {
             throw new OrderValidationException(NO_HISTORICAL_STATE_AT_TIME + date);
@@ -119,10 +119,11 @@ public class OrderPriceServiceImpl implements OrderPriceService {
             if (event.getStatus() == OrderEventStatus.DISCOUNT_APPLIED ||
                     event.getStatus() == OrderEventStatus.DISCOUNT_REMOVED) {
 
-                if (event.getDiscountPercent() == null) {
+                BigDecimal eventDiscountPercent = OrderEventPayload.getDiscountPercent(event);
+                if (eventDiscountPercent == null) {
                     discountPercent = BigDecimal.ZERO;
                 } else {
-                    discountPercent = event.getDiscountPercent();
+                    discountPercent = eventDiscountPercent;
                 }
 
             }

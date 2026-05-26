@@ -39,6 +39,11 @@ databaseChangeLog:
                   constraints:
                     nullable: false
                   defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: payload
+                  type: jsonb
+                  constraints:
+                    nullable: true
 
         - createIndex:
             indexName: idx_order_events_order_id

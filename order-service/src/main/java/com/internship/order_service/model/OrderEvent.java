@@ -14,9 +14,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Entity
 @Table(name = "order_events")
@@ -47,6 +49,7 @@ public class OrderEvent {
     @CreationTimestamp
     private LocalDateTime eventTimestamp;
 
-    @Column(name = "discount_percent", updatable = false, precision = 5, scale = 2)
-    private BigDecimal discountPercent;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "payload", columnDefinition = "jsonb", updatable = false)
+    private Map<String, Object> payload;
 }

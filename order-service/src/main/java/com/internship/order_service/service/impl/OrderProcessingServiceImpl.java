@@ -14,8 +14,9 @@ import com.internship.order_service.model.Order;
 import com.internship.order_service.model.OrderEvent;
 import com.internship.order_service.model.enums.OrderEventStatus;
 import com.internship.order_service.model.enums.OrderStatus;
-import com.internship.order_service.repository.OrderEventRepository;
+import com.internship.order_service.model.payload.OrderEventPayload;
 import com.internship.order_service.repository.OrderRepository;
+import com.internship.order_service.service.OrderEventService;
 import com.internship.order_service.service.OrderProcessingService;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
@@ -41,7 +42,7 @@ public class OrderProcessingServiceImpl implements OrderProcessingService {
     private static final String DISCOUNT_ONLY_FOR_PENDING_ORDERS = "Discount can only be applied to pending orders";
 
     private final OrderRepository orderRepository;
-    private final OrderEventRepository orderEventRepository;
+    private final OrderEventService orderEventService;
     private final OrderMapper orderMapper;
     private final UserServiceClient userServiceClient;
     private final OrderEventProducer orderEventProducer;
@@ -59,8 +60,8 @@ public class OrderProcessingServiceImpl implements OrderProcessingService {
             order.setStatus(OrderStatus.PROCESSING);
             Order savedOrder = orderRepository.save(order);
 
-            OrderEvent paymentStartedEvent = saveEvent(savedOrder, OrderEventStatus.PAYMENT_STARTED);
             BigDecimal totalAmount = calculateTotal(savedOrder);
+            OrderEvent paymentStartedEvent = orderEventService.savePaymentStarted(savedOrder, totalAmount);
             orderEventProducer.sendOrderCreatedEvent(paymentStartedEvent, totalAmount);
 
             return toOrderResponseDTO(savedOrder);
@@ -81,7 +82,7 @@ public class OrderProcessingServiceImpl implements OrderProcessingService {
             throw new ResourceNotFoundException(ORDER_NOT_FOUND_WITH_ID + orderId);
         }
 
-        return orderEventRepository.findAllByOrderIdOrderByEventTimestampAsc(orderId)
+        return orderEventService.getOrderHistory(orderId)
                 .stream()
                 .map(event -> new OrderEventResponseDto(
                         event.getStatus(),
@@ -103,8 +104,7 @@ public class OrderProcessingServiceImpl implements OrderProcessingService {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(ORDER_NOT_FOUND_WITH_ID + id));
 
-        List<OrderEvent> history = orderEventRepository
-                .findAllByOrderIdAndEventTimestampLessThanEqualOrderByEventTimestampAsc(id, date);
+        List<OrderEvent> history = orderEventService.getOrderHistoryUntil(id, date);
 
         if (history.isEmpty()) {
             throw new OrderValidationException(NO_HISTORICAL_STATE_AT_TIME + date);
@@ -113,7 +113,7 @@ public class OrderProcessingServiceImpl implements OrderProcessingService {
         replayEvents(order, history);
         Order savedOrder = orderRepository.save(order);
 
-        saveEvent(savedOrder, OrderEventStatus.RESTORED);
+        orderEventService.saveRestored(savedOrder, date);
 
         return toOrderResponseDTO(savedOrder);
     }
@@ -137,40 +137,9 @@ public class OrderProcessingServiceImpl implements OrderProcessingService {
         } else {
             eventStatus = OrderEventStatus.DISCOUNT_APPLIED;
         }
-        saveDiscountEvent(savedOrder, discountPercent, eventStatus);
+        orderEventService.saveDiscountChanged(savedOrder, discountPercent, eventStatus);
 
         return toOrderResponseDTO(savedOrder);
-    }
-
-    private void applyEvent(Order order, OrderEvent event) {
-        switch (event.getStatus()) {
-            case CREATED, SHIPPING_ADDRESS_UPDATED -> order.setStatus(OrderStatus.PENDING);
-            case PAYMENT_STARTED -> order.setStatus(OrderStatus.PROCESSING);
-            case PAYMENT_CANCELLED -> order.setStatus(OrderStatus.CANCELLED);
-            case PAID_SUCCESS, CONFIRMED -> order.setStatus(OrderStatus.CONFIRMED);
-            case PAID_FAILED, REJECTED -> order.setStatus(OrderStatus.FAILED);
-            case DELIVERED -> order.setStatus(OrderStatus.DELIVERED);
-            case REFUNDED -> order.setStatus(OrderStatus.REFUNDED);
-            case DISCOUNT_APPLIED, DISCOUNT_REMOVED -> order.setDiscountPercent(event.getDiscountPercent());
-            case RESTORED -> {}
-        }
-    }
-
-    BigDecimal calculateTotal(Order order) {
-        return order.getOrderItems().stream()
-                .map(orderItem -> orderItem.getItem().getPrice()
-                        .multiply(BigDecimal.valueOf(orderItem.getQuantity())))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
-    OrderEvent saveEvent(Order order, OrderEventStatus status) {
-        OrderEvent orderEvent = new OrderEvent();
-        orderEvent.setOrderId(order.getId());
-        orderEvent.setUserId(order.getUserId());
-        orderEvent.setUserEmail(order.getUserEmail());
-        orderEvent.setStatus(status);
-
-        return orderEventRepository.save(orderEvent);
     }
 
     private void replayEvents(Order order, List<OrderEvent> events) {
@@ -179,15 +148,24 @@ public class OrderProcessingServiceImpl implements OrderProcessingService {
         }
     }
 
-    private void saveDiscountEvent(Order order, BigDecimal discountPercent, OrderEventStatus status) {
-        OrderEvent orderEvent = new OrderEvent();
-        orderEvent.setOrderId(order.getId());
-        orderEvent.setUserId(order.getUserId());
-        orderEvent.setUserEmail(order.getUserEmail());
-        orderEvent.setStatus(status);
-        orderEvent.setDiscountPercent(discountPercent);
-
-        orderEventRepository.save(orderEvent);
+    private void applyEvent(Order order, OrderEvent event) {
+        switch (event.getStatus()) {
+            case CREATED, SHIPPING_ADDRESS_UPDATED -> {
+                order.setStatus(OrderStatus.PENDING);
+                String shippingAddress = OrderEventPayload.getShippingAddress(event);
+                if (shippingAddress != null) {
+                    order.setShippingAddress(shippingAddress);
+                }
+            }
+            case PAYMENT_STARTED -> order.setStatus(OrderStatus.PROCESSING);
+            case PAYMENT_CANCELLED -> order.setStatus(OrderStatus.CANCELLED);
+            case PAID_SUCCESS, CONFIRMED -> order.setStatus(OrderStatus.CONFIRMED);
+            case PAID_FAILED, REJECTED -> order.setStatus(OrderStatus.FAILED);
+            case DELIVERED -> order.setStatus(OrderStatus.DELIVERED);
+            case REFUNDED -> order.setStatus(OrderStatus.REFUNDED);
+            case DISCOUNT_APPLIED, DISCOUNT_REMOVED -> order.setDiscountPercent(OrderEventPayload.getDiscountPercent(event));
+            case RESTORED -> {}
+        }
     }
 
     private OrderResponseDto toOrderResponseDTO(Order order) {
@@ -203,5 +181,12 @@ public class OrderProcessingServiceImpl implements OrderProcessingService {
                 userInfo,
                 orderResponseDto.discountPercent()
         );
+    }
+
+    private BigDecimal calculateTotal(Order order) {
+        return order.getOrderItems().stream()
+                .map(orderItem -> orderItem.getItem().getPrice()
+                        .multiply(BigDecimal.valueOf(orderItem.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }

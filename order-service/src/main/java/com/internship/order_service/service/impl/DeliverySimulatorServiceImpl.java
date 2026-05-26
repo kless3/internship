@@ -1,12 +1,11 @@
 package com.internship.order_service.service.impl;
 
 import com.internship.order_service.model.Order;
-import com.internship.order_service.model.OrderEvent;
 import com.internship.order_service.model.enums.OrderEventStatus;
 import com.internship.order_service.model.enums.OrderStatus;
-import com.internship.order_service.repository.OrderEventRepository;
 import com.internship.order_service.repository.OrderRepository;
 import com.internship.order_service.service.DeliverySimulatorService;
+import com.internship.order_service.service.OrderEventService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,28 +16,24 @@ import java.util.concurrent.ThreadLocalRandom;
 @RequiredArgsConstructor
 public class DeliverySimulatorServiceImpl implements DeliverySimulatorService {
 
-    private final OrderEventRepository orderEventRepository;
+    private final OrderEventService orderEventService;
     private final OrderRepository orderRepository;
 
     @Override
     @Transactional
     public void simulateConfirmation(Order order, OrderEventStatus status) {
 
-        OrderEvent orderEvent = new OrderEvent();
-        orderEvent.setUserId(order.getUserId());
-        orderEvent.setOrderId(order.getId());
-        orderEvent.setUserEmail(order.getUserEmail());
-
+        OrderEventStatus confirmationResult;
         if (status == OrderEventStatus.PAID_SUCCESS) {
             order.setStatus(OrderStatus.CONFIRMED);
-            orderEvent.setStatus(OrderEventStatus.CONFIRMED);
+            confirmationResult = OrderEventStatus.CONFIRMED;
         } else {
             order.setStatus(OrderStatus.FAILED);
-            orderEvent.setStatus(OrderEventStatus.REJECTED);
+            confirmationResult = OrderEventStatus.REJECTED;
         }
 
         Order updatedOrder = orderRepository.save(order);
-        orderEventRepository.save(orderEvent);
+        orderEventService.saveConfirmationResult(updatedOrder, confirmationResult);
 
         if (updatedOrder.getStatus() == OrderStatus.CONFIRMED) {
             simulateDelivery(updatedOrder);
@@ -48,27 +43,22 @@ public class DeliverySimulatorServiceImpl implements DeliverySimulatorService {
     @Override
     @Transactional
     public void simulateDelivery(Order order) {
-        OrderEvent orderEvent = new OrderEvent();
-        orderEvent.setUserId(order.getUserId());
-        orderEvent.setOrderId(order.getId());
-        orderEvent.setUserEmail(order.getUserEmail());
-
         int randomNumber = generateRandomNumber();
 
+        OrderEventStatus deliveryResult;
         if (randomNumber % 2 == 0) {
             order.setStatus(OrderStatus.DELIVERED);
-            orderEvent.setStatus(OrderEventStatus.DELIVERED);
+            deliveryResult = OrderEventStatus.DELIVERED;
         } else {
             order.setStatus(OrderStatus.REFUNDED);
-            orderEvent.setStatus(OrderEventStatus.REFUNDED);
+            deliveryResult = OrderEventStatus.REFUNDED;
         }
 
-        orderRepository.save(order);
-        orderEventRepository.save(orderEvent);
+        Order updatedOrder = orderRepository.save(order);
+        orderEventService.saveDeliveryResult(updatedOrder, deliveryResult, randomNumber);
     }
 
     private int generateRandomNumber() {
         return ThreadLocalRandom.current().nextInt(1, 101);
     }
 }
-

@@ -16,7 +16,7 @@ export async function payOrder(orderId) {
 }
 
 export async function updateOrderShippingAddress(orderId, shippingAddress) {
-  const { data } = await api.put(`/api/v1/orders/${orderId}/adress`, { shippingAddress });
+  const { data } = await api.put(`/api/v1/orders/${orderId}/address`, { shippingAddress });
   return data;
 }
 

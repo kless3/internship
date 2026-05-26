@@ -1,4 +1,4 @@
-﻿package com.internship.order_service.model.enums;
+package com.internship.order_service.model.enums;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

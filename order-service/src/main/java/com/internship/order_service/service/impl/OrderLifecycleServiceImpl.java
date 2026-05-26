@@ -12,9 +12,9 @@ import com.internship.order_service.exception.ResourceNotFoundException;
 import com.internship.order_service.exception.UserServiceUnavailableException;
 import com.internship.order_service.mapper.OrderMapper;
 import com.internship.order_service.model.Order;
-import com.internship.order_service.model.enums.OrderEventStatus;
 import com.internship.order_service.model.enums.OrderStatus;
 import com.internship.order_service.repository.OrderRepository;
+import com.internship.order_service.service.OrderEventService;
 import com.internship.order_service.service.OrderLifecycleService;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
@@ -46,7 +46,7 @@ public class OrderLifecycleServiceImpl implements OrderLifecycleService {
     private final OrderRepository orderRepository;
     private final OrderMapper orderMapper;
     private final UserServiceClient userServiceClient;
-    private final OrderProcessingServiceImpl orderProcessingService;
+    private final OrderEventService orderEventService;
 
     @Override
     public OrderResponseDto createOrder(OrderRequestDto orderRequestDto) {
@@ -59,7 +59,7 @@ public class OrderLifecycleServiceImpl implements OrderLifecycleService {
             }
 
             Order savedOrder = orderRepository.save(order);
-            orderProcessingService.saveEvent(savedOrder, OrderEventStatus.CREATED);
+            orderEventService.saveCreated(savedOrder);
 
             return toOrderResponseDTO(savedOrder);
         } catch (FeignException e) {
@@ -174,7 +174,7 @@ public class OrderLifecycleServiceImpl implements OrderLifecycleService {
 
             order.setShippingAddress(requestDto.shippingAddress().trim());
             Order savedOrder = orderRepository.save(order);
-            orderProcessingService.saveEvent(savedOrder, OrderEventStatus.SHIPPING_ADDRESS_UPDATED);
+            orderEventService.saveShippingAddressUpdated(savedOrder);
 
             return toOrderResponseDTO(savedOrder);
 
