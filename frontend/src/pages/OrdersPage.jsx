@@ -1,5 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
-import api from '../api/axios.js';
+import {
+  applyDiscount as applyDiscountRequest,
+  fetchCurrentUserOrders,
+  fetchOrderHistory,
+  fetchOrderPriceAt,
+  payOrder as payOrderRequest,
+  removeDiscount as removeDiscountRequest,
+  restoreOrder,
+  updateOrderShippingAddress
+} from '../api/orders.js';
+import { fetchPaymentsByUser } from '../api/payments.js';
+import { fetchAverageDurationMetric, fetchShippingAddressChangeFrequencyMetric } from '../api/metrics.js';
+import { createUser, fetchUserByEmail, fetchUsers } from '../api/users.js';
 import { normalizeApiError } from '../api/error-utils.js';
 import { isAdminUser } from '../auth/roles.js';
 import { useAuth } from '../auth/useAuth.js';
@@ -7,6 +19,7 @@ import Navbar from '../components/Navbar.jsx';
 import OrderCreate from '../components/OrderCreate.jsx';
 import OrderList from '../components/OrderList.jsx';
 import PaymentList from '../components/PaymentList.jsx';
+import CreateToPayMetricsList from '../components/CreateToPayMetricsList.jsx';
 import UsersList from '../components/UsersList.jsx';
 
 const FALLBACK_BIRTH_DATE = '1970-01-01';
@@ -47,18 +60,16 @@ export default function OrdersPage() {
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState('');
+  const [metricsByUserId, setMetricsByUserId] = useState({});
+  const [metricsLoading, setMetricsLoading] = useState(false);
+  const [metricsError, setMetricsError] = useState('');
 
   const loadOrders = useCallback(async (targetPage = 0) => {
     try {
       setOrdersLoading(true);
       setOrdersError('');
 
-      const { data } = await api.get('/api/v1/orders/current', {
-        params: {
-          page: targetPage,
-          size: ordersPageSize
-        }
-      });
+      const data = await fetchCurrentUserOrders(targetPage, ordersPageSize);
 
       const content = Array.isArray(data?.content) ? data.content : [];
       const currentPage =
@@ -85,25 +96,83 @@ export default function OrdersPage() {
     }
   }, [ordersPageSize]);
 
+  const loadCreateToPayMetrics = useCallback(async (usersList) => {
+    if (!isAdmin || !Array.isArray(usersList) || usersList.length === 0) {
+      setMetricsByUserId({});
+      setMetricsError('');
+      setMetricsLoading(false);
+      return;
+    }
+
+    try {
+      setMetricsLoading(true);
+      setMetricsError('');
+
+      const metricEntries = await Promise.all(
+        usersList.map(async (user) => {
+          try {
+            const [averageDurationResponse, shippingAddressFrequencyResponse] = await Promise.all([
+              fetchAverageDurationMetric(user.id),
+              fetchShippingAddressChangeFrequencyMetric(user.id)
+            ]);
+
+            return [
+              user.id,
+              {
+                ...(averageDurationResponse ?? {}),
+                ...(shippingAddressFrequencyResponse ?? {})
+              }
+            ];
+          } catch {
+            return [
+              user.id,
+              {
+                samplesCount: 0,
+                averageDurationMs: 0,
+                averageDurationSeconds: 0,
+                totalCreatedOrders: 0,
+                ordersWithAddressChanges: 0,
+                changeRatePercent: 0
+              }
+            ];
+          }
+        })
+      );
+
+      setMetricsByUserId(Object.fromEntries(metricEntries));
+    } catch (e) {
+      setMetricsError(normalizeApiError(e, 'Failed to fetch metrics.'));
+    } finally {
+      setMetricsLoading(false);
+    }
+  }, [isAdmin]);
+
   const loadUsers = useCallback(async () => {
     if (!isAdmin) {
       setUsers([]);
       setUsersError('');
       setUsersLoading(false);
+      setMetricsByUserId({});
+      setMetricsError('');
+      setMetricsLoading(false);
       return;
     }
 
     try {
       setUsersLoading(true);
       setUsersError('');
-      const { data } = await api.get('/api/v1/users');
-      setUsers(Array.isArray(data) ? data : []);
+      const resolvedUsers = await fetchUsers();
+      setUsers(resolvedUsers);
+      await loadCreateToPayMetrics(resolvedUsers);
     } catch (e) {
       setUsersError(normalizeApiError(e, 'Failed to fetch users.'));
+      setMetricsByUserId({});
+      setMetricsError('');
+      setMetricsLoading(false);
     } finally {
       setUsersLoading(false);
     }
-  }, [isAdmin]);
+  }, [isAdmin, loadCreateToPayMetrics]);
 
   const loadPayments = useCallback(async (userId, targetPage = 0) => {
     if (!userId) {
@@ -118,12 +187,7 @@ export default function OrdersPage() {
     try {
       setPaymentsLoading(true);
       setPaymentsError('');
-      const { data } = await api.get(`/api/v1/payments/user/${userId}`, {
-        params: {
-          page: targetPage,
-          size: paymentsPageSize
-        }
-      });
+      const data = await fetchPaymentsByUser(userId, targetPage, paymentsPageSize);
 
       const content = Array.isArray(data?.content) ? data.content : [];
       const currentPage =
@@ -158,6 +222,39 @@ export default function OrdersPage() {
     }
   }, [paymentsPageSize]);
 
+
+  const loadOrderHistory = useCallback(async (orderId) => {
+    return fetchOrderHistory(orderId);
+  }, []);
+
+  const loadOrderPriceAt = useCallback(async (orderId, date) => {
+    return fetchOrderPriceAt(orderId, date);
+  }, []);
+
+  const restoreOrderStatus = useCallback(async (orderId, date) => {
+    return restoreOrder(orderId, date);
+  }, []);
+
+  const payOrder = useCallback(async (orderId) => {
+    await payOrderRequest(orderId);
+    await Promise.all([loadOrders(0), loadPayments(profile?.id, 0)]);
+  }, [loadOrders, loadPayments, profile?.id]);
+
+  const updateShippingAddress = useCallback(async (orderId, shippingAddress) => {
+    await updateOrderShippingAddress(orderId, shippingAddress);
+    await loadOrders(0);
+  }, [loadOrders]);
+
+  const handleApplyDiscount = useCallback(async (orderId, discountPercent) => {
+    if (discountPercent === 0) {
+      await removeDiscountRequest(orderId);
+    } else {
+      await applyDiscountRequest(orderId, discountPercent);
+    }
+    await loadOrders(0);
+  }, [loadOrders]);
+
+
   useEffect(() => {
     const loadProfileAndData = async () => {
       try {
@@ -176,17 +273,15 @@ export default function OrdersPage() {
         let userProfile;
 
         try {
-          const { data } = await api.get(`/api/v1/users/email/${encodeURIComponent(login)}`);
-          userProfile = data;
+          userProfile = await fetchUserByEmail(login);
         } catch (e) {
           if (e.response?.status === 404 && profileDraft) {
-            const { data } = await api.post('/api/v1/users', {
+            userProfile = await createUser({
               name: profileDraft.name,
               surname: profileDraft.surname,
               birthDate: profileDraft.birthDate,
               email: profileDraft.email
             });
-            userProfile = data;
           } else {
             throw e;
           }
@@ -216,6 +311,7 @@ export default function OrdersPage() {
           <div className="col-12 col-xl-3">
             <OrderCreate
               userProfile={profile}
+              isAdmin={isAdmin}
               onCreated={() => {
                 if (profile?.id || profile?.email) {
                   loadOrders(0);
@@ -228,12 +324,19 @@ export default function OrdersPage() {
           <div className="col-12 col-xl-5">
             <OrderList
               orders={orders}
+              isAdmin={isAdmin}
               page={ordersPage}
               totalPages={ordersTotalPages}
               totalElements={ordersTotalElements}
               loading={ordersLoading}
               error={ordersError}
               onRefresh={() => loadOrders(ordersPage)}
+              loadOrderHistory={loadOrderHistory}
+              onLoadOrderPrice={loadOrderPriceAt}
+              onRestoreOrder={restoreOrderStatus}
+              onPayOrder={payOrder}
+              onUpdateShippingAddress={updateShippingAddress}
+              onApplyDiscount={handleApplyDiscount}
               onPageChange={loadOrders}
             />
           </div>
@@ -261,6 +364,19 @@ export default function OrdersPage() {
               />
             </div>
           ) : null}
+
+          {isAdmin ? (
+            <div className="col-12">
+              <CreateToPayMetricsList
+                users={users}
+                metricsByUserId={metricsByUserId}
+                loading={metricsLoading}
+                error={metricsError}
+                onRefresh={() => loadCreateToPayMetrics(users)}
+              />
+            </div>
+          ) : null}
+
         </div>
       </section>
     </main>

@@ -1,4 +1,4 @@
-package com.internship.order_service;
+﻿package com.internship.order_service;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -11,3 +11,4 @@ public class OrderServiceApplication {
 	}
 
 }
+

@@ -1,8 +1,8 @@
-package com.internship.order_service.dto;
+﻿package com.internship.order_service.dto.response;
 
 import java.math.BigDecimal;
 
-public record ItemDTO(
+public record ItemDto(
         Long id,
         String name,
         BigDecimal price

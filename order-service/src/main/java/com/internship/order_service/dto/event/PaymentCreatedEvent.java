@@ -1,4 +1,4 @@
-package com.internship.order_service.dto.event;
+﻿package com.internship.order_service.dto.event;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;

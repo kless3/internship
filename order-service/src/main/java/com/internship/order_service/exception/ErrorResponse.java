@@ -1,4 +1,4 @@
-package com.internship.order_service.exception;
+﻿package com.internship.order_service.exception;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -15,4 +15,5 @@ public class ErrorResponse {
     private String error;
     private String message;
 }
+
 

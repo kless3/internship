@@ -1,4 +1,4 @@
-package com.internship.order_service.exception;
+﻿package com.internship.order_service.exception;
 
 public class OrderProcessingException extends RuntimeException {
     public OrderProcessingException(String message) {

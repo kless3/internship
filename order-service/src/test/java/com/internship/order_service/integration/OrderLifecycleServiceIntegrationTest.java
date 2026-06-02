@@ -2,15 +2,15 @@ package com.internship.order_service.integration;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
-import com.internship.order_service.dto.ItemDTO;
-import com.internship.order_service.dto.OrderItemDTO;
-import com.internship.order_service.dto.OrderRequestDTO;
-import com.internship.order_service.dto.OrderResponseDTO;
+import com.internship.order_service.dto.response.ItemDto;
+import com.internship.order_service.dto.response.OrderItemDto;
+import com.internship.order_service.dto.request.OrderRequestDto;
+import com.internship.order_service.dto.response.OrderResponseDto;
 import com.internship.order_service.exception.ResourceNotFoundException;
 import com.internship.order_service.model.Order;
 import com.internship.order_service.model.enums.OrderStatus;
 import com.internship.order_service.repository.OrderRepository;
-import com.internship.order_service.service.impl.OrderServiceImpl;
+import com.internship.order_service.service.impl.OrderLifecycleServiceImpl;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,13 +40,13 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 @SpringBootTest
 @DisplayName("Order Service Integration Tests")
-class OrderServiceIntegrationTest extends AbstractIntegrationTest {
+class OrderLifecycleServiceIntegrationTest extends AbstractIntegrationTest {
 
     private static final String USER_EMAIL = "test@example.com";
     private static final String ORDER_NOT_FOUND_MESSAGE = "Order not found with id: ";
 
     @Autowired
-    private OrderServiceImpl orderService;
+    private OrderLifecycleServiceImpl orderLifecycleService;
 
     @Autowired
     private OrderRepository orderRepository;
@@ -97,11 +97,11 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
                                 }
                                 """)));
 
-        OrderRequestDTO orderRequest = new OrderRequestDTO(123L, USER_EMAIL,
-                List.of(new OrderItemDTO(
-                        new ItemDTO(1L, "Laptop", new BigDecimal(70)), 1L)));
+        OrderRequestDto orderRequest = new OrderRequestDto(123L, USER_EMAIL, "Test address",
+                List.of(new OrderItemDto(
+                        new ItemDto(1L, "Laptop", new BigDecimal(70)), 1L)));
 
-        OrderResponseDTO orderResponse = orderService.createOrder(orderRequest);
+        OrderResponseDto orderResponse = orderLifecycleService.createOrder(orderRequest);
 
         assertThat(orderResponse.userId()).isNotNull();
         assertThat(orderResponse.userInfoDto().email()).isEqualTo(USER_EMAIL);
@@ -127,7 +127,7 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
                                 }
                                 """)));
 
-        assertThatThrownBy(() -> orderService.getOrderById(999L))
+        assertThatThrownBy(() -> orderLifecycleService.getOrderById(999L))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining(ORDER_NOT_FOUND_MESSAGE + 999);
     }
@@ -149,16 +149,16 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
                                 }
                                 """)));
 
-        OrderRequestDTO orderRequest = new OrderRequestDTO(123L, USER_EMAIL,
-                List.of(new OrderItemDTO(
-                        new ItemDTO(1L, "Laptop", new BigDecimal(70)), 1L)));
+        OrderRequestDto orderRequest = new OrderRequestDto(123L, USER_EMAIL, "Test address",
+                List.of(new OrderItemDto(
+                        new ItemDto(1L, "Laptop", new BigDecimal(70)), 1L)));
 
-        orderService.createOrder(orderRequest);
+        orderLifecycleService.createOrder(orderRequest);
 
-        List<OrderResponseDTO> allOrders = orderService.getOrdersByStatus(OrderStatus.PENDING);
+        List<OrderResponseDto> allOrders = orderLifecycleService.getOrdersByStatus(OrderStatus.PENDING);
         assertThat(allOrders).isNotEmpty();
 
-        OrderResponseDTO existingOrder = allOrders.get(0);
+        OrderResponseDto existingOrder = allOrders.get(0);
 
         stubFor(get(urlPathMatching("/api/v1/users/email/.*"))
                 .willReturn(aResponse()
@@ -175,7 +175,7 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
                                 """)));
 
         Long orderId = orderRepository.findAll().get(0).getId();
-        OrderResponseDTO foundOrder = orderService.getOrderById(orderId);
+        OrderResponseDto foundOrder = orderLifecycleService.getOrderById(orderId);
 
         assertThat(foundOrder).isNotNull();
         assertThat(foundOrder.userInfoDto().email()).isEqualTo(USER_EMAIL);
@@ -201,16 +201,16 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
                                 }
                                 """)));
 
-        OrderRequestDTO orderRequest1 = new OrderRequestDTO(123L, "test@example.com",
-                List.of(new OrderItemDTO(
-                        new ItemDTO(1L, "Laptop", new BigDecimal(70)), 1L)));
+        OrderRequestDto orderRequest1 = new OrderRequestDto(123L, "test@example.com", "Test address",
+                List.of(new OrderItemDto(
+                        new ItemDto(1L, "Laptop", new BigDecimal(70)), 1L)));
 
-        OrderRequestDTO orderRequest2 = new OrderRequestDTO(124L, "test@example.com",
-                List.of(new OrderItemDTO(
-                        new ItemDTO(2L, "Mouse", new BigDecimal(25)), 2L)));
+        OrderRequestDto orderRequest2 = new OrderRequestDto(124L, "test@example.com", "Test address",
+                List.of(new OrderItemDto(
+                        new ItemDto(2L, "Mouse", new BigDecimal(25)), 2L)));
 
-        orderService.createOrder(orderRequest1);
-        orderService.createOrder(orderRequest2);
+        orderLifecycleService.createOrder(orderRequest1);
+        orderLifecycleService.createOrder(orderRequest2);
 
         List<Long> orderIds = orderRepository.findAll().stream()
                 .map(order -> order.getId())
@@ -218,10 +218,10 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(orderIds).hasSize(2);
 
-        List<OrderResponseDTO> foundOrders = orderService.getOrdersByIds(orderIds);
+        List<OrderResponseDto> foundOrders = orderLifecycleService.getOrdersByIds(orderIds);
 
         assertThat(foundOrders).hasSize(2);
-        assertThat(foundOrders).extracting(OrderResponseDTO::status)
+        assertThat(foundOrders).extracting(OrderResponseDto::status)
                 .containsOnly(OrderStatus.PENDING);
 
         assertThat(foundOrders).allMatch(order -> order.userInfoDto() != null);
@@ -244,16 +244,16 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
                                 }
                                 """)));
 
-        OrderRequestDTO orderRequest1 = new OrderRequestDTO(123L, USER_EMAIL,
-                List.of(new OrderItemDTO(
-                        new ItemDTO(1L, "Laptop", new BigDecimal(70)), 1L)));
+        OrderRequestDto orderRequest1 = new OrderRequestDto(123L, USER_EMAIL, "Test address",
+                List.of(new OrderItemDto(
+                        new ItemDto(1L, "Laptop", new BigDecimal(70)), 1L)));
 
-        OrderRequestDTO orderRequest2 = new OrderRequestDTO(124L, "test2@example.com",
-                List.of(new OrderItemDTO(
-                        new ItemDTO(2L, "Mouse", new BigDecimal(25)), 2L)));
+        OrderRequestDto orderRequest2 = new OrderRequestDto(124L, "test2@example.com", "Test address",
+                List.of(new OrderItemDto(
+                        new ItemDto(2L, "Mouse", new BigDecimal(25)), 2L)));
 
-        orderService.createOrder(orderRequest1);
-        orderService.createOrder(orderRequest2);
+        orderLifecycleService.createOrder(orderRequest1);
+        orderLifecycleService.createOrder(orderRequest2);
 
         stubFor(get(urlPathMatching("/api/v1/users/email/.*"))
                 .willReturn(aResponse()
@@ -283,11 +283,11 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
                                 }
                                 """)));
 
-        List<OrderResponseDTO> foundOrders = orderService.getOrdersByStatus(OrderStatus.PENDING);
+        List<OrderResponseDto> foundOrders = orderLifecycleService.getOrdersByStatus(OrderStatus.PENDING);
 
         assertThat(foundOrders).isNotEmpty();
         assertThat(foundOrders).allMatch(order -> order.status() == OrderStatus.PENDING);
-        assertThat(foundOrders).extracting(OrderResponseDTO::userId)
+        assertThat(foundOrders).extracting(OrderResponseDto::userId)
                 .contains(123L, 124L);
     }
 
@@ -308,20 +308,20 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
                                 }
                                 """)));
 
-        OrderRequestDTO orderRequest = new OrderRequestDTO(123L, USER_EMAIL,
-                List.of(new OrderItemDTO(
-                        new ItemDTO(1L, "Laptop", new BigDecimal(70)), 1L)));
+        OrderRequestDto orderRequest = new OrderRequestDto(123L, USER_EMAIL, "Test address",
+                List.of(new OrderItemDto(
+                        new ItemDto(1L, "Laptop", new BigDecimal(70)), 1L)));
 
-        orderService.createOrder(orderRequest);
+        orderLifecycleService.createOrder(orderRequest);
 
         Long orderId = orderRepository.findAll().stream()
                 .findFirst()
                 .map(order -> order.getId())
                 .orElseThrow(() -> new AssertionError("Order not found in database"));
 
-        OrderRequestDTO updateRequest = new OrderRequestDTO(123L, USER_EMAIL,
-                List.of(new OrderItemDTO(
-                        new ItemDTO(2L, "Updated Laptop", new BigDecimal(80)), 2L)));
+        OrderRequestDto updateRequest = new OrderRequestDto(123L, USER_EMAIL, "Updated address",
+                List.of(new OrderItemDto(
+                        new ItemDto(2L, "Updated Laptop", new BigDecimal(80)), 2L)));
 
         stubFor(get(urlPathMatching("/api/v1/users/email/.*"))
                 .willReturn(aResponse()
@@ -337,13 +337,13 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
                                 }
                                 """)));
 
-        OrderResponseDTO updatedOrder = orderService.updateOrderById(orderId, updateRequest);
+        OrderResponseDto updatedOrder = orderLifecycleService.updateOrderById(orderId, updateRequest);
 
         assertThat(updatedOrder).isNotNull();
         assertThat(updatedOrder.userInfoDto().email()).isEqualTo(USER_EMAIL);
         assertThat(updatedOrder.status()).isEqualTo(OrderStatus.PENDING);
 
-        OrderResponseDTO foundAfterUpdate = orderService.getOrderById(orderId);
+        OrderResponseDto foundAfterUpdate = orderLifecycleService.getOrderById(orderId);
         assertThat(foundAfterUpdate).isNotNull();
         assertThat(foundAfterUpdate.userInfoDto().email()).isEqualTo(USER_EMAIL);
     }
@@ -365,20 +365,20 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
                                 }
                                 """)));
 
-        OrderRequestDTO orderRequest = new OrderRequestDTO(123L, USER_EMAIL,
-                List.of(new OrderItemDTO(
-                        new ItemDTO(1L, "Laptop", new BigDecimal(70)), 1L)));
+        OrderRequestDto orderRequest = new OrderRequestDto(123L, USER_EMAIL, "Test address",
+                List.of(new OrderItemDto(
+                        new ItemDto(1L, "Laptop", new BigDecimal(70)), 1L)));
 
-        orderService.createOrder(orderRequest);
+        orderLifecycleService.createOrder(orderRequest);
 
         Long orderId = orderRepository.findAll().stream()
                 .findFirst()
                 .map(order -> order.getId())
                 .orElseThrow(() -> new AssertionError("Order not found in database"));
 
-        assertThatNoException().isThrownBy(() -> orderService.deleteOrderById(orderId));
+        assertThatNoException().isThrownBy(() -> orderLifecycleService.deleteOrderById(orderId));
 
-        assertThatThrownBy(() -> orderService.getOrderById(orderId))
+        assertThatThrownBy(() -> orderLifecycleService.getOrderById(orderId))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining(ORDER_NOT_FOUND_MESSAGE + orderId);
 
@@ -389,7 +389,7 @@ class OrderServiceIntegrationTest extends AbstractIntegrationTest {
     @Test
     @DisplayName("Should throw exception when delete order not exists")
     void shouldThrowExceptionWhenDeleteOrderNotExists() {
-        assertThatThrownBy(() -> orderService.deleteOrderById(999L))
+        assertThatThrownBy(() -> orderLifecycleService.deleteOrderById(999L))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining(ORDER_NOT_FOUND_MESSAGE + 999);
     }

@@ -1,4 +1,4 @@
-package com.internship.order_service.exception;
+﻿package com.internship.order_service.exception;
 
 public class ResourceNotFoundException extends RuntimeException {
     public ResourceNotFoundException(String message) {

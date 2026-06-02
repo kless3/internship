@@ -1,4 +1,4 @@
-package com.internship.order_service.exception;
+﻿package com.internship.order_service.exception;
 
 public class UserServiceUnavailableException extends RuntimeException {
     public UserServiceUnavailableException(String message) {
@@ -9,3 +9,4 @@ public class UserServiceUnavailableException extends RuntimeException {
         super(message, cause);
     }
 }
+
