@@ -15,8 +15,8 @@ import com.internship.order_service.mapper.OrderMapper;
 import com.internship.order_service.model.Order;
 import com.internship.order_service.model.enums.OrderStatus;
 import com.internship.order_service.repository.OrderRepository;
+import com.internship.order_service.service.OrderEventService;
 import com.internship.order_service.service.impl.OrderLifecycleServiceImpl;
-import com.internship.order_service.service.impl.OrderProcessingServiceImpl;
 import feign.FeignException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,7 +35,6 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
@@ -54,7 +53,7 @@ class OrderLifecycleServiceTest {
     private UserServiceClient userServiceClient;
 
     @Mock
-    private OrderProcessingServiceImpl orderProcessingService;
+    private OrderEventService orderEventService;
 
     @InjectMocks
     private OrderLifecycleServiceImpl orderService;
@@ -83,7 +82,8 @@ class OrderLifecycleServiceTest {
                 LocalDateTime.now(),
                 "Test address",
                 List.of(orderItemDto),
-                userInfoDto
+                userInfoDto,
+                BigDecimal.ZERO
         );
     }
 
@@ -99,6 +99,7 @@ class OrderLifecycleServiceTest {
 
         assertEquals(OrderStatus.PENDING, result.status());
         verify(orderRepository).save(order);
+        verify(orderEventService).saveCreated(order);
     }
 
     @Test
@@ -196,6 +197,7 @@ class OrderLifecycleServiceTest {
 
         assertEquals(1L, result.id());
         verify(orderRepository).save(order);
+        verify(orderEventService).saveShippingAddressUpdated(order);
     }
 
     @Test

@@ -16,8 +16,8 @@ import com.internship.order_service.model.OrderEvent;
 import com.internship.order_service.model.OrderItem;
 import com.internship.order_service.model.enums.OrderEventStatus;
 import com.internship.order_service.model.enums.OrderStatus;
-import com.internship.order_service.repository.OrderEventRepository;
 import com.internship.order_service.repository.OrderRepository;
+import com.internship.order_service.service.OrderEventService;
 import com.internship.order_service.service.impl.OrderProcessingServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,7 +45,7 @@ class OrderProcessingServiceTest {
     private OrderRepository orderRepository;
 
     @Mock
-    private OrderEventRepository orderEventRepository;
+    private OrderEventService orderEventService;
 
     @Mock
     private OrderMapper orderMapper;
@@ -89,7 +89,8 @@ class OrderProcessingServiceTest {
                 LocalDateTime.now(),
                 "Test address",
                 List.of(orderItemDto),
-                userInfoDto
+                userInfoDto,
+                BigDecimal.ZERO
         );
     }
 
@@ -101,13 +102,14 @@ class OrderProcessingServiceTest {
 
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
         when(orderRepository.save(any(Order.class))).thenReturn(order);
-        when(orderEventRepository.save(any(OrderEvent.class))).thenReturn(savedEvent);
+        when(orderEventService.savePaymentStarted(any(Order.class), any(BigDecimal.class))).thenReturn(savedEvent);
         when(orderMapper.toDTO(order)).thenReturn(orderResponseDto);
         when(userServiceClient.getUserInfoByEmail(anyString())).thenReturn(orderResponseDto.userInfoDto());
 
         OrderResponseDto result = orderProcessingService.payOrder(1L);
 
         assertEquals(OrderStatus.PROCESSING, result.status());
+        verify(orderEventService).savePaymentStarted(order, new BigDecimal("59.98"));
         verify(orderEventProducer).sendOrderCreatedEvent(any(OrderEvent.class), any(BigDecimal.class));
     }
 
@@ -132,7 +134,7 @@ class OrderProcessingServiceTest {
         e.setEventTimestamp(LocalDateTime.now());
 
         when(orderRepository.existsById(1L)).thenReturn(true);
-        when(orderEventRepository.findAllByOrderIdOrderByEventTimestampAsc(1L)).thenReturn(List.of(e));
+        when(orderEventService.getOrderHistory(1L)).thenReturn(List.of(e));
 
         List<OrderEventResponseDto> result = orderProcessingService.getOrderHistory(1L);
 
@@ -151,17 +153,17 @@ class OrderProcessingServiceTest {
         OrderEvent historical = new OrderEvent();
         historical.setStatus(OrderEventStatus.PAID_SUCCESS);
 
+        LocalDateTime restoreDate = LocalDateTime.now().minusMinutes(1);
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
-        when(orderEventRepository.findTopByOrderIdAndEventTimestampLessThanEqualOrderByEventTimestampDesc(any(), any()))
-                .thenReturn(Optional.of(historical));
+        when(orderEventService.getOrderHistoryUntil(1L, restoreDate)).thenReturn(List.of(historical));
         when(orderRepository.save(any(Order.class))).thenReturn(order);
-        when(orderEventRepository.save(any(OrderEvent.class))).thenReturn(new OrderEvent());
         when(orderMapper.toDTO(order)).thenReturn(orderResponseDto);
         when(userServiceClient.getUserInfoByEmail(anyString())).thenReturn(orderResponseDto.userInfoDto());
 
-        OrderResponseDto result = orderProcessingService.restoreOrderStatusAt(1L, LocalDateTime.now().minusMinutes(1));
+        OrderResponseDto result = orderProcessingService.restoreOrderStatusAt(1L, restoreDate);
 
         assertEquals(1L, result.id());
+        verify(orderEventService).saveRestored(order, restoreDate);
     }
 
     @Test
@@ -178,10 +180,47 @@ class OrderProcessingServiceTest {
     @Test
     void restoreOrderStatusAt_shouldThrowWhenNoHistoricalEvent() {
         when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
-        when(orderEventRepository.findTopByOrderIdAndEventTimestampLessThanEqualOrderByEventTimestampDesc(any(), any()))
-                .thenReturn(Optional.empty());
+        when(orderEventService.getOrderHistoryUntil(any(), any())).thenReturn(List.of());
 
         assertThrows(OrderValidationException.class,
                 () -> orderProcessingService.restoreOrderStatusAt(1L, LocalDateTime.now().minusMinutes(1)));
+    }
+
+    @Test
+    void applyDiscount_shouldSaveDiscountAppliedEvent() {
+        BigDecimal discountPercent = new BigDecimal("15.00");
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenReturn(order);
+        when(orderMapper.toDTO(order)).thenReturn(orderResponseDto);
+        when(userServiceClient.getUserInfoByEmail(anyString())).thenReturn(orderResponseDto.userInfoDto());
+
+        OrderResponseDto result = orderProcessingService.applyDiscount(1L, discountPercent);
+
+        assertEquals(1L, result.id());
+        assertEquals(discountPercent, order.getDiscountPercent());
+        verify(orderEventService).saveDiscountChanged(order, discountPercent, OrderEventStatus.DISCOUNT_APPLIED);
+    }
+
+    @Test
+    void applyDiscount_shouldSaveDiscountRemovedEventWhenDiscountIsZero() {
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+        when(orderRepository.save(any(Order.class))).thenReturn(order);
+        when(orderMapper.toDTO(order)).thenReturn(orderResponseDto);
+        when(userServiceClient.getUserInfoByEmail(anyString())).thenReturn(orderResponseDto.userInfoDto());
+
+        OrderResponseDto result = orderProcessingService.applyDiscount(1L, BigDecimal.ZERO);
+
+        assertEquals(1L, result.id());
+        assertEquals(BigDecimal.ZERO, order.getDiscountPercent());
+        verify(orderEventService).saveDiscountChanged(order, BigDecimal.ZERO, OrderEventStatus.DISCOUNT_REMOVED);
+    }
+
+    @Test
+    void applyDiscount_shouldThrowWhenOrderIsNotPending() {
+        order.setStatus(OrderStatus.CONFIRMED);
+        when(orderRepository.findById(1L)).thenReturn(Optional.of(order));
+
+        assertThrows(OrderValidationException.class,
+                () -> orderProcessingService.applyDiscount(1L, new BigDecimal("10.00")));
     }
 }
