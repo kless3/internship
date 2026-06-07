@@ -1,4 +1,4 @@
-﻿package com.internship.order_service.config;
+package com.internship.order_service.config;
 
 import com.internship.order_service.config.property.KafkaProperties;
 import com.internship.order_service.dto.event.PaymentCreatedEvent;

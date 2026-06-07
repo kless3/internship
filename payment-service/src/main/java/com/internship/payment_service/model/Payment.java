@@ -41,4 +41,7 @@ public class Payment {
     @Field("payment_amount")
     private BigDecimal paymentAmount;
 
+    @Field("receipt_key")
+    private String receiptKey;
+
 }

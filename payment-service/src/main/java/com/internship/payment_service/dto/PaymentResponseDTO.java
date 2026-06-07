@@ -11,5 +11,6 @@ public record PaymentResponseDTO(
         Long userId,
         BigDecimal paymentAmount,
         PaymentStatus status,
-        LocalDateTime timestamp
+        LocalDateTime timestamp,
+        String receiptKey
 ) {}

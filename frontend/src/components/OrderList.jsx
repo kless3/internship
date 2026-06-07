@@ -31,6 +31,7 @@ export default function OrderList({
   onLoadOrderPrice,
   onRestoreOrder,
   onPayOrder,
+  onOpenPaymentReceipt,
   onUpdateShippingAddress,
   onApplyDiscount
 }) {
@@ -47,6 +48,8 @@ export default function OrderList({
   const [restoreLoadingByOrderId, setRestoreLoadingByOrderId] = useState({});
   const [restoreErrorByOrderId, setRestoreErrorByOrderId] = useState({});
   const [restoreSuccessByOrderId, setRestoreSuccessByOrderId] = useState({});
+  const [receiptLoadingByOrderId, setReceiptLoadingByOrderId] = useState({});
+  const [receiptErrorByOrderId, setReceiptErrorByOrderId] = useState({});
 
   const changeRestoreDate = useCallback((orderId, nextValue) => {
     setById(setRestoreDateByOrderId, orderId, nextValue);
@@ -133,6 +136,26 @@ export default function OrderList({
     [orders]
   );
 
+  const openReceipt = useCallback(async (orderId) => {
+    if (!orderId || typeof onOpenPaymentReceipt !== 'function') {
+      return;
+    }
+
+    try {
+      setById(setReceiptLoadingByOrderId, orderId, true);
+      setById(setReceiptErrorByOrderId, orderId, '');
+
+      await onOpenPaymentReceipt(orderId);
+    } catch (e) {
+      const message = e?.response
+        ? normalizeApiError(e, 'Failed to open receipt.')
+        : e?.message ?? 'Failed to open receipt.';
+      setById(setReceiptErrorByOrderId, orderId, message);
+    } finally {
+      setById(setReceiptLoadingByOrderId, orderId, false);
+    }
+  }, [onOpenPaymentReceipt]);
+
   const formatMoney = (value) => {
     const amount = Number(value ?? 0);
     return Number.isFinite(amount) ? `$${amount.toFixed(2)}` : '$0.00';
@@ -173,6 +196,7 @@ export default function OrderList({
                 0
               );
               const priceResult = priceResultByOrderId[order.id];
+              const canOpenReceipt = order.status !== 'PENDING';
 
               return (
                 <div key={order.id ?? `${order.creationDate}-${order.status}-${order.userId}`} className="border rounded p-3">
@@ -225,12 +249,25 @@ export default function OrderList({
                       >
                         {expandedOrderIds[order.id] ? 'Hide timeline' : 'Show timeline'}
                       </button>
+                      {canOpenReceipt ? (
+                        <button
+                          className="btn btn-sm btn-outline-dark"
+                          type="button"
+                          onClick={() => openReceipt(order.id)}
+                          disabled={Boolean(receiptLoadingByOrderId[order.id])}
+                        >
+                          {receiptLoadingByOrderId[order.id] ? 'Opening...' : 'View receipt'}
+                        </button>
+                      ) : null}
                     </div>
                     {payErrorByOrderId[order.id] ? (
                       <div className="text-danger small mt-1">{payErrorByOrderId[order.id]}</div>
                     ) : null}
                     {paySuccessByOrderId[order.id] ? (
                       <div className="text-success small mt-1">{paySuccessByOrderId[order.id]}</div>
+                    ) : null}
+                    {receiptErrorByOrderId[order.id] ? (
+                      <div className="text-danger small mt-1">{receiptErrorByOrderId[order.id]}</div>
                     ) : null}
                   </div>
 

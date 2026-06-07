@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title th:text="'Receipt ' + ${receiptNumber}">Receipt</title>
+</head>
+<body>
+<div>
+    <div>
+        <h1>E-Commerence platform</h1>
+        <p>maksim.yafimchyk@gmail.com</p>
+    </div>
+
+    <h2 th:text="${statusMessage}">Payment Receipt</h2>
+    <table>
+        <tr>
+            <th>Receipt number</th>
+            <td th:text="${receiptNumber}">RCPT-000001</td>
+        </tr>
+        <tr>
+            <th>Generated at</th>
+            <td th:text="${generatedAt}">2026-06-07 12:00</td>
+        </tr>
+        <tr>
+            <th>Status</th>
+            <td th:text="${paymentStatus}">COMPLETED</td>
+        </tr>
+        <tr>
+            <th>Payment ID</th>
+            <td th:text="${paymentId}">payment-id</td>
+        </tr>
+        <tr>
+            <th>Payment date</th>
+            <td th:text="${paymentCreatedAt}">2026-06-07 12:00</td>
+        </tr>
+    </table>
+
+    <div>
+        <span>Payment amount</span>:
+        <span th:text="${paymentAmount}">120.00</span>
+        <span>USD</span>
+    </div>
+
+    <div>
+        <p>Keep this receipt for your records.</p>
+        <p>Generated automatically.</p>
+    </div>
+</div>
+</body>
+</html>

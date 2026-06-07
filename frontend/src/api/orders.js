@@ -5,6 +5,11 @@ export async function fetchCurrentUserOrders(page, size) {
   return data;
 }
 
+export async function fetchOrderById(orderId) {
+  const { data } = await api.get(`/api/v1/orders/${orderId}`);
+  return data;
+}
+
 export async function createOrder(payload) {
   const { data } = await api.post('/api/v1/orders', payload);
   return data;

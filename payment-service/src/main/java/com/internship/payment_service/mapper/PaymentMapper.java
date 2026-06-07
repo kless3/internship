@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 public interface PaymentMapper {
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "receiptKey", ignore = true)
     @Mapping(target = "status", expression = "java(PaymentStatus.PENDING)")
     @Mapping(target = "timestamp", expression = "java(LocalDateTime.now())")
     Payment toEntity(PaymentRequestDTO dto);

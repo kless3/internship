@@ -1,4 +1,4 @@
-﻿package com.internship.order_service.config.property;
+package com.internship.order_service.config.property;
 
 import lombok.Getter;
 import lombok.Setter;

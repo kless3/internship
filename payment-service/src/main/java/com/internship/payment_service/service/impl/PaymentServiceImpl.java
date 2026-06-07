@@ -4,12 +4,14 @@ import com.internship.payment_service.dto.PaymentRequestDTO;
 import com.internship.payment_service.dto.PaymentResponseDTO;
 import com.internship.payment_service.exception.InvalidPaymentStatusException;
 import com.internship.payment_service.exception.PaymentNotFoundException;
-import com.internship.payment_service.kafka.PaymentCreatedProducer;
+import com.internship.payment_service.exception.PaymentReceiptNotFoundException;
 import com.internship.payment_service.mapper.PaymentMapper;
+import com.internship.payment_service.messaging.PaymentCreatedEventPublisher;
 import com.internship.payment_service.model.Payment;
 import com.internship.payment_service.model.enums.PaymentStatus;
 import com.internship.payment_service.repository.PaymentRepository;
 import com.internship.payment_service.rest.ExternalApiClient;
+import com.internship.payment_service.service.PaymentReceiptService;
 import com.internship.payment_service.service.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -33,11 +35,13 @@ public class PaymentServiceImpl implements PaymentService {
     private static final String NO_PAYMENTS_FOR_ORDER = "No payments found for order id: ";
     private static final String NO_PAYMENTS_FOR_STATUS = "No payments found with status: ";
     private static final String INVALID_PAYMENT_STATUS = "Payment status cannot be null";
+    private static final String PAYMENT_RECEIPT_NOT_FOUND = "Payment receipt not found with payment id: ";
 
     private final PaymentRepository paymentRepository;
     private final PaymentMapper paymentMapper;
     private final ExternalApiClient externalApiClient;
-    private final PaymentCreatedProducer paymentCreatedProducer;
+    private final PaymentCreatedEventPublisher paymentCreatedEventPublisher;
+    private final PaymentReceiptService paymentReceiptService;
 
     @Override
     @Transactional
@@ -47,7 +51,8 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setStatus(status);
 
         Payment savedPayment = paymentRepository.save(payment);
-        paymentCreatedProducer.sendPaymentCreatedEvent(savedPayment);
+        savedPayment = attachReceipt(savedPayment);
+        paymentCreatedEventPublisher.sendPaymentCreatedEvent(savedPayment);
         return paymentMapper.toResponseDTO(savedPayment);
     }
 
@@ -117,6 +122,26 @@ public class PaymentServiceImpl implements PaymentService {
         return completedPayments.stream()
                 .map(Payment::getPaymentAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] getPaymentReceipt(String id) {
+        Payment payment = paymentRepository.findById(id)
+                .orElseThrow(() -> new PaymentNotFoundException(PAYMENT_NOT_FOUND + id));
+
+        if (payment.getReceiptKey() == null || payment.getReceiptKey().isBlank()) {
+            throw new PaymentReceiptNotFoundException(PAYMENT_RECEIPT_NOT_FOUND + id);
+        }
+
+        return paymentReceiptService.getReceipt(payment.getReceiptKey());
+    }
+
+    private Payment attachReceipt(Payment payment) {
+        String receiptKey = paymentReceiptService.createReceipt(payment);
+        payment.setReceiptKey(receiptKey);
+
+        return paymentRepository.save(payment);
     }
 
     private PaymentStatus determinePaymentStatus() {

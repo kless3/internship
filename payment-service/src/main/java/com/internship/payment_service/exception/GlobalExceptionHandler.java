@@ -32,6 +32,12 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse("INVALID_PAYMENT_STATUS", ex.getMessage()));
     }
 
+    @ExceptionHandler(PaymentReceiptNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handlePaymentReceiptNotFoundException(PaymentReceiptNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse("PAYMENT_RECEIPT_NOT_FOUND", ex.getMessage()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> handleValidationExceptions(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();

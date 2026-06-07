@@ -1,4 +1,4 @@
-﻿package com.internship.order_service.config;
+package com.internship.order_service.config;
 
 import feign.Logger;
 import org.springframework.cloud.openfeign.EnableFeignClients;

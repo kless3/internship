@@ -8,7 +8,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -38,6 +40,16 @@ public class PaymentController {
     public ResponseEntity<PaymentResponseDTO> getPaymentById(@PathVariable String id) {
         PaymentResponseDTO payment = paymentService.getPaymentById(id);
         return ResponseEntity.ok(payment);
+    }
+
+    @GetMapping("/receipt/{id}")
+    public ResponseEntity<byte[]> getPaymentReceipt(@PathVariable String id) {
+        byte[] receipt = paymentService.getPaymentReceipt(id);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"payment-%s-receipt.pdf\"".formatted(id))
+                .body(receipt);
     }
 
     @GetMapping("/user/{userId}")

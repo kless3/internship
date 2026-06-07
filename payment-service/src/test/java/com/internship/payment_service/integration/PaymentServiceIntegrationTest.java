@@ -65,6 +65,7 @@ class PaymentServiceIntegrationTest extends BaseIntegrationTest {
         assertEquals(PaymentStatus.COMPLETED, result.status());
         assertEquals(1L, result.orderId());
         assertEquals(100L, result.userId());
+        assertNotNull(result.receiptKey());
 
         wireMock.verify(1, getRequestedFor(urlEqualTo("/integers")));
     }
@@ -82,6 +83,7 @@ class PaymentServiceIntegrationTest extends BaseIntegrationTest {
         PaymentResponseDTO result = paymentService.createPayment(paymentRequestDTO);
 
         assertEquals(PaymentStatus.FAILED, result.status());
+        assertNotNull(result.receiptKey());
         wireMock.verify(1, getRequestedFor(urlEqualTo("/integers")));
     }
 
