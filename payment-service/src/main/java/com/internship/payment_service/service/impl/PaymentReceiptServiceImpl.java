@@ -1,22 +1,21 @@
 package com.internship.payment_service.service.impl;
 
 import com.internship.payment_service.config.property.S3Properties;
-import com.internship.payment_service.exception.PaymentReceiptException;
+import com.internship.payment_service.exception.PaymentReceiptCreationException;
+import com.internship.payment_service.exception.PaymentReceiptDownloadException;
 import com.internship.payment_service.model.Payment;
 import com.internship.payment_service.service.PaymentReceiptService;
 import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
+import io.awspring.cloud.s3.ObjectMetadata;
+import io.awspring.cloud.s3.S3Template;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
-import software.amazon.awssdk.core.ResponseBytes;
-import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectResponse;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
@@ -32,7 +31,7 @@ public class PaymentReceiptServiceImpl implements PaymentReceiptService {
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final TemplateEngine templateEngine;
-    private final S3Client s3Client;
+    private final S3Template s3Template;
     private final S3Properties s3Properties;
 
     @Override
@@ -40,34 +39,29 @@ public class PaymentReceiptServiceImpl implements PaymentReceiptService {
         try {
             String receiptKey = createReceiptKey(payment);
             byte[] receiptPdf = renderReceiptPdf(payment, receiptKey);
-
-            PutObjectRequest request = PutObjectRequest.builder()
-                    .bucket(s3Properties.getReceiptBucketName())
-                    .key(receiptKey)
+            ObjectMetadata metadata = ObjectMetadata.builder()
                     .contentType(PDF_CONTENT_TYPE)
-                    .contentLength((long) receiptPdf.length)
                     .build();
 
-            s3Client.putObject(request, RequestBody.fromBytes(receiptPdf));
+            s3Template.upload(
+                    s3Properties.getReceiptBucketName(),
+                    receiptKey,
+                    new ByteArrayInputStream(receiptPdf),
+                    metadata
+            );
 
             return receiptKey;
         } catch (Exception e) {
-            throw new PaymentReceiptException(RECEIPT_CREATION_ERROR, e);
+            throw new PaymentReceiptCreationException(RECEIPT_CREATION_ERROR, e);
         }
     }
 
     @Override
     public byte[] getReceipt(String receiptKey) {
-        try {
-            GetObjectRequest request = GetObjectRequest.builder()
-                    .bucket(s3Properties.getReceiptBucketName())
-                    .key(receiptKey)
-                    .build();
-
-            ResponseBytes<GetObjectResponse> receipt = s3Client.getObjectAsBytes(request);
-            return receipt.asByteArray();
+        try (InputStream inputStream = s3Template.download(s3Properties.getReceiptBucketName(), receiptKey).getInputStream()) {
+            return inputStream.readAllBytes();
         } catch (Exception e) {
-            throw new PaymentReceiptException(RECEIPT_DOWNLOAD_ERROR, e);
+            throw new PaymentReceiptDownloadException(RECEIPT_DOWNLOAD_ERROR, e);
         }
     }
 

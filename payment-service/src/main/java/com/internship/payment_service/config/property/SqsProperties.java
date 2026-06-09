@@ -11,13 +11,6 @@ import org.springframework.context.annotation.Configuration;
 @Setter
 public class SqsProperties {
 
-    private String endpoint;
-    private String region;
-    private String accessKey;
-    private String secretKey;
     private String orderCreatedQueueName;
     private String paymentCreatedQueueName;
-    private long pollDelayMs;
-    private int maxMessages;
-    private int waitTimeSeconds;
 }

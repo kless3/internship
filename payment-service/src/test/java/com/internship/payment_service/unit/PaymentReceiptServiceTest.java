@@ -4,6 +4,9 @@ import com.internship.payment_service.config.property.S3Properties;
 import com.internship.payment_service.model.Payment;
 import com.internship.payment_service.model.enums.PaymentStatus;
 import com.internship.payment_service.service.impl.PaymentReceiptServiceImpl;
+import io.awspring.cloud.s3.ObjectMetadata;
+import io.awspring.cloud.s3.S3Resource;
+import io.awspring.cloud.s3.S3Template;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,13 +16,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
-import software.amazon.awssdk.core.ResponseBytes;
-import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectResponse;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -29,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -42,7 +42,7 @@ class PaymentReceiptServiceTest {
     private TemplateEngine templateEngine;
 
     @Mock
-    private S3Client s3Client;
+    private S3Template s3Template;
 
     private PaymentReceiptServiceImpl paymentReceiptService;
 
@@ -50,12 +50,12 @@ class PaymentReceiptServiceTest {
     void setUp() {
         S3Properties s3Properties = new S3Properties();
         s3Properties.setReceiptBucketName(BUCKET_NAME);
-        paymentReceiptService = new PaymentReceiptServiceImpl(templateEngine, s3Client, s3Properties);
+        paymentReceiptService = new PaymentReceiptServiceImpl(templateEngine, s3Template, s3Properties);
     }
 
     @Test
     @DisplayName("Should generate receipt pdf and upload it to S3")
-    void createReceipt_Payment_UploadsPdfAndReturnsReceiptKey() {
+    void createReceipt_Payment_UploadsPdfAndReturnsReceiptKey() throws Exception {
         Payment payment = createPayment();
         when(templateEngine.process(eq("receipt"), any(Context.class)))
                 .thenReturn("<html><body><h1>Receipt</h1><p>Payment amount: 100.00 USD</p></body></html>");
@@ -64,16 +64,15 @@ class PaymentReceiptServiceTest {
 
         assertEquals("receipts/order-10/payment-payment-1.pdf", receiptKey);
 
-        ArgumentCaptor<PutObjectRequest> requestCaptor = ArgumentCaptor.forClass(PutObjectRequest.class);
-        ArgumentCaptor<RequestBody> bodyCaptor = ArgumentCaptor.forClass(RequestBody.class);
-        verify(s3Client).putObject(requestCaptor.capture(), bodyCaptor.capture());
+        ArgumentCaptor<InputStream> inputStreamCaptor = ArgumentCaptor.forClass(InputStream.class);
+        verify(s3Template).upload(
+                eq(BUCKET_NAME),
+                eq(receiptKey),
+                inputStreamCaptor.capture(),
+                any(ObjectMetadata.class)
+        );
 
-        PutObjectRequest request = requestCaptor.getValue();
-        assertEquals(BUCKET_NAME, request.bucket());
-        assertEquals(receiptKey, request.key());
-        assertEquals("application/pdf", request.contentType());
-        assertTrue(request.contentLength() > 0);
-        assertTrue(bodyCaptor.getValue().contentLength() > 0);
+        assertTrue(inputStreamCaptor.getValue().readAllBytes().length > 0);
     }
 
     @Test
@@ -97,31 +96,28 @@ class PaymentReceiptServiceTest {
         assertNull(context.getVariable("orderId"));
         assertNull(context.getVariable("userId"));
 
-        verify(s3Client).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+        verify(s3Template).upload(
+                eq(BUCKET_NAME),
+                eq(receiptKey),
+                any(InputStream.class),
+                any(ObjectMetadata.class)
+        );
     }
 
     @Test
     @DisplayName("Should download receipt pdf from S3")
-    void getReceipt_ExistingReceiptKey_ReturnsPdfBytes() {
+    void getReceipt_ExistingReceiptKey_ReturnsPdfBytes() throws Exception {
         String receiptKey = "receipts/order-10/payment-payment-1.pdf";
         byte[] receipt = "%PDF".getBytes();
-        ResponseBytes<GetObjectResponse> response = ResponseBytes.fromByteArray(
-                GetObjectResponse.builder().contentLength((long) receipt.length).build(),
-                receipt
-        );
-
-        when(s3Client.getObjectAsBytes(any(GetObjectRequest.class))).thenReturn(response);
+        S3Resource resource = mock(S3Resource.class);
+        when(resource.getInputStream()).thenReturn(new ByteArrayInputStream(receipt));
+        when(s3Template.download(BUCKET_NAME, receiptKey)).thenReturn(resource);
 
         byte[] actualReceipt = paymentReceiptService.getReceipt(receiptKey);
 
         assertArrayEquals(receipt, actualReceipt);
 
-        ArgumentCaptor<GetObjectRequest> requestCaptor = ArgumentCaptor.forClass(GetObjectRequest.class);
-        verify(s3Client).getObjectAsBytes(requestCaptor.capture());
-
-        GetObjectRequest request = requestCaptor.getValue();
-        assertEquals(BUCKET_NAME, request.bucket());
-        assertEquals(receiptKey, request.key());
+        verify(s3Template).download(BUCKET_NAME, receiptKey);
     }
 
     private Payment createPayment() {
