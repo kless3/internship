@@ -8,8 +8,8 @@ import com.internship.order_service.exception.OrderProcessingException;
 import com.internship.order_service.exception.OrderValidationException;
 import com.internship.order_service.exception.ResourceNotFoundException;
 import com.internship.order_service.exception.UserServiceUnavailableException;
-import com.internship.order_service.kafka.OrderEventProducer;
 import com.internship.order_service.mapper.OrderMapper;
+import com.internship.order_service.messaging.OrderCreatedEventPublisher;
 import com.internship.order_service.model.Order;
 import com.internship.order_service.model.OrderEvent;
 import com.internship.order_service.model.enums.OrderEventStatus;
@@ -45,7 +45,7 @@ public class OrderProcessingServiceImpl implements OrderProcessingService {
     private final OrderEventService orderEventService;
     private final OrderMapper orderMapper;
     private final UserServiceClient userServiceClient;
-    private final OrderEventProducer orderEventProducer;
+    private final OrderCreatedEventPublisher orderCreatedEventPublisher;
 
     @Override
     public OrderResponseDto payOrder(Long id) {
@@ -62,7 +62,7 @@ public class OrderProcessingServiceImpl implements OrderProcessingService {
 
             BigDecimal totalAmount = calculateTotal(savedOrder);
             OrderEvent paymentStartedEvent = orderEventService.savePaymentStarted(savedOrder, totalAmount);
-            orderEventProducer.sendOrderCreatedEvent(paymentStartedEvent, totalAmount);
+            orderCreatedEventPublisher.sendOrderCreatedEvent(paymentStartedEvent, totalAmount);
 
             return toOrderResponseDTO(savedOrder);
 

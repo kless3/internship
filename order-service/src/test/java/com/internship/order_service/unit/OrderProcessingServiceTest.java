@@ -8,8 +8,8 @@ import com.internship.order_service.dto.response.OrderResponseDto;
 import com.internship.order_service.dto.response.UserInfoDto;
 import com.internship.order_service.exception.OrderValidationException;
 import com.internship.order_service.exception.ResourceNotFoundException;
-import com.internship.order_service.kafka.OrderEventProducer;
 import com.internship.order_service.mapper.OrderMapper;
+import com.internship.order_service.messaging.OrderCreatedEventPublisher;
 import com.internship.order_service.model.Item;
 import com.internship.order_service.model.Order;
 import com.internship.order_service.model.OrderEvent;
@@ -54,7 +54,7 @@ class OrderProcessingServiceTest {
     private UserServiceClient userServiceClient;
 
     @Mock
-    private OrderEventProducer orderEventProducer;
+    private OrderCreatedEventPublisher orderCreatedEventPublisher;
 
     @InjectMocks
     private OrderProcessingServiceImpl orderProcessingService;
@@ -110,7 +110,7 @@ class OrderProcessingServiceTest {
 
         assertEquals(OrderStatus.PROCESSING, result.status());
         verify(orderEventService).savePaymentStarted(order, new BigDecimal("59.98"));
-        verify(orderEventProducer).sendOrderCreatedEvent(any(OrderEvent.class), any(BigDecimal.class));
+        verify(orderCreatedEventPublisher).sendOrderCreatedEvent(any(OrderEvent.class), any(BigDecimal.class));
     }
 
     @Test

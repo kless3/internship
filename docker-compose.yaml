@@ -24,6 +24,28 @@ services:
       retries: 10
       start_period: 30s
 
+  localstack:
+    image: localstack/localstack:4.14.0
+    container_name: localstack
+    ports: ["4566:4566"]
+    environment:
+      - SERVICES=${LOCALSTACK_SERVICES}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - PERSISTENCE=${LOCALSTACK_PERSISTENCE}
+      - PAYMENT_RECEIPTS_BUCKET_NAME=${PAYMENT_RECEIPTS_BUCKET_NAME}
+    volumes:
+      - localstack_data:/var/lib/localstack
+      - ./localstack/init:/etc/localstack/init/ready.d:ro
+    networks: [internship-network]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:4566/_localstack/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
   postgres:
     image: postgres:15-alpine
     container_name: postgres-db
@@ -269,6 +291,13 @@ services:
       - USER_SERVICE_URL=http://user-service:8080
       - BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
       - CONSUMER_GROUP_ID=order-service
+      - MESSAGING_TRANSPORT=${MESSAGING_TRANSPORT:-sqs}
+      - AWS_SQS_ENDPOINT=${AWS_SQS_ENDPOINT:-http://localstack:4566}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - ORDER_CREATED_QUEUE_NAME=${ORDER_CREATED_QUEUE_NAME}
+      - PAYMENT_CREATED_QUEUE_NAME=${PAYMENT_CREATED_QUEUE_NAME}
       - KEYCLOAK_JWK_SET_URI=http://keycloak:8085/realms/internship/protocol/openid-connect/certs
       - JAVA_TOOL_OPTIONS=-javaagent:/otel/opentelemetry-javaagent.jar
       - OTEL_SERVICE_NAME=order-service
@@ -281,6 +310,8 @@ services:
     depends_on:
       kafka:
         condition: service_started
+      localstack:
+        condition: service_healthy
       postgres:
         condition: service_healthy
       user-service:
@@ -308,6 +339,15 @@ services:
       - ORDER_SERVICE_URL=http://order-service:8082
       - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
       - KAFKA_CONSUMER_GROUP_ID=payment-service
+      - MESSAGING_TRANSPORT=${MESSAGING_TRANSPORT:-sqs}
+      - AWS_SQS_ENDPOINT=${AWS_SQS_ENDPOINT:-http://localstack:4566}
+      - AWS_S3_ENDPOINT=${AWS_S3_ENDPOINT:-http://localstack:4566}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - ORDER_CREATED_QUEUE_NAME=${ORDER_CREATED_QUEUE_NAME}
+      - PAYMENT_CREATED_QUEUE_NAME=${PAYMENT_CREATED_QUEUE_NAME}
+      - PAYMENT_RECEIPTS_BUCKET_NAME=${PAYMENT_RECEIPTS_BUCKET_NAME}
       - KEYCLOAK_JWK_SET_URI=http://keycloak:8085/realms/internship/protocol/openid-connect/certs
       - JAVA_TOOL_OPTIONS=-javaagent:/otel/opentelemetry-javaagent.jar
       - OTEL_SERVICE_NAME=payment-service
@@ -320,6 +360,8 @@ services:
     depends_on:
       kafka:
         condition: service_started
+      localstack:
+        condition: service_healthy
       mongodb:
         condition: service_healthy
       user-service:
@@ -335,6 +377,7 @@ volumes:
   postgres_data:
   redis_data:
   mongodb_data:
+  localstack_data:
   grafana_data:
   loki_data:
   tempo_data:

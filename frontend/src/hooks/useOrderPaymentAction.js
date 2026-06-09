@@ -20,10 +20,14 @@ export function useOrderPaymentAction({ onPayOrder, refreshTimeline }) {
       setById(setPayErrorByOrderId, orderId, '');
       setById(setPaySuccessByOrderId, orderId, '');
 
-      await onPayOrder(orderId);
+      const isPaymentResultReady = await onPayOrder(orderId);
       await refreshTimeline?.(orderId);
 
-      setById(setPaySuccessByOrderId, orderId, 'Payment started.');
+      setById(
+        setPaySuccessByOrderId,
+        orderId,
+        isPaymentResultReady ? 'Payment result received.' : 'Payment is still processing. Refresh in a moment.'
+      );
     } catch (e) {
       setById(setPayErrorByOrderId, orderId, normalizeApiError(e, 'Failed to start payment.'));
     } finally {

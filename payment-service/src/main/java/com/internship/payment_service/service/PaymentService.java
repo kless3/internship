@@ -25,4 +25,6 @@ public interface PaymentService {
 
     BigDecimal getTotalSumOfPaymentsForPeriod(LocalDateTime startDate, LocalDateTime endDate);
 
+    byte[] getPaymentReceipt(String id);
+
 }

@@ -19,11 +19,41 @@ spring:
     consumer-group-id: ${KAFKA_CONSUMER_GROUP_ID:payment-service}
     trusted-packages: "*"
     default-type: com.internship.payment_service.dto.event.OrderCreatedEvent
+
   security:
     oauth2:
       resourceserver:
         jwt:
           jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8085/realms/internship/protocol/openid-connect/certs}
+
+  sqs:
+    order-created-queue-name: ${ORDER_CREATED_QUEUE_NAME:order-created.fifo}
+    payment-created-queue-name: ${PAYMENT_CREATED_QUEUE_NAME:payment-created.fifo}
+
+  s3:
+    receipt-bucket-name: ${PAYMENT_RECEIPTS_BUCKET_NAME:payment-receipts}
+
+  cloud:
+    aws:
+      credentials:
+        access-key: ${AWS_ACCESS_KEY_ID:test}
+        secret-key: ${AWS_SECRET_ACCESS_KEY:test}
+      region:
+        static: ${AWS_DEFAULT_REGION:eu-central-1}
+      sqs:
+        endpoint: ${AWS_SQS_ENDPOINT:http://localhost:4566}
+        region: ${AWS_DEFAULT_REGION:eu-central-1}
+        listener:
+          max-messages-per-poll: ${SQS_MAX_MESSAGES:5}
+          poll-timeout: ${SQS_WAIT_TIME_SECONDS:5}s
+      s3:
+        endpoint: ${AWS_S3_ENDPOINT:http://localhost:4566}
+        region: ${AWS_DEFAULT_REGION:eu-central-1}
+        path-style-access-enabled: true
+
+app:
+  messaging:
+    transport: ${MESSAGING_TRANSPORT:sqs}
 
 logging:
   level:

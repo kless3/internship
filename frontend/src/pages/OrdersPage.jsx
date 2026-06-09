@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   applyDiscount as applyDiscountRequest,
+  fetchOrderById,
   fetchCurrentUserOrders,
   fetchOrderHistory,
   fetchOrderPriceAt,
@@ -9,7 +10,7 @@ import {
   restoreOrder,
   updateOrderShippingAddress
 } from '../api/orders.js';
-import { fetchPaymentsByUser } from '../api/payments.js';
+import { fetchPaymentReceipt, fetchPaymentsByOrder, fetchPaymentsByUser } from '../api/payments.js';
 import { fetchAverageDurationMetric, fetchShippingAddressChangeFrequencyMetric } from '../api/metrics.js';
 import { createUser, fetchUserByEmail, fetchUsers } from '../api/users.js';
 import { normalizeApiError } from '../api/error-utils.js';
@@ -23,6 +24,14 @@ import CreateToPayMetricsList from '../components/CreateToPayMetricsList.jsx';
 import UsersList from '../components/UsersList.jsx';
 
 const FALLBACK_BIRTH_DATE = '1970-01-01';
+const PAYMENT_RESULT_POLL_ATTEMPTS = 8;
+const PAYMENT_RESULT_POLL_DELAY_MS = 1000;
+
+function delay(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
 
 function toProfileFromClaims(claims) {
   const email = claims?.email ?? claims?.preferred_username ?? claims?.sub ?? '';
@@ -235,10 +244,64 @@ export default function OrdersPage() {
     return restoreOrder(orderId, date);
   }, []);
 
+  const waitForPaymentResult = useCallback(async (orderId) => {
+    for (let attempt = 0; attempt < PAYMENT_RESULT_POLL_ATTEMPTS; attempt += 1) {
+      await delay(PAYMENT_RESULT_POLL_DELAY_MS);
+
+      const [order, orderPayments] = await Promise.all([
+        fetchOrderById(orderId).catch(() => null),
+        fetchPaymentsByOrder(orderId).catch(() => [])
+      ]);
+
+      await Promise.all([loadOrders(0), loadPayments(profile?.id, 0)]);
+
+      const hasPayment = Array.isArray(orderPayments) && orderPayments.length > 0;
+      const status = order?.status;
+
+      if (hasPayment && status && status !== 'PENDING' && status !== 'PROCESSING') {
+        return true;
+      }
+    }
+
+    return false;
+  }, [loadOrders, loadPayments, profile?.id]);
+
   const payOrder = useCallback(async (orderId) => {
     await payOrderRequest(orderId);
     await Promise.all([loadOrders(0), loadPayments(profile?.id, 0)]);
-  }, [loadOrders, loadPayments, profile?.id]);
+    return waitForPaymentResult(orderId);
+  }, [loadOrders, loadPayments, profile?.id, waitForPaymentResult]);
+
+  const openPaymentReceipt = useCallback(async (orderId) => {
+    const receiptWindow = window.open('', '_blank');
+    if (!receiptWindow) {
+      throw new Error('Allow popups to open the receipt.');
+    }
+
+    try {
+      const orderPayments = await fetchPaymentsByOrder(orderId);
+      const latestPayment = [...orderPayments]
+        .filter((payment) => payment?.id)
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
+
+      if (!latestPayment) {
+        throw new Error('No payment found for this order yet.');
+      }
+
+      if (!latestPayment.receiptKey) {
+        throw new Error('Receipt is not available for this payment yet.');
+      }
+
+      const receipt = await fetchPaymentReceipt(latestPayment.id);
+      const receiptUrl = URL.createObjectURL(receipt);
+
+      receiptWindow.location.href = receiptUrl;
+      window.setTimeout(() => URL.revokeObjectURL(receiptUrl), 60000);
+    } catch (error) {
+      receiptWindow.close();
+      throw error;
+    }
+  }, []);
 
   const updateShippingAddress = useCallback(async (orderId, shippingAddress) => {
     await updateOrderShippingAddress(orderId, shippingAddress);
@@ -335,6 +398,7 @@ export default function OrdersPage() {
               onLoadOrderPrice={loadOrderPriceAt}
               onRestoreOrder={restoreOrderStatus}
               onPayOrder={payOrder}
+              onOpenPaymentReceipt={openPaymentReceipt}
               onUpdateShippingAddress={updateShippingAddress}
               onApplyDiscount={handleApplyDiscount}
               onPageChange={loadOrders}

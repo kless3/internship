@@ -6,14 +6,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@ConfigurationProperties(prefix = "spring.kafka")
+@ConfigurationProperties(prefix = "spring.sqs")
 @Getter
 @Setter
-public class KafkaProperties {
+public class SqsProperties {
 
-    private String bootstrapServers;
-    private String consumerGroupId;
-    private String trustedPackages;
-    private String defaultType;
+    private String orderCreatedQueueName;
+    private String paymentCreatedQueueName;
 }
-

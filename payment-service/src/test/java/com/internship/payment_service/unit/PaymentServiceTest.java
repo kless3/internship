@@ -4,12 +4,14 @@ import com.internship.payment_service.dto.PaymentRequestDTO;
 import com.internship.payment_service.dto.PaymentResponseDTO;
 import com.internship.payment_service.exception.InvalidPaymentStatusException;
 import com.internship.payment_service.exception.PaymentNotFoundException;
-import com.internship.payment_service.kafka.PaymentCreatedProducer;
+import com.internship.payment_service.exception.PaymentReceiptNotFoundException;
 import com.internship.payment_service.mapper.PaymentMapper;
+import com.internship.payment_service.messaging.PaymentCreatedEventPublisher;
 import com.internship.payment_service.model.Payment;
 import com.internship.payment_service.model.enums.PaymentStatus;
 import com.internship.payment_service.repository.PaymentRepository;
 import com.internship.payment_service.rest.ExternalApiClient;
+import com.internship.payment_service.service.PaymentReceiptService;
 import com.internship.payment_service.service.impl.PaymentServiceImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -26,6 +28,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -49,7 +52,10 @@ class PaymentServiceTest {
     private ExternalApiClient externalApiClient;
 
     @Mock
-    private PaymentCreatedProducer paymentCreatedProducer;
+    private PaymentCreatedEventPublisher paymentCreatedEventPublisher;
+
+    @Mock
+    private PaymentReceiptService paymentReceiptService;
 
     @InjectMocks
     private PaymentServiceImpl paymentService;
@@ -60,18 +66,23 @@ class PaymentServiceTest {
         PaymentRequestDTO requestDTO = new PaymentRequestDTO(1L, 1L, new BigDecimal("100.00"));
         Payment payment = new Payment();
         Payment savedPayment = new Payment();
-        PaymentResponseDTO expectedResponse = new PaymentResponseDTO("1", 1L, 1L, new BigDecimal("100.00"), PaymentStatus.COMPLETED, LocalDateTime.now());
+        savedPayment.setStatus(PaymentStatus.COMPLETED);
+        PaymentResponseDTO expectedResponse = new PaymentResponseDTO("1", 1L, 1L, new BigDecimal("100.00"), PaymentStatus.COMPLETED, LocalDateTime.now(), "receipts/order-1/payment-1.pdf");
 
         when(paymentMapper.toEntity(requestDTO)).thenReturn(payment);
         when(externalApiClient.getRandomNumber()).thenReturn(2);
         when(paymentRepository.save(payment)).thenReturn(savedPayment);
+        when(paymentReceiptService.createReceipt(savedPayment)).thenReturn("receipts/order-1/payment-1.pdf");
+        when(paymentRepository.save(savedPayment)).thenReturn(savedPayment);
         when(paymentMapper.toResponseDTO(savedPayment)).thenReturn(expectedResponse);
 
         PaymentResponseDTO actualResponse = paymentService.createPayment(requestDTO);
 
         assertEquals(expectedResponse, actualResponse);
-        verify(paymentCreatedProducer).sendPaymentCreatedEvent(savedPayment);
+        verify(paymentCreatedEventPublisher).sendPaymentCreatedEvent(savedPayment);
         verify(paymentRepository).save(payment);
+        verify(paymentReceiptService).createReceipt(savedPayment);
+        verify(paymentRepository).save(savedPayment);
     }
 
     @Test
@@ -79,7 +90,7 @@ class PaymentServiceTest {
     void getPaymentById_ExistingId_ReturnsPaymentResponse() {
         String paymentId = "123";
         Payment payment = new Payment();
-        PaymentResponseDTO expectedResponse = new PaymentResponseDTO("123", 1L, 1L, new BigDecimal("100.00"), PaymentStatus.COMPLETED, LocalDateTime.now());
+        PaymentResponseDTO expectedResponse = new PaymentResponseDTO("123", 1L, 1L, new BigDecimal("100.00"), PaymentStatus.COMPLETED, LocalDateTime.now(), null);
 
         when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
         when(paymentMapper.toResponseDTO(payment)).thenReturn(expectedResponse);
@@ -102,13 +113,45 @@ class PaymentServiceTest {
     }
 
     @Test
+    @DisplayName("Should return payment receipt when receipt exists")
+    void getPaymentReceipt_ReceiptExists_ReturnsPdfBytes() {
+        String paymentId = "123";
+        String receiptKey = "receipts/order-1/payment-123.pdf";
+        byte[] receipt = "pdf".getBytes();
+        Payment payment = new Payment();
+        payment.setReceiptKey(receiptKey);
+
+        when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
+        when(paymentReceiptService.getReceipt(receiptKey)).thenReturn(receipt);
+
+        byte[] actualReceipt = paymentService.getPaymentReceipt(paymentId);
+
+        assertArrayEquals(receipt, actualReceipt);
+        verify(paymentRepository).findById(paymentId);
+        verify(paymentReceiptService).getReceipt(receiptKey);
+    }
+
+    @Test
+    @DisplayName("Should throw PaymentReceiptNotFoundException when payment has no receipt")
+    void getPaymentReceipt_NoReceipt_ThrowsException() {
+        String paymentId = "123";
+        Payment payment = new Payment();
+
+        when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
+
+        assertThrows(PaymentReceiptNotFoundException.class, () -> paymentService.getPaymentReceipt(paymentId));
+        verify(paymentRepository).findById(paymentId);
+        verify(paymentReceiptService, never()).getReceipt(any());
+    }
+
+    @Test
     @DisplayName("Should return all payments when payments exist")
     void getAllPayments_PaymentsExist_ReturnsPaymentList() {
         Payment payment1 = new Payment();
         Payment payment2 = new Payment();
         List<Payment> payments = Arrays.asList(payment1, payment2);
-        PaymentResponseDTO response1 = new PaymentResponseDTO("1", 1L, 1L, new BigDecimal("100.00"), PaymentStatus.COMPLETED, LocalDateTime.now());
-        PaymentResponseDTO response2 = new PaymentResponseDTO("2", 2L, 2L, new BigDecimal("200.00"), PaymentStatus.FAILED, LocalDateTime.now());
+        PaymentResponseDTO response1 = new PaymentResponseDTO("1", 1L, 1L, new BigDecimal("100.00"), PaymentStatus.COMPLETED, LocalDateTime.now(), null);
+        PaymentResponseDTO response2 = new PaymentResponseDTO("2", 2L, 2L, new BigDecimal("200.00"), PaymentStatus.FAILED, LocalDateTime.now(), null);
 
         when(paymentRepository.findAll()).thenReturn(payments);
         when(paymentMapper.toResponseDTO(payment1)).thenReturn(response1);
@@ -132,8 +175,8 @@ class PaymentServiceTest {
         Payment payment2 = new Payment();
         List<Payment> payments = Arrays.asList(payment1, payment2);
         Page<Payment> paymentsPage = new PageImpl<>(payments);
-        PaymentResponseDTO response1 = new PaymentResponseDTO("1", userId, 1L, new BigDecimal("100.00"), PaymentStatus.COMPLETED, LocalDateTime.now());
-        PaymentResponseDTO response2 = new PaymentResponseDTO("2", userId, 2L, new BigDecimal("200.00"), PaymentStatus.COMPLETED, LocalDateTime.now());
+        PaymentResponseDTO response1 = new PaymentResponseDTO("1", userId, 1L, new BigDecimal("100.00"), PaymentStatus.COMPLETED, LocalDateTime.now(), null);
+        PaymentResponseDTO response2 = new PaymentResponseDTO("2", userId, 2L, new BigDecimal("200.00"), PaymentStatus.COMPLETED, LocalDateTime.now(), null);
 
         when(paymentRepository.existsByUserId(userId)).thenReturn(true);
         when(paymentRepository.findByUserId(eq(userId), any(org.springframework.data.domain.Pageable.class))).thenReturn(paymentsPage);
@@ -169,8 +212,8 @@ class PaymentServiceTest {
         Payment payment1 = new Payment();
         Payment payment2 = new Payment();
         List<Payment> payments = Arrays.asList(payment1, payment2);
-        PaymentResponseDTO response1 = new PaymentResponseDTO("1", 1L, orderId, new BigDecimal("100.00"), PaymentStatus.COMPLETED, LocalDateTime.now());
-        PaymentResponseDTO response2 = new PaymentResponseDTO("2", 2L, orderId, new BigDecimal("200.00"), PaymentStatus.COMPLETED, LocalDateTime.now());
+        PaymentResponseDTO response1 = new PaymentResponseDTO("1", 1L, orderId, new BigDecimal("100.00"), PaymentStatus.COMPLETED, LocalDateTime.now(), null);
+        PaymentResponseDTO response2 = new PaymentResponseDTO("2", 2L, orderId, new BigDecimal("200.00"), PaymentStatus.COMPLETED, LocalDateTime.now(), null);
 
         when(paymentRepository.findByOrderId(orderId)).thenReturn(payments);
         when(paymentMapper.toResponseDTO(payment1)).thenReturn(response1);
@@ -202,8 +245,8 @@ class PaymentServiceTest {
         Payment payment1 = new Payment();
         Payment payment2 = new Payment();
         List<Payment> payments = Arrays.asList(payment1, payment2);
-        PaymentResponseDTO response1 = new PaymentResponseDTO("1", 1L, 1L, new BigDecimal("100.00"), status, LocalDateTime.now());
-        PaymentResponseDTO response2 = new PaymentResponseDTO("2", 2L, 2L, new BigDecimal("200.00"), status, LocalDateTime.now());
+        PaymentResponseDTO response1 = new PaymentResponseDTO("1", 1L, 1L, new BigDecimal("100.00"), status, LocalDateTime.now(), null);
+        PaymentResponseDTO response2 = new PaymentResponseDTO("2", 2L, 2L, new BigDecimal("200.00"), status, LocalDateTime.now(), null);
 
         when(paymentRepository.findByStatus(status)).thenReturn(payments);
         when(paymentMapper.toResponseDTO(payment1)).thenReturn(response1);
@@ -275,11 +318,14 @@ class PaymentServiceTest {
         PaymentRequestDTO requestDTO = new PaymentRequestDTO(1L, 1L, new BigDecimal("100.00"));
         Payment payment = new Payment();
         Payment savedPayment = new Payment();
-        PaymentResponseDTO expectedResponse = new PaymentResponseDTO("1", 1L, 1L, new BigDecimal("100.00"), PaymentStatus.COMPLETED, LocalDateTime.now());
+        savedPayment.setStatus(PaymentStatus.COMPLETED);
+        PaymentResponseDTO expectedResponse = new PaymentResponseDTO("1", 1L, 1L, new BigDecimal("100.00"), PaymentStatus.COMPLETED, LocalDateTime.now(), "receipts/order-1/payment-1.pdf");
 
         when(paymentMapper.toEntity(requestDTO)).thenReturn(payment);
         when(externalApiClient.getRandomNumber()).thenReturn(4);
         when(paymentRepository.save(payment)).thenReturn(savedPayment);
+        when(paymentReceiptService.createReceipt(savedPayment)).thenReturn("receipts/order-1/payment-1.pdf");
+        when(paymentRepository.save(savedPayment)).thenReturn(savedPayment);
         when(paymentMapper.toResponseDTO(savedPayment)).thenReturn(expectedResponse);
 
         PaymentResponseDTO result = paymentService.createPayment(requestDTO);
@@ -288,20 +334,26 @@ class PaymentServiceTest {
     }
 
     @Test
-    @DisplayName("Should set failed status when external API returns odd number")
-    void determinePaymentStatus_OddNumber_ReturnsFailed() {
+    @DisplayName("Should create receipt when payment fails")
+    void createPayment_FailedPayment_CreatesReceipt() {
         PaymentRequestDTO requestDTO = new PaymentRequestDTO(1L, 1L, new BigDecimal("100.00"));
         Payment payment = new Payment();
         Payment savedPayment = new Payment();
-        PaymentResponseDTO expectedResponse = new PaymentResponseDTO("1", 1L, 1L, new BigDecimal("100.00"), PaymentStatus.FAILED, LocalDateTime.now());
+        PaymentResponseDTO expectedResponse = new PaymentResponseDTO("1", 1L, 1L, new BigDecimal("100.00"), PaymentStatus.FAILED, LocalDateTime.now(), "receipts/order-1/payment-1.pdf");
+        savedPayment.setStatus(PaymentStatus.FAILED);
 
         when(paymentMapper.toEntity(requestDTO)).thenReturn(payment);
         when(externalApiClient.getRandomNumber()).thenReturn(3);
         when(paymentRepository.save(payment)).thenReturn(savedPayment);
+        when(paymentReceiptService.createReceipt(savedPayment)).thenReturn("receipts/order-1/payment-1.pdf");
+        when(paymentRepository.save(savedPayment)).thenReturn(savedPayment);
         when(paymentMapper.toResponseDTO(savedPayment)).thenReturn(expectedResponse);
 
         PaymentResponseDTO result = paymentService.createPayment(requestDTO);
 
         assertEquals(PaymentStatus.FAILED, result.status());
+        assertEquals("receipts/order-1/payment-1.pdf", result.receiptKey());
+        verify(paymentReceiptService).createReceipt(savedPayment);
+        verify(paymentRepository).save(savedPayment);
     }
 }
